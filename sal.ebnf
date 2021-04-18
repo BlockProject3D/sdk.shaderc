@@ -1,0 +1,51 @@
+LETTER_UP ::= "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z";
+LETTER_DOWN ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z";
+NUM ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
+WS ::= " " | "\t" | "\r" | "\n";
+
+BREAK ::= ";";
+CONST ::= "const";
+STRUCT ::= "struct";
+PIPELINE ::= "pipeline";
+VFORMAT ::= "vformat";
+USE ::= "use";
+EQ ::= "=";
+BLOCK_START ::= "{";
+BLOCK_END ::= "}";
+COMMENT ::= "#";
+
+BOOL_LITTERAL ::= "false" | "true";
+INT_LITTERAL ::= NUM+;
+FLOAT_LITTERAL ::= NUM* "." NUM+;
+
+ALPHA ::= LETTER_UP | LETTER_DOWN;
+ALPHA_NUM ::= ALPHA | NUM;
+IDENTIFIER ::= ALPHA ALPHA_NUM*;
+
+property_type ::= IDENTIFIER;
+property_name ::= IDENTIFIER;
+property ::= property_type property_name BREAK;
+struct_name ::= IDENTIFIER;
+struct ::= STRUCT WS* struct_name WS* BLOCK_START WS* property+ WS* BLOCK_END;
+
+constant_buffer ::= CONST WS* struct;
+
+constant ::= CONST WS* property;
+
+vertex_format ::= VFORMAT WS* struct;
+
+pipeline_name ::= IDENTIFIER;
+pipeline_var_name ::= IDENTIFIER;
+pipeline_var_value ::= BOOL_LITTERAL | INT_LITTERAL | FLOAT_LITTERAL | IDENTIFIER;
+pipeline_var ::= pipeline_var_name WS* EQ WS* pipeline_var_value WS* BREAK;
+pipeline ::= PIPELINE WS* pipeline_name WS* BLOCK_START WS* pipeline_var+ WS* BLOCK_END;
+
+file_name ::= identifier;
+member_name ::= identifier;
+use ::= USE WS* file_name "::" member_name WS* BREAK;
+
+comment ::= COMMENT string;
+
+statement ::= use | constant_buffer | constant | vertex_format | comment;
+
+sal ::= (WS* statement WS*)*;

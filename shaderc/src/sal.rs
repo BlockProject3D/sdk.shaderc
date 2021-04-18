@@ -26,18 +26,29 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use clap::clap_app;
+use std::vec::Vec;
 
-fn main() {
-    let matches = clap_app!(shaderc =>
-        (version: "1.0.0")
-        (author: "BlockProject 3D")
-        (about: "BlockProject 3D SDK - shader compiler")
-        (@arg input: -i --input +takes_value +required "Input shader file name")
-        (@arg target: -t --target +takes_value +required "Shader target (GLSL, HLSL or VGLSL)")
-        (@arg output: -o --output +takes_value "Output file name")
-        (@arg includes: -I --include +takes_value +multiple "Path to a directory to use as includes for SAL or shader code")
-    ).get_matches();
+//Module for parsing Shader Annotation Language (SAL)
 
-    println!("Hello, world!");
+/*
+
+<identifier> ::= <alpha> {alphanum}
+
+<cbuf> ::= "const struct" <identifier>
+
+*/
+
+enum Token
+{
+
+}
+
+pub struct Lexer
+{
+    tokens: Vec<Token>
+}
+
+pub struct Parser
+{
+
 }
