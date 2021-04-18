@@ -13,6 +13,7 @@ EQ ::= "=";
 BLOCK_START ::= "{";
 BLOCK_END ::= "}";
 COMMENT ::= "#";
+OUTPUT ::= "output";
 
 BOOL_LITTERAL ::= "false" | "true";
 INT_LITTERAL ::= NUM+;
@@ -32,6 +33,8 @@ constant_buffer ::= CONST WS* struct;
 
 constant ::= CONST WS* property;
 
+output ::= OUTPUT WS* property;
+
 vertex_format ::= VFORMAT WS* struct;
 
 pipeline_name ::= IDENTIFIER;
@@ -46,6 +49,6 @@ use ::= USE WS* file_name "::" member_name WS* BREAK;
 
 comment ::= COMMENT string;
 
-statement ::= use | constant_buffer | constant | vertex_format | comment;
+statement ::= use | constant_buffer | constant | output | vertex_format | comment;
 
 sal ::= (WS* statement WS*)*;

@@ -30,14 +30,6 @@ use std::vec::Vec;
 
 //Module for parsing Shader Annotation Language (SAL)
 
-/*
-
-<identifier> ::= <alpha> {alphanum}
-
-<cbuf> ::= "const struct" <identifier>
-
-*/
-
 enum Token
 {
 
