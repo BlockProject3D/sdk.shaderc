@@ -28,6 +28,10 @@
 
 use clap::clap_app;
 
+mod sal;
+
+pub use sal::Lexer;
+
 fn main() {
     let matches = clap_app!(shaderc =>
         (version: "1.0.0")
