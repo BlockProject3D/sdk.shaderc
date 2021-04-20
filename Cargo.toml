@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "shaderc",
-    "shaderl"
+    "shaderl",
+    "salc"
 ]
