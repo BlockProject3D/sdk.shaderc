@@ -49,6 +49,6 @@ use ::= USE WS* file_name "::" member_name WS* BREAK;
 
 comment ::= COMMENT string;
 
-statement ::= use | constant_buffer | constant | output | vertex_format | comment;
+statement ::= use | constant_buffer | constant | output | vertex_format | comment | pipeline;
 
 sal ::= (WS* statement WS*)*;
