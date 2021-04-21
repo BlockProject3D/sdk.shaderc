@@ -60,13 +60,32 @@ pub enum Value
 {
     Int(i32),
     Float(f32),
-    Bool(bool)
+    Bool(bool),
+    Enum(String)
 }
 
-pub struct PipelineVariable
+pub enum RenderMode
 {
-    pub name: String,
-    pub value: Value
+    Triangles,
+    Wireframe,
+    Patches
+}
+
+pub enum CullingMode
+{
+    BackFace,
+    FrontFace,
+    Disabled
+}
+
+pub enum PipelineVariable
+{
+    DepthEnable(bool),
+    DepthWriteEnable(bool),
+    ScissorEnable(bool),
+    RenderMode(RenderMode),
+    CullingMode(CullingMode),
+    BlendStateFactor(f32, f32, f32, f32)
 }
 
 pub struct PipelineStatement
