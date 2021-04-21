@@ -73,15 +73,15 @@ impl Display for Token
             Token::Pipeline => formatter.write_str(PIPELINE)?,
             Token::Vformat => formatter.write_str(VFORMAT)?,
             Token::Use => formatter.write_str(USE)?,
-            Token::Eq => formatter.write_str(EQ)?,
-            Token::BlockStart => formatter.write_str(BLOCK_START)?,
-            Token::BlockEnd => formatter.write_str(BLOCK_END)?,
+            Token::Eq => formatter.write_str("'='")?,
+            Token::BlockStart => formatter.write_str("'{'")?,
+            Token::BlockEnd => formatter.write_str("'}'")?,
             Token::Output => formatter.write_str(OUTPUT)?,
-            Token::Bool(bool) => formatter.write_str("bool")?,
-            Token::Int(i32) => formatter.write_str("int")?,
-            Token::Float(f32) => formatter.write_str("float")?,
-            Token::Identifier(String) => formatter.write_str("identifier")?,
-            Token::Namespace(String) => formatter.write_str("namespace")?
+            Token::Bool(_) => formatter.write_str("bool")?,
+            Token::Int(_) => formatter.write_str("int")?,
+            Token::Float(_) => formatter.write_str("float")?,
+            Token::Identifier(_) => formatter.write_str("identifier")?,
+            Token::Namespace(_) => formatter.write_str("namespace")?
         }
         todo!()
     }
