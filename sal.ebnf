@@ -37,15 +37,17 @@ output ::= OUTPUT WS* property;
 
 vertex_format ::= VFORMAT WS* struct;
 
+file_name ::= IDENTIFIER;
+member_name ::= IDENTIFIER;
+namespace ::= file_name "::" member_name;
+
 pipeline_name ::= IDENTIFIER;
-pipeline_var_name ::= IDENTIFIER;
+pipeline_var_name ::= IDENTIFIER | namespace;
 pipeline_var_value ::= BOOL_LITTERAL | INT_LITTERAL | FLOAT_LITTERAL | IDENTIFIER;
 pipeline_var ::= pipeline_var_name WS* EQ WS* pipeline_var_value WS* BREAK;
 pipeline ::= PIPELINE WS* pipeline_name WS* BLOCK_START WS* pipeline_var+ WS* BLOCK_END;
 
-file_name ::= identifier;
-member_name ::= identifier;
-use ::= USE WS* file_name "::" member_name WS* BREAK;
+use ::= USE WS* namespace WS* BREAK;
 
 comment ::= COMMENT string;
 
