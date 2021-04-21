@@ -29,12 +29,6 @@
 use std::vec::Vec;
 use std::string::String;
 
-pub struct UseStatement
-{
-    pub module: String,
-    pub member: String
-}
-
 pub enum BaseType
 {
     Int,
@@ -87,6 +81,6 @@ pub enum Statement
     ConstantBuffer(Struct),
     Output(Property),
     VertexFormat(Struct),
-    Use(UseStatement),
+    Use(Statement),
     Pipeline(PipelineStatement)
 }
