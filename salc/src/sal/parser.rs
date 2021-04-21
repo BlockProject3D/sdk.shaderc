@@ -31,6 +31,39 @@ use std::collections::VecDeque;
 use crate::sal::lexer::Lexer;
 use crate::sal::lexer::Token;
 
+pub mod tree
+{
+    use crate::sal::ast::PipelineStatement;
+
+    pub struct Property
+    {
+        pub ptype: String,
+        pub pname: String    
+    }
+
+    pub struct Struct
+    {
+        pub name: String,
+        pub properties: Vec<Property>
+    }
+
+    pub struct Use
+    {
+        pub module: String,
+        pub member: String
+    }
+
+    pub enum Root
+    {
+        Constant(Property),
+        ConstantBuffer(Struct),
+        Output(Property),
+        VertexFormat(Struct),
+        Use(Use),
+        Pipeline(PipelineStatement)
+    }
+}
+
 pub struct Parser
 {
     tokens: VecDeque<(Token, usize, usize)>

@@ -81,6 +81,11 @@ pub enum Statement
     ConstantBuffer(Struct),
     Output(Property),
     VertexFormat(Struct),
-    Use(Statement),
     Pipeline(PipelineStatement)
+}
+
+pub enum Root
+{
+    Use(Statement),
+    Statement(Statement)
 }
