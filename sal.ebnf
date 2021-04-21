@@ -14,6 +14,7 @@ BLOCK_START ::= "{";
 BLOCK_END ::= "}";
 COMMENT ::= "#";
 OUTPUT ::= "output";
+BLENDFUNC ::= "blendfunc";
 
 BOOL_LITTERAL ::= "false" | "true";
 INT_LITTERAL ::= NUM+;
@@ -41,16 +42,17 @@ file_name ::= IDENTIFIER;
 member_name ::= IDENTIFIER;
 namespace ::= file_name "::" member_name;
 
-pipeline_name ::= IDENTIFIER;
-pipeline_var_name ::= IDENTIFIER | namespace;
-pipeline_var_value ::= BOOL_LITTERAL | INT_LITTERAL | FLOAT_LITTERAL | IDENTIFIER;
-pipeline_var ::= pipeline_var_name WS* EQ WS* pipeline_var_value WS* BREAK;
-pipeline ::= PIPELINE WS* pipeline_name WS* BLOCK_START WS* pipeline_var+ WS* BLOCK_END;
+block_name ::= IDENTIFIER;
+block_var_name ::= IDENTIFIER | namespace;
+block_var_value ::= BOOL_LITTERAL | INT_LITTERAL | FLOAT_LITTERAL | IDENTIFIER;
+block_var ::= block_var_name WS* EQ WS* block_var_value WS* BREAK;
+pipeline ::= PIPELINE WS* block_name WS* BLOCK_START WS* block_var+ WS* BLOCK_END;
+blendfunc ::= BLENDFUNC WS* block_name WS*;
 
 use ::= USE WS* namespace WS* BREAK;
 
 comment ::= COMMENT string;
 
-statement ::= use | constant_buffer | constant | output | vertex_format | comment | pipeline;
+statement ::= use | constant_buffer | constant | output | vertex_format | comment | pipeline | blendfunc;
 
 sal ::= (WS* statement WS*)*;
