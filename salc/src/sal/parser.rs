@@ -59,16 +59,16 @@ pub mod tree
         Identifier(String)
     }
 
-    pub struct PipelineVariable
+    pub struct Variable
     {
         pub name: String,
         pub value: Value
     }
 
-    pub struct Pipeline
+    pub struct VariableList
     {
         pub name: String,
-        pub variables: Vec<PipelineVariable>
+        pub variables: Vec<Variable>
     }
 
     pub enum Root
@@ -78,7 +78,8 @@ pub mod tree
         Output(Property),
         VertexFormat(Struct),
         Use(Use),
-        Pipeline(Pipeline)
+        Pipeline(VariableList),
+        Blendfunc(VariableList)
     }
 }
 
@@ -252,13 +253,13 @@ impl Parser
         return Err(format!("[Shader Annotation Language] Unexpected token, expected identifier or namespace but got {} at line {}, column {}", &tok, line, col));
     }
 
-    fn parse_pipeline_var(&mut self, line: usize, col: usize) -> Result<tree::PipelineVariable, String>
+    fn parse_var(&mut self, line: usize, col: usize) -> Result<tree::Variable, String>
     {
         let (tok, line, col) = self.pop(line, col)?;
         if let Token::Identifier(vname) = tok
         {
             let val = self.parse_pipeline_val(line, col)?;
-            return Ok(tree::PipelineVariable
+            return Ok(tree::Variable
             {
                 name: vname,
                 value: val
@@ -267,7 +268,7 @@ impl Parser
         else if let Token::Namespace(vname) = tok
         {
             let val = self.parse_pipeline_val(line, col)?;
-            return Ok(tree::PipelineVariable
+            return Ok(tree::Variable
             {
                 name: vname,
                 value: val
@@ -276,39 +277,55 @@ impl Parser
         return Err(format!("[Shader Annotation Language] Unexpected token, expected identifier or namespace but got {} at line {}, column {}", &tok, line, col));
     }
 
+    fn parse_varlist(&mut self, line: usize, col: usize) -> Result<tree::VariableList, String>
+    {
+        let (tok, line, col) = self.pop(line, col)?;
+        if let Token::Identifier(pname) = tok
+        {
+            let (tok, line, col) = self.pop(line, col)?;
+            if tok == Token::BlockStart
+            {
+                let mut v = Vec::new();
+                loop
+                {
+                    let var = self.parse_var(line, col)?;
+                    v.push(var);
+                    if let Some((tok, _, _)) = self.tokens.front()
+                    {
+                        if tok == &Token::BlockEnd
+                        {
+                            self.pop(line, col)?;
+                            break;
+                        }
+                    }
+                }
+                return Ok(tree::VariableList
+                {
+                    name: pname,
+                    variables: v
+                });
+            }
+            return Err(format!("[Shader Annotation Language] Unexpected token, expected '{{' but got {} at line {}, column {}", &tok, line, col));
+        }
+        return Err(format!("[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}", &tok, line, col));
+    }
+
     fn try_parse_pipeline(&mut self, (token, line, col): &(Token, usize, usize)) -> Result<Option<tree::Root>, String>
     {
         if token == &Token::Pipeline
         {
-            let (tok, line, col) = self.pop(*line, *col)?;
-            if let Token::Identifier(pname) = tok
-            {
-                let (tok, line, col) = self.pop(line, col)?;
-                if tok == Token::BlockStart
-                {
-                    let mut v = Vec::new();
-                    loop
-                    {
-                        let var = self.parse_pipeline_var(line, col)?;
-                        v.push(var);
-                        if let Some((tok, _, _)) = self.tokens.front()
-                        {
-                            if tok == &Token::BlockEnd
-                            {
-                                self.pop(line, col)?;
-                                break;
-                            }
-                        }
-                    }
-                    return Ok(Some(tree::Root::Pipeline(tree::Pipeline
-                    {
-                        name: pname,
-                        variables: v
-                    })));
-                }
-                return Err(format!("[Shader Annotation Language] Unexpected token, expected '{{' but got {} at line {}, column {}", &tok, line, col));
-            }
-            return Err(format!("[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}", &tok, line, col));
+            let varlist = self.parse_varlist(*line, *col)?;
+            return Ok(Some(tree::Root::Pipeline(varlist)));
+        }
+        return Ok(None);
+    }
+
+    fn try_parse_blendfunc(&mut self, (token, line, col): &(Token, usize, usize)) -> Result<Option<tree::Root>, String>
+    {
+        if token == &Token::Blendfunc
+        {
+            let varlist = self.parse_varlist(*line, *col)?;
+            return Ok(Some(tree::Root::Blendfunc(varlist)));
         }
         return Ok(None);
     }
@@ -332,6 +349,10 @@ impl Parser
                 dfj.push(elem);
             }
             else if let Some(elem) = self.try_parse_pipeline(&v)?
+            {
+                dfj.push(elem);
+            }
+            else if let Some(elem) = self.try_parse_blendfunc(&v)?
             {
                 dfj.push(elem);
             }
