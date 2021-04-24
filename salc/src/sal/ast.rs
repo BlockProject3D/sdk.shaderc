@@ -26,6 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::HashMap;
 use std::vec::Vec;
 use std::string::String;
 
@@ -78,20 +79,55 @@ pub enum CullingMode
     Disabled
 }
 
-pub enum PipelineVariable
-{
-    DepthEnable(bool),
-    DepthWriteEnable(bool),
-    ScissorEnable(bool),
-    RenderMode(RenderMode),
-    CullingMode(CullingMode),
-    BlendStateFactor(f32, f32, f32, f32)
-}
-
 pub struct PipelineStatement
 {
     pub name: String,
-    pub variables: Vec<PipelineVariable>
+    pub depth_enable: bool,
+    pub depth_write_enable: bool,
+    pub scissor_enable: bool,
+    pub render_mode: RenderMode,
+    pub culling_mode: CullingMode,
+    pub blend_state_factor: (f32, f32, f32, f32),
+    pub blend_functions: HashMap<String, String>
+}
+
+pub enum BlendFactor
+{
+    Zero,
+    One,
+    SrcColor,
+    OneMinusSrcColor,
+    SrcAlpha,
+    OneMinusSrcAlpha,
+    DstColor,
+    OneMinusDstColor,
+    DstAlpha,
+    OneMinusDstAlpha,
+    SrcAlphaSaturate,
+    Src1Color,
+    OneMinusSrc1Color,
+    Src1Alpha,
+    OneMinusSrc1Alpha
+}
+
+pub enum BlendOperator
+{
+    Add,
+    Subtract,
+    InverseSubtract,
+    Min,
+    Max
+}
+
+pub struct BlendfuncStatement
+{
+    pub name: String,
+    pub src_color: BlendFactor,
+    pub dst_color: BlendFactor,
+    pub src_alpha: BlendFactor,
+    pub dst_alpha: BlendFactor,
+    pub color_op: BlendOperator,
+    pub alpha_op: BlendOperator
 }
 
 pub enum Statement
@@ -100,7 +136,8 @@ pub enum Statement
     ConstantBuffer(Struct),
     Output(Property),
     VertexFormat(Struct),
-    Pipeline(PipelineStatement)
+    Pipeline(PipelineStatement),
+    Blendfunc(BlendfuncStatement)
 }
 
 pub enum Root
