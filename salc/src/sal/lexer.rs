@@ -36,6 +36,7 @@ const CONST: &'static str = "const";
 const STRUCT: &'static str = "struct";
 const PIPELINE: &'static str = "pipeline";
 const BLENDFUNC: &'static str = "blendfunc";
+const SAMPLER: &'static str = "sampler";
 const VFORMAT: &'static str = "vformat";
 const USE: &'static str = "use";
 const EQ: &'static str = "=";
@@ -61,7 +62,8 @@ pub enum Token
     Float(f32),
     Identifier(String),
     Namespace(String),
-    Blendfunc
+    Blendfunc,
+    Sampler
 }
 
 impl Display for Token
@@ -84,7 +86,8 @@ impl Display for Token
             Token::Float(_) => formatter.write_str("float")?,
             Token::Identifier(_) => formatter.write_str("identifier")?,
             Token::Namespace(_) => formatter.write_str("namespace")?,
-            Token::Blendfunc => formatter.write_str(BLENDFUNC)?
+            Token::Blendfunc => formatter.write_str(BLENDFUNC)?,
+            Token::Sampler => formatter.write_str(SAMPLER)?
         }
         todo!()
     }

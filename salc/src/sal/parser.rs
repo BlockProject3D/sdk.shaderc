@@ -79,7 +79,8 @@ pub mod tree
         VertexFormat(Struct),
         Use(Use),
         Pipeline(VariableList),
-        Blendfunc(VariableList)
+        Blendfunc(VariableList),
+        Sampler(VariableList)
     }
 }
 
@@ -330,6 +331,16 @@ impl Parser
         return Ok(None);
     }
 
+    fn try_parse_sampler(&mut self, (token, line, col): &(Token, usize, usize)) -> Result<Option<tree::Root>, String>
+    {
+        if token == &Token::Sampler
+        {
+            let varlist = self.parse_varlist(*line, *col)?;
+            return Ok(Some(tree::Root::Sampler(varlist)));
+        }
+        return Ok(None);
+    }
+
     fn parse(&mut self) -> Result<Vec<tree::Root>, String>
     {
         let mut dfj = Vec::new();
@@ -353,6 +364,10 @@ impl Parser
                 dfj.push(elem);
             }
             else if let Some(elem) = self.try_parse_blendfunc(&v)?
+            {
+                dfj.push(elem);
+            }
+            else if let Some(elem) = self.try_parse_sampler(&v)?
             {
                 dfj.push(elem);
             }
