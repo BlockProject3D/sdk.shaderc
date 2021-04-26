@@ -149,6 +149,19 @@ impl Parser
             }
             return Err(format!("[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}", &tok, line, col));
         }
+        if let Token::Namespace(t) = tok
+        {
+            let (tok, line, col) = self.pop(line, col)?;
+            if let Token::Identifier(n) = tok
+            {
+                return Ok(tree::Property
+                {
+                    pname: n,
+                    ptype: t
+                });
+            }
+            return Err(format!("[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}", &tok, line, col));
+        }
         return Err(format!("[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}", &tok, line, col));
     }
 
