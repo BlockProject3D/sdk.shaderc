@@ -30,6 +30,12 @@ use std::collections::HashMap;
 use std::vec::Vec;
 use std::string::String;
 
+pub trait VarlistStatement
+{
+    fn new(name: String) -> Self;
+}
+
+#[derive(Clone, Copy)]
 pub enum BaseType
 {
     Int,
@@ -39,10 +45,17 @@ pub enum BaseType
     Double
 }
 
-pub struct PropertyType
+#[derive(Clone, Copy)]
+pub enum PropertyType
 {
-    base_type: BaseType,
-    count: u8
+    Scalar(BaseType),
+    Vector(BaseType, u8),
+    Matrix(BaseType, u8),
+    Sampler,
+    Texture2D(BaseType, u8),
+    Texture3D(BaseType, u8),
+    Texture2DArray(BaseType, u8),
+    TextureCube(BaseType, u8)
 }
 
 pub struct Property
@@ -57,14 +70,7 @@ pub struct Struct
     pub properties: Vec<Property>
 }
 
-pub enum Value
-{
-    Int(i32),
-    Float(f32),
-    Bool(bool),
-    Enum(String)
-}
-
+#[derive(Clone, Copy)]
 pub enum RenderMode
 {
     Triangles,
@@ -72,6 +78,7 @@ pub enum RenderMode
     Patches
 }
 
+#[derive(Clone, Copy)]
 pub enum CullingMode
 {
     BackFace,
@@ -87,10 +94,27 @@ pub struct PipelineStatement
     pub scissor_enable: bool,
     pub render_mode: RenderMode,
     pub culling_mode: CullingMode,
-    pub blend_state_factor: (f32, f32, f32, f32),
     pub blend_functions: HashMap<String, String>
 }
 
+impl VarlistStatement for PipelineStatement
+{
+    fn new(name: String) -> Self
+    {
+        return PipelineStatement
+        {
+            name: name,
+            depth_enable: true,
+            depth_write_enable: true,
+            scissor_enable: false,
+            render_mode: RenderMode::Triangles,
+            culling_mode: CullingMode::BackFace,
+            blend_functions: HashMap::new()
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 pub enum BlendFactor
 {
     Zero,
@@ -110,6 +134,7 @@ pub enum BlendFactor
     OneMinusSrc1Alpha
 }
 
+#[derive(Clone, Copy)]
 pub enum BlendOperator
 {
     Add,
@@ -130,6 +155,73 @@ pub struct BlendfuncStatement
     pub alpha_op: BlendOperator
 }
 
+impl VarlistStatement for BlendfuncStatement
+{
+    fn new(name: String) -> Self
+    {
+        return BlendfuncStatement
+        {
+            name: name,
+            src_color: BlendFactor::One,
+            dst_color: BlendFactor::Zero,
+            src_alpha: BlendFactor::One,
+            dst_alpha: BlendFactor::Zero,
+            color_op: BlendOperator::Add,
+            alpha_op: BlendOperator::Add
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum TextureFiltering
+{
+    MinMagPointMipmapPoint,
+    MinMagLinearMipmapLinear,
+    MinMagLinearMipmapPoint,
+    MinMagPointMipmapLinear,
+    MinPointMagLinearMipmapPoint,
+    MinLinearMagPointMipmapLinear,
+    Anisotropic
+}
+
+#[derive(Clone, Copy)]
+pub enum TextureAddressing
+{
+    ClampToEdge,
+    MirroredRepeat,
+    Repeat
+}
+
+pub struct SamplerStatement
+{
+    pub name: String,
+    pub filter_func: TextureFiltering,
+    pub address_mode_u: TextureAddressing,
+    pub address_mode_v: TextureAddressing,
+    pub address_mode_w: TextureAddressing,
+    pub anisotropic_level: u32,
+    pub min_lod: f32,
+    pub max_lod: f32
+}
+
+impl VarlistStatement for SamplerStatement
+{
+    fn new(name: String) -> Self
+    {
+        return SamplerStatement
+        {
+            name: name,
+            filter_func: TextureFiltering::MinMagPointMipmapPoint,
+            address_mode_u: TextureAddressing::ClampToEdge,
+            address_mode_v: TextureAddressing::ClampToEdge,
+            address_mode_w: TextureAddressing::ClampToEdge,
+            anisotropic_level: 0,
+            min_lod: f32::MIN,
+            max_lod: f32::MAX
+        }
+    }
+}
+
 pub enum Statement
 {
     Constant(Property),
@@ -137,11 +229,6 @@ pub enum Statement
     Output(Property),
     VertexFormat(Struct),
     Pipeline(PipelineStatement),
-    Blendfunc(BlendfuncStatement)
-}
-
-pub enum Root
-{
-    Use(Statement),
-    Statement(Statement)
+    Blendfunc(BlendfuncStatement),
+    Sampler(SamplerStatement)
 }
