@@ -91,7 +91,7 @@ pub struct Parser
 
 impl Parser
 {
-    fn new(lexer: Lexer) -> Parser
+    pub fn new(lexer: Lexer) -> Parser
     {
         return Parser
         {
@@ -354,7 +354,7 @@ impl Parser
         return Ok(None);
     }
 
-    fn parse(&mut self) -> Result<Vec<tree::Root>, String>
+    pub fn parse(&mut self) -> Result<Vec<tree::Root>, String>
     {
         let mut dfj = Vec::new();
 
