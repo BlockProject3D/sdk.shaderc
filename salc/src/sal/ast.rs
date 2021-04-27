@@ -233,3 +233,21 @@ pub enum Statement
     Sampler(SamplerStatement),
     Noop // Used to represent a statement to ignore in the parse tree
 }
+
+impl Statement
+{
+    pub fn get_name(&self) -> Option<&str>
+    {
+        return match self
+        {
+            Statement::Constant(v) => Some(&v.pname),
+            Statement::ConstantBuffer(v) => Some(&v.name),
+            Statement::Output(v) => Some(&v.pname),
+            Statement::VertexFormat(v) => Some(&v.name),
+            Statement::Pipeline(v) => Some(&v.name),
+            Statement::Blendfunc(v) => Some(&v.name),
+            Statement::Sampler(v) => Some(&v.name),
+            Statement::Noop => None
+        };
+    }
+}
