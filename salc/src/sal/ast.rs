@@ -230,5 +230,6 @@ pub enum Statement
     VertexFormat(Struct),
     Pipeline(PipelineStatement),
     Blendfunc(BlendfuncStatement),
-    Sampler(SamplerStatement)
+    Sampler(SamplerStatement),
+    Noop // Used to represent a statement to ignore in the parse tree
 }
