@@ -29,6 +29,7 @@
 use clap::clap_app;
 
 mod sal;
+mod preprocessor;
 
 fn main() {
     let matches = clap_app!(salc =>
