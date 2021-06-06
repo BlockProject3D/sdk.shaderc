@@ -28,16 +28,18 @@
 
 //Module for parsing Shader Annotation Language (SAL)
 
-use std::path::PathBuf;
-use std::path::Path;
-use std::string::String;
+use std::{
+    path::{Path, PathBuf},
+    string::String
+};
 
-pub mod lexer;
-pub mod parser;
 pub mod ast;
 pub mod generator;
+pub mod lexer;
+pub mod parser;
 
-pub fn parse(lexer: lexer::Lexer, expand_use: bool, module_paths: &Vec<PathBuf>) -> Result<Vec<ast::Statement>, String>
+pub fn parse(lexer: lexer::Lexer, expand_use: bool, module_paths: &Vec<PathBuf>)
+    -> Result<Vec<ast::Statement>, String>
 {
     let mut parser = parser::Parser::new(lexer);
     let tree = parser.parse()?;
@@ -46,8 +48,7 @@ pub fn parse(lexer: lexer::Lexer, expand_use: bool, module_paths: &Vec<PathBuf>)
 
 pub fn parse_file(file: &Path, expand_use: bool, module_paths: &Vec<PathBuf>) -> Result<Vec<ast::Statement>, String>
 {
-    let str = match std::fs::read_to_string(file)
-    {
+    let str = match std::fs::read_to_string(file) {
         Err(e) => return Err(format!("Error loading SAL script file: {}", e)),
         Ok(v) => v
     };

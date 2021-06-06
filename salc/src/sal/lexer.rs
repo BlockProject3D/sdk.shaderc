@@ -26,10 +26,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::string::String;
-use std::collections::VecDeque;
+use std::{collections::VecDeque, fmt::Display, string::String};
+
 use regex::Regex;
-use std::fmt::Display;
 
 const BREAK: &'static str = ";";
 const CONST: &'static str = "const";
@@ -70,8 +69,7 @@ impl Display for Token
 {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error>
     {
-        match self
-        {
+        match self {
             Token::Const => formatter.write_str(CONST)?,
             Token::Struct => formatter.write_str(STRUCT)?,
             Token::Pipeline => formatter.write_str(PIPELINE)?,
@@ -95,8 +93,7 @@ impl Display for Token
 
 fn check_keyword(substr: &str) -> Option<Token>
 {
-    match substr
-    {
+    match substr {
         CONST => return Some(Token::Const),
         STRUCT => return Some(Token::Struct),
         PIPELINE => return Some(Token::Pipeline),
@@ -112,20 +109,15 @@ fn check_keyword(substr: &str) -> Option<Token>
 
 fn check_litteral(substr: &str) -> Option<Token>
 {
-    if substr == "true"
-    {
+    if substr == "true" {
         return Some(Token::Bool(true));
-    }
-    else if substr == "false"
-    {
+    } else if substr == "false" {
         return Some(Token::Bool(false));
     }
-    if let Ok(v) = substr.parse::<i32>()
-    {
+    if let Ok(v) = substr.parse::<i32>() {
         return Some(Token::Int(v));
     }
-    if let Ok(v) = substr.parse::<f32>()
-    {
+    if let Ok(v) = substr.parse::<f32>() {
         return Some(Token::Float(v));
     }
     return None;
@@ -134,8 +126,7 @@ fn check_litteral(substr: &str) -> Option<Token>
 fn check_identifier(substr: &str) -> Option<Token>
 {
     let re = Regex::new(r"[A-z]([A-z]|\d)*").unwrap();
-    if re.replace(substr, "") == ""
-    {
+    if re.replace(substr, "") == "" {
         return Some(Token::Identifier(String::from(substr)));
     }
     return None;
@@ -144,8 +135,7 @@ fn check_identifier(substr: &str) -> Option<Token>
 fn check_namespace(substr: &str) -> Option<Token>
 {
     let re = Regex::new(r"[A-z]([A-z]|\d)*::([A-z]|\d)+").unwrap();
-    if re.replace(substr, "") == ""
-    {
+    if re.replace(substr, "") == "" {
         return Some(Token::Namespace(String::from(substr)));
     }
     return None;
@@ -159,12 +149,10 @@ fn is_whitespace(substr: &str) -> bool
 fn trim_token(code: &str, token: (usize, usize)) -> (usize, usize)
 {
     let (mut pos1, mut pos2) = token;
-    while pos1 < pos2 && is_whitespace(&code[pos1..pos1 + 1])
-    {
+    while pos1 < pos2 && is_whitespace(&code[pos1..pos1 + 1]) {
         pos1 += 1;
     }
-    while pos2 > pos1 && is_whitespace(&code[pos2 - 1..pos2])
-    {
+    while pos2 > pos1 && is_whitespace(&code[pos2 - 1..pos2]) {
         pos2 -= 1;
     }
     return (pos1, pos2);
@@ -183,92 +171,81 @@ impl Lexer
 {
     pub fn new() -> Lexer
     {
-        return Lexer
-        {
+        return Lexer {
             tokens: VecDeque::new(),
             cur_token: (0, 0),
             cur_column: 0,
             cur_line: 1,
-            in_comment: false,
+            in_comment: false
         };
     }
 
     pub fn push_str(&mut self, code: &str) -> Result<(), String>
     {
         self.cur_token = (0, 0);
-        loop
-        {
+        loop {
             let (mut pos1, mut pos2) = self.cur_token;
             self.cur_column += 1;
             pos2 += 1;
-            if pos2 > code.len() //Should be ">=" but somehow there's a bug in rust
+            if pos2 > code.len()
+            //Should be ">=" but somehow there's a bug in rust
             {
                 break;
             }
-            if &code[pos2 - 1..pos2] == COMMENT
-            {
+            if &code[pos2 - 1..pos2] == COMMENT {
                 self.in_comment = true;
-            }
-            else if &code[pos2 - 1..pos2] == "\r" || &code[pos2 - 1..pos2] == "\n"
-            {
-                if self.in_comment
-                {
+            } else if &code[pos2 - 1..pos2] == "\r" || &code[pos2 - 1..pos2] == "\n" {
+                if self.in_comment {
                     self.in_comment = false;
                     pos1 = pos2 + 1;
                     pos2 = pos1 + 1;
                 }
-                if &code[pos2 - 1..pos2] == "\n"
-                {
+                if &code[pos2 - 1..pos2] == "\n" {
                     self.cur_line += 1;
-                    self.cur_column = 0;    
+                    self.cur_column = 0;
                 }
-            }
-            else if !self.in_comment
-            {
-                if is_whitespace(&code[pos2 - 1..pos2])
-                {
+            } else if !self.in_comment {
+                if is_whitespace(&code[pos2 - 1..pos2]) {
                     let (np1, np2) = trim_token(code, (pos1, pos2));
-                    if np2 - np1 > 0
-                    {
-                        if let Some(tok) = check_keyword(&code[np1..np2])
-                        {
+                    if np2 - np1 > 0 {
+                        if let Some(tok) = check_keyword(&code[np1..np2]) {
                             pos1 = pos2; //This should be +1 but somehow there's a bug in rust
                             pos2 = pos1;
                             self.tokens.push_back((tok, self.cur_line, self.cur_column));
-                        }
-                        else if let Some(tok) = check_litteral(&code[np1..np2])
-                        {
+                        } else if let Some(tok) = check_litteral(&code[np1..np2]) {
                             pos1 = pos2;
                             pos2 = pos1;
                             self.tokens.push_back((tok, self.cur_line, self.cur_column));
-                        }
-                        else if let Some(tok) = check_namespace(&code[np1..np2])
-                        {
+                        } else if let Some(tok) = check_namespace(&code[np1..np2]) {
                             pos1 = pos2;
                             pos2 = pos1;
                             self.tokens.push_back((tok, self.cur_line, self.cur_column));
                         }
                         //At this point it has to be an identifier otherwise it's bad unexpected token
-                        else if let Some(tok) = check_identifier(&code[np1..np2])
-                        {
+                        else if let Some(tok) = check_identifier(&code[np1..np2]) {
                             pos1 = pos2;
                             pos2 = pos1;
                             self.tokens.push_back((tok, self.cur_line, self.cur_column));
+                        } else {
+                            return Err(format!(
+                                "[Shader Annotation Language] Unidentified token '{}' at line {}, column {}",
+                                &code[np1..np2],
+                                self.cur_line,
+                                self.cur_column
+                            ));
                         }
-                        else
-                        {
-                            return Err(format!("[Shader Annotation Language] Unidentified token '{}' at line {}, column {}", &code[np1..np2], self.cur_line, self.cur_column));
-                        }    
                     }
                 }
             }
             self.cur_token = (pos1, pos2);
         }
         let (_, pos2) = self.cur_token;
-        if pos2 + 1 < code.len()
-        {
+        if pos2 + 1 < code.len() {
             //We have an error: input code is incomplete
-            return Err(format!("[Shader Annotation Language] Unexpected EOF at line {}, column {}", self.cur_line, self.cur_column));
+            return Err(format!(
+                "[Shader Annotation Language] Unexpected EOF at line {}, column {}",
+                self.cur_line, self.cur_column
+            ));
         }
         return Ok(());
     }
@@ -301,28 +278,32 @@ mod test
         let mut lexer = Lexer::new();
         lexer.push_str(source_code).unwrap();
         let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
-        assert_eq!(toks, vec![
-            Token::Const,
-            Token::Identifier(String::from("float")),
-            Token::Identifier(String::from("DeltaTime")),
-            Token::Const,
-            Token::Identifier(String::from("uint")),
-            Token::Identifier(String::from("FrameCount")),
-            Token::Const,
-            Token::Identifier(String::from("mat3f")),
-            Token::Identifier(String::from("ModelViewMatrix")),
-            Token::Const,
-            Token::Identifier(String::from("mat3f")),
-            Token::Identifier(String::from("ProjectionMatrix")),
-            Token::Const, Token::Struct,
-            Token::Identifier(String::from("PerMaterial")),
-            Token::BlockStart,
-            Token::Identifier(String::from("vec4f")),
-            Token::Identifier(String::from("BaseColor")),
-            Token::Identifier(String::from("float")),
-            Token::Identifier(String::from("UvMultiplier")),
-            Token::BlockEnd
-        ]);
+        assert_eq!(
+            toks,
+            vec![
+                Token::Const,
+                Token::Identifier(String::from("float")),
+                Token::Identifier(String::from("DeltaTime")),
+                Token::Const,
+                Token::Identifier(String::from("uint")),
+                Token::Identifier(String::from("FrameCount")),
+                Token::Const,
+                Token::Identifier(String::from("mat3f")),
+                Token::Identifier(String::from("ModelViewMatrix")),
+                Token::Const,
+                Token::Identifier(String::from("mat3f")),
+                Token::Identifier(String::from("ProjectionMatrix")),
+                Token::Const,
+                Token::Struct,
+                Token::Identifier(String::from("PerMaterial")),
+                Token::BlockStart,
+                Token::Identifier(String::from("vec4f")),
+                Token::Identifier(String::from("BaseColor")),
+                Token::Identifier(String::from("float")),
+                Token::Identifier(String::from("UvMultiplier")),
+                Token::BlockEnd
+            ]
+        );
     }
 
     #[test]
@@ -345,28 +326,32 @@ mod test
         let mut lexer = Lexer::new();
         lexer.push_str(source_code).unwrap();
         let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
-        assert_eq!(toks, vec![
-            Token::Const,
-            Token::Identifier(String::from("float")),
-            Token::Identifier(String::from("DeltaTime")),
-            Token::Const,
-            Token::Identifier(String::from("uint")),
-            Token::Identifier(String::from("FrameCount")),
-            Token::Const,
-            Token::Identifier(String::from("mat3f")),
-            Token::Identifier(String::from("ModelViewMatrix")),
-            Token::Const,
-            Token::Identifier(String::from("mat3f")),
-            Token::Identifier(String::from("ProjectionMatrix")),
-            Token::Const, Token::Struct,
-            Token::Identifier(String::from("PerMaterial")),
-            Token::BlockStart,
-            Token::Identifier(String::from("vec4f")),
-            Token::Identifier(String::from("BaseColor")),
-            Token::Identifier(String::from("float")),
-            Token::Identifier(String::from("UvMultiplier")),
-            Token::BlockEnd
-        ]);
+        assert_eq!(
+            toks,
+            vec![
+                Token::Const,
+                Token::Identifier(String::from("float")),
+                Token::Identifier(String::from("DeltaTime")),
+                Token::Const,
+                Token::Identifier(String::from("uint")),
+                Token::Identifier(String::from("FrameCount")),
+                Token::Const,
+                Token::Identifier(String::from("mat3f")),
+                Token::Identifier(String::from("ModelViewMatrix")),
+                Token::Const,
+                Token::Identifier(String::from("mat3f")),
+                Token::Identifier(String::from("ProjectionMatrix")),
+                Token::Const,
+                Token::Struct,
+                Token::Identifier(String::from("PerMaterial")),
+                Token::BlockStart,
+                Token::Identifier(String::from("vec4f")),
+                Token::Identifier(String::from("BaseColor")),
+                Token::Identifier(String::from("float")),
+                Token::Identifier(String::from("UvMultiplier")),
+                Token::BlockEnd
+            ]
+        );
     }
 
     #[test]
@@ -376,11 +361,14 @@ mod test
         let mut lexer = Lexer::new();
         lexer.push_str(source_code).unwrap();
         let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
-        assert_eq!(toks, vec![
-            Token::Output,
-            Token::Identifier(String::from("vec4f")),
-            Token::Identifier(String::from("color"))
-        ]);
+        assert_eq!(
+            toks,
+            vec![
+                Token::Output,
+                Token::Identifier(String::from("vec4f")),
+                Token::Identifier(String::from("color"))
+            ]
+        );
     }
 
     #[test]
@@ -390,11 +378,14 @@ mod test
         let mut lexer = Lexer::new();
         lexer.push_str(source_code).unwrap();
         let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
-        assert_eq!(toks, vec![
-            Token::Output,
-            Token::Identifier(String::from("vec4f")),
-            Token::Identifier(String::from("color"))
-        ]);
+        assert_eq!(
+            toks,
+            vec![
+                Token::Output,
+                Token::Identifier(String::from("vec4f")),
+                Token::Identifier(String::from("color"))
+            ]
+        );
     }
 
     #[test]
@@ -404,11 +395,14 @@ mod test
         let mut lexer = Lexer::new();
         lexer.push_str(source_code).unwrap();
         let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
-        assert_eq!(toks, vec![
-            Token::Output,
-            Token::Identifier(String::from("vec4f")),
-            Token::Identifier(String::from("color"))
-        ]);
+        assert_eq!(
+            toks,
+            vec![
+                Token::Output,
+                Token::Identifier(String::from("vec4f")),
+                Token::Identifier(String::from("color"))
+            ]
+        );
     }
 
     #[test]
@@ -418,10 +412,7 @@ mod test
         let mut lexer = Lexer::new();
         lexer.push_str(source_code).unwrap();
         let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
-        assert_eq!(toks, vec![
-            Token::Use,
-            Token::Namespace(String::from("test::test"))
-        ]);
+        assert_eq!(toks, vec![Token::Use, Token::Namespace(String::from("test::test"))]);
     }
 
     #[test]
@@ -433,10 +424,13 @@ mod test
         let mut lexer = Lexer::new();
         lexer.push_str(source_code).unwrap();
         let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
-        assert_eq!(toks, vec![
-            Token::Output,
-            Token::Identifier(String::from("vec4f")),
-            Token::Identifier(String::from("color"))
-        ]);
+        assert_eq!(
+            toks,
+            vec![
+                Token::Output,
+                Token::Identifier(String::from("vec4f")),
+                Token::Identifier(String::from("color"))
+            ]
+        );
     }
 }

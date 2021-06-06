@@ -28,10 +28,11 @@
 
 use clap::clap_app;
 
-mod sal;
 mod preprocessor;
+mod sal;
 
-fn main() {
+fn main()
+{
     let matches = clap_app!(salc =>
         (version: "1.0.0")
         (author: "BlockProject 3D")
@@ -39,7 +40,8 @@ fn main() {
         (@arg input: -i --input +takes_value +required "Input shader file name")
         (@arg output: -o --output +takes_value "Output file name")
         (@arg includes: -I --include +takes_value +multiple "Path to a directory to use to find SAL modules and ")
-    ).get_matches();
+    )
+    .get_matches();
 
     println!("Hello, world!");
 }

@@ -26,9 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashMap;
-use std::vec::Vec;
-use std::string::String;
+use std::{collections::HashMap, string::String, vec::Vec};
 
 pub trait VarlistStatement
 {
@@ -101,8 +99,7 @@ impl VarlistStatement for PipelineStatement
 {
     fn new(name: String) -> Self
     {
-        return PipelineStatement
-        {
+        return PipelineStatement {
             name: name,
             depth_enable: true,
             depth_write_enable: true,
@@ -110,7 +107,7 @@ impl VarlistStatement for PipelineStatement
             render_mode: RenderMode::Triangles,
             culling_mode: CullingMode::BackFace,
             blend_functions: HashMap::new()
-        }
+        };
     }
 }
 
@@ -159,8 +156,7 @@ impl VarlistStatement for BlendfuncStatement
 {
     fn new(name: String) -> Self
     {
-        return BlendfuncStatement
-        {
+        return BlendfuncStatement {
             name: name,
             src_color: BlendFactor::One,
             dst_color: BlendFactor::Zero,
@@ -168,7 +164,7 @@ impl VarlistStatement for BlendfuncStatement
             dst_alpha: BlendFactor::Zero,
             color_op: BlendOperator::Add,
             alpha_op: BlendOperator::Add
-        }
+        };
     }
 }
 
@@ -208,8 +204,7 @@ impl VarlistStatement for SamplerStatement
 {
     fn new(name: String) -> Self
     {
-        return SamplerStatement
-        {
+        return SamplerStatement {
             name: name,
             filter_func: TextureFiltering::MinMagPointMipmapPoint,
             address_mode_u: TextureAddressing::ClampToEdge,
@@ -218,7 +213,7 @@ impl VarlistStatement for SamplerStatement
             anisotropic_level: 0,
             min_lod: f32::MIN,
             max_lod: f32::MAX
-        }
+        };
     }
 }
 
@@ -238,8 +233,7 @@ impl Statement
 {
     pub fn get_name(&self) -> Option<&str>
     {
-        return match self
-        {
+        return match self {
             Statement::Constant(v) => Some(&v.pname),
             Statement::ConstantBuffer(v) => Some(&v.name),
             Statement::Output(v) => Some(&v.pname),

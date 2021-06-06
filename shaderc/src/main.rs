@@ -32,7 +32,8 @@ mod sal;
 
 pub use sal::Lexer;
 
-fn main() {
+fn main()
+{
     let matches = clap_app!(shaderc =>
         (version: "1.0.0")
         (author: "BlockProject 3D")

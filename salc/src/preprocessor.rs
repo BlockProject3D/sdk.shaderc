@@ -26,13 +26,15 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::string::String;
-use std::vec::Vec;
-use std::io::BufReader;
-use std::io::BufRead;
-use std::path::Path;
-use std::io;
-use std::fs::File;
+use std::{
+    fs::File,
+    io,
+    io::{BufRead, BufReader},
+    path::Path,
+    string::String,
+    vec::Vec
+};
+
 use phf::phf_map;
 
 #[derive(Clone, Copy)]
@@ -46,8 +48,7 @@ pub enum ShaderStage
     Unspecified
 }
 
-static SHADERSTAGE: phf::Map<&'static str, ShaderStage> = phf_map!
-{
+static SHADERSTAGE: phf::Map<&'static str, ShaderStage> = phf_map! {
     "vertex" => ShaderStage::Vertex,
     "pixel" => ShaderStage::Pixel,
     "geometry" => ShaderStage::Geometry,
@@ -71,36 +72,25 @@ pub fn run(file: &Path) -> io::Result<ShaderObject>
     let mut sal_code = Vec::new();
     let mut shader_code = Vec::new();
 
-    for v in reader.lines()
-    {
+    for v in reader.lines() {
         let line = v?;
         let trimed = line.trim();
-        if trimed.starts_with("#stage")
-        {
-            if let Some(id) = trimed.find(' ')
-            {
+        if trimed.starts_with("#stage") {
+            if let Some(id) = trimed.find(' ') {
                 let stage = &trimed[id..].trim();
-                if let Some(stage) = SHADERSTAGE.get(*stage)
-                {
+                if let Some(stage) = SHADERSTAGE.get(*stage) {
                     sstage = *stage;
                 }
             }
-        }
-        else if trimed == "#sal"
-        {
+        } else if trimed == "#sal" {
             sal_block = !sal_block;
-        }
-        else if sal_block
-        {
+        } else if sal_block {
             sal_code.push(line);
-        }
-        else
-        {
+        } else {
             shader_code.push(line);
         }
     }
-    return Ok(ShaderObject
-    {
+    return Ok(ShaderObject {
         stage: sstage,
         sal_code: sal_code,
         shader_code: shader_code
