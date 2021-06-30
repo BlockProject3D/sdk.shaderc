@@ -78,8 +78,7 @@ pub mod tree
         VertexFormat(Struct),
         Use(Use),
         Pipeline(VariableList),
-        Blendfunc(VariableList),
-        Sampler(VariableList)
+        Blendfunc(VariableList)
     }
 }
 

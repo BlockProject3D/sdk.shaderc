@@ -100,7 +100,7 @@ impl VarlistStatement for PipelineStatement
     fn new(name: String) -> Self
     {
         return PipelineStatement {
-            name: name,
+            name,
             depth_enable: true,
             depth_write_enable: true,
             scissor_enable: false,
@@ -157,62 +157,13 @@ impl VarlistStatement for BlendfuncStatement
     fn new(name: String) -> Self
     {
         return BlendfuncStatement {
-            name: name,
+            name,
             src_color: BlendFactor::One,
             dst_color: BlendFactor::Zero,
             src_alpha: BlendFactor::One,
             dst_alpha: BlendFactor::Zero,
             color_op: BlendOperator::Add,
             alpha_op: BlendOperator::Add
-        };
-    }
-}
-
-#[derive(Clone, Copy)]
-pub enum TextureFiltering
-{
-    MinMagPointMipmapPoint,
-    MinMagLinearMipmapLinear,
-    MinMagLinearMipmapPoint,
-    MinMagPointMipmapLinear,
-    MinPointMagLinearMipmapPoint,
-    MinLinearMagPointMipmapLinear,
-    Anisotropic
-}
-
-#[derive(Clone, Copy)]
-pub enum TextureAddressing
-{
-    ClampToEdge,
-    MirroredRepeat,
-    Repeat
-}
-
-pub struct SamplerStatement
-{
-    pub name: String,
-    pub filter_func: TextureFiltering,
-    pub address_mode_u: TextureAddressing,
-    pub address_mode_v: TextureAddressing,
-    pub address_mode_w: TextureAddressing,
-    pub anisotropic_level: u32,
-    pub min_lod: f32,
-    pub max_lod: f32
-}
-
-impl VarlistStatement for SamplerStatement
-{
-    fn new(name: String) -> Self
-    {
-        return SamplerStatement {
-            name: name,
-            filter_func: TextureFiltering::MinMagPointMipmapPoint,
-            address_mode_u: TextureAddressing::ClampToEdge,
-            address_mode_v: TextureAddressing::ClampToEdge,
-            address_mode_w: TextureAddressing::ClampToEdge,
-            anisotropic_level: 0,
-            min_lod: f32::MIN,
-            max_lod: f32::MAX
         };
     }
 }
@@ -225,7 +176,6 @@ pub enum Statement
     VertexFormat(Struct),
     Pipeline(PipelineStatement),
     Blendfunc(BlendfuncStatement),
-    Sampler(SamplerStatement),
     Noop // Used to represent a statement to ignore in the parse tree
 }
 
@@ -240,7 +190,6 @@ impl Statement
             Statement::VertexFormat(v) => Some(&v.name),
             Statement::Pipeline(v) => Some(&v.name),
             Statement::Blendfunc(v) => Some(&v.name),
-            Statement::Sampler(v) => Some(&v.name),
             Statement::Noop => None
         };
     }

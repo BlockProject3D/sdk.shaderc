@@ -37,11 +37,8 @@ use crate::sal::{
     parser::tree
 };
 
-fn pasre_vec(t: &str) -> Result<(BaseType, u8), String>
+fn parse_vec_base(t: &str) -> Result<(BaseType, u8), String>
 {
-    if !t.starts_with("vec") {
-        return Err(format!("[Shader Annotation Language] Unknown vector type {}", t));
-    }
     let len = match &t[3..t.len() - 1].parse::<u8>() {
         Err(e) => {
             return Err(format!(
@@ -68,58 +65,45 @@ fn pasre_vec(t: &str) -> Result<(BaseType, u8), String>
     return Ok((base_type, len));
 }
 
+fn pasre_vec(t: &str) -> Result<(BaseType, u8), String>
+{
+    if !t.starts_with("vec") {
+        return Err(format!("[Shader Annotation Language] Unknown vector type {}", t));
+    }
+    let (base_type, len) = parse_vec_base(t)?;
+    return Ok((base_type, len));
+}
+
 fn try_parse_matrix(t: &str) -> Result<Option<ast::PropertyType>, String>
 {
     if !t.starts_with("mat") {
         return Ok(None);
     }
-    let len = match &t[3..t.len() - 1].parse::<u8>() {
-        Err(e) => {
-            return Err(format!(
-                "[Shader Annotation Language] Invalid vector item count {}: {}",
-                &t[3..t.len() - 1],
-                e
-            ))
-        },
-        Ok(v) => *v
-    };
-    let base_type = match &t[t.len() - 1..] {
-        "f" => BaseType::Float,
-        "d" => BaseType::Double,
-        "u" => BaseType::Uint,
-        "i" => BaseType::Int,
-        "b" => BaseType::Bool,
-        _ => {
-            return Err(format!(
-                "[Shader Annotation Language] Unknown type letter {}",
-                &t[t.len() - 1..]
-            ))
-        },
-    };
+    let (base_type, len) = parse_vec_base(t)?;
     return Ok(Some(ast::PropertyType::Matrix(base_type, len)));
 }
 
 fn try_parse_texture(t: &str, subt: Option<&str>) -> Result<Option<ast::PropertyType>, String>
 {
     if let Some(st) = subt {
-        match t {
+        return match t {
             "Texture2D" => {
                 let (t, c) = pasre_vec(st)?;
-                return Ok(Some(ast::PropertyType::Texture2D(t, c)));
+                Ok(Some(ast::PropertyType::Texture2D(t, c)))
             },
             "Texture3D" => {
                 let (t, c) = pasre_vec(st)?;
-                return Ok(Some(ast::PropertyType::Texture3D(t, c)));
+                Ok(Some(ast::PropertyType::Texture3D(t, c)))
             },
             "Texture2DArray" => {
                 let (t, c) = pasre_vec(st)?;
-                return Ok(Some(ast::PropertyType::Texture2DArray(t, c)));
+                Ok(Some(ast::PropertyType::Texture2DArray(t, c)))
             },
             "TextureCube" => {
                 let (t, c) = pasre_vec(st)?;
-                return Ok(Some(ast::PropertyType::TextureCube(t, c)));
+                Ok(Some(ast::PropertyType::TextureCube(t, c)))
             },
-            _ => return Ok(None)
+            _ => Ok(None)
         };
     }
     return Ok(None);
@@ -131,13 +115,13 @@ fn parse_type(t: &str) -> Result<ast::PropertyType, String>
     if let Some(id) = t.find("::") {
         sub_type = Some(&t[id + 2..]);
     }
-    match t {
-        "Sampler" => return Ok(ast::PropertyType::Sampler),
-        "float" => return Ok(ast::PropertyType::Scalar(BaseType::Float)),
-        "double" => return Ok(ast::PropertyType::Scalar(BaseType::Double)),
-        "int" => return Ok(ast::PropertyType::Scalar(BaseType::Int)),
-        "uint" => return Ok(ast::PropertyType::Scalar(BaseType::Uint)),
-        "bool" => return Ok(ast::PropertyType::Scalar(BaseType::Bool)),
+    return match t {
+        "Sampler" => Ok(ast::PropertyType::Sampler),
+        "float" => Ok(ast::PropertyType::Scalar(BaseType::Float)),
+        "double" => Ok(ast::PropertyType::Scalar(BaseType::Double)),
+        "int" => Ok(ast::PropertyType::Scalar(BaseType::Int)),
+        "uint" => Ok(ast::PropertyType::Scalar(BaseType::Uint)),
+        "bool" => Ok(ast::PropertyType::Scalar(BaseType::Bool)),
         _ => {
             if let Some(elem) = try_parse_matrix(t)? {
                 return Ok(elem);
@@ -146,7 +130,7 @@ fn parse_type(t: &str) -> Result<ast::PropertyType, String>
                 return Ok(elem);
             }
             let (t, c) = pasre_vec(t)?;
-            return Ok(ast::PropertyType::Vector(t, c));
+            Ok(ast::PropertyType::Vector(t, c))
         }
     }
 }
@@ -155,7 +139,7 @@ fn parse_prop(p: tree::Property) -> Result<ast::Property, String>
 {
     let ptype = parse_type(&p.ptype)?;
     return Ok(ast::Property {
-        ptype: ptype,
+        ptype,
         pname: p.pname
     });
 }
@@ -233,22 +217,6 @@ static BLENDOP: phf::Map<&'static str, ast::BlendOperator> = phf_map! {
     "MAX" => ast::BlendOperator::Max
 };
 
-static TEXTURE_FILTERING: phf::Map<&'static str, ast::TextureFiltering> = phf_map! {
-    "MIN_MAG_POINT_MIPMAP_POINT" => ast::TextureFiltering::MinMagPointMipmapPoint,
-    "MIN_MAG_LINEAR_MIPMAP_LINEAR" => ast::TextureFiltering::MinMagLinearMipmapLinear,
-    "MIN_MAG_LINEAR_MIPMAP_POINT" => ast::TextureFiltering::MinMagLinearMipmapPoint,
-    "MIN_MAG_POINT_MIPMAP_LINEAR" => ast::TextureFiltering::MinMagPointMipmapLinear,
-    "MIN_POINT_MAG_LINEAR_MIPMAP_POINT" => ast::TextureFiltering::MinPointMagLinearMipmapPoint,
-    "MIN_LINEAR_MAG_POINT_MIPMAP_LINEAR" => ast::TextureFiltering::MinLinearMagPointMipmapLinear,
-    "ANISOTROPIC" => ast::TextureFiltering::Anisotropic
-};
-
-static TEXTURE_ADDRESSING: phf::Map<&'static str, ast::TextureAddressing> = phf_map! {
-    "CLAMP_TO_EDGE" => ast::TextureAddressing::ClampToEdge,
-    "MIRORRED_REPEAT" => ast::TextureAddressing::MirroredRepeat,
-    "REPEAT" => ast::TextureAddressing::Repeat
-};
-
 static RENDERMODE: phf::Map<&'static str, ast::RenderMode> = phf_map! {
     "TRIANGLES" => ast::RenderMode::Triangles,
     "WIREFRAME" => ast::RenderMode::Wireframe,
@@ -311,60 +279,6 @@ static VARLIST_BLENDFUNC: phf::Map<&'static str, VarParseFunc<ast::BlendfuncStat
         let e = parse_enum(val, &BLENDOP)?;
         obj.alpha_op = e;
         return Ok(());
-    }
-};
-
-static VARLIST_SAMPLER: phf::Map<&'static str, VarParseFunc<ast::SamplerStatement>> = phf_map! {
-    "FilterFunc" => |obj, val|
-    {
-        let e = parse_enum(val, &TEXTURE_FILTERING)?;
-        obj.filter_func = e;
-        return Ok(());
-    },
-    "AddressModeU" => |obj, val|
-    {
-        let e = parse_enum(val, &TEXTURE_ADDRESSING)?;
-        obj.address_mode_u = e;
-        return Ok(());
-    },
-    "AddressModeV" => |obj, val|
-    {
-        let e = parse_enum(val, &TEXTURE_ADDRESSING)?;
-        obj.address_mode_v = e;
-        return Ok(());
-    },
-    "AddressModeW" => |obj, val|
-    {
-        let e = parse_enum(val, &TEXTURE_ADDRESSING)?;
-        obj.address_mode_w = e;
-        return Ok(());
-    },
-    "AnisotropicLevel" => |obj, val|
-    {
-        if let tree::Value::Int(i) = val
-        {
-            obj.anisotropic_level = i as u32;
-            return Ok(());
-        }
-        return Err(String::from("[Shader Annotation Language] Expected int for variable 'AnisotropicLevel'"));
-    },
-    "MinLod" => |obj, val|
-    {
-        if let tree::Value::Float(f) = val
-        {
-            obj.min_lod = f;
-            return Ok(());
-        }
-        return Err(String::from("[Shader Annotation Language] Expected float for variable 'MinLod'"));
-    },
-    "MaxLod" => |obj, val|
-    {
-        if let tree::Value::Float(f) = val
-        {
-            obj.max_lod = f;
-            return Ok(());
-        }
-        return Err(String::from("[Shader Annotation Language] Expected float for variable 'MaxLod'"));
     }
 };
 
@@ -510,10 +424,6 @@ fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> 
         tree::Root::Blendfunc(v) => {
             let vl = parse_varlist(v, &VARLIST_BLENDFUNC, None)?;
             return Ok(ast::Statement::Blendfunc(vl));
-        },
-        tree::Root::Sampler(v) => {
-            let vl = parse_varlist(v, &VARLIST_SAMPLER, None)?;
-            return Ok(ast::Statement::Sampler(vl));
         },
         tree::Root::Use(mut u) => {
             if !expand_use {
