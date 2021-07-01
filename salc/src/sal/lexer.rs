@@ -177,6 +177,32 @@ impl Lexer
         };
     }
 
+    fn parse_token(&mut self, pos1: usize, pos2: usize, code: &str) -> Result<(), String>
+    {
+        let (np1, np2) = trim_token(code, (pos1, pos2));
+        if np2 - np1 > 0 {
+            if let Some(tok) = check_keyword(&code[np1..np2]) {
+                self.tokens.push_back((tok, self.cur_line, self.cur_column));
+            } else if let Some(tok) = check_litteral(&code[np1..np2]) {
+                self.tokens.push_back((tok, self.cur_line, self.cur_column));
+            } else if let Some(tok) = check_namespace(&code[np1..np2]) {
+                self.tokens.push_back((tok, self.cur_line, self.cur_column));
+            }
+            //At this point it has to be an identifier otherwise it's bad unexpected token
+            else if let Some(tok) = check_identifier(&code[np1..np2]) {
+                self.tokens.push_back((tok, self.cur_line, self.cur_column));
+            } else {
+                return Err(format!(
+                    "[Shader Annotation Language] Unidentified token '{}' at line {}, column {}",
+                    &code[np1..np2],
+                    self.cur_line,
+                    self.cur_column
+                ));
+            }
+        }
+        return Ok(());
+    }
+
     pub fn push_str(&mut self, code: &str) -> Result<(), String>
     {
         self.cur_token = (0, 0);
@@ -184,9 +210,8 @@ impl Lexer
             let (mut pos1, mut pos2) = self.cur_token;
             self.cur_column += 1;
             pos2 += 1;
-            if pos2 > code.len()
-            //Should be ">=" but somehow there's a bug in rust
-            {
+            if pos2 > code.len() {
+                //Should be ">=" but somehow there's a bug in rust
                 break;
             }
             if &code[pos2 - 1..pos2] == COMMENT {
@@ -204,46 +229,23 @@ impl Lexer
             }
             if !self.in_comment {
                 if is_whitespace(&code[pos2 - 1..pos2]) {
-                    let (np1, np2) = trim_token(code, (pos1, pos2));
-                    if np2 - np1 > 0 {
-                        if let Some(tok) = check_keyword(&code[np1..np2]) {
-                            pos1 = pos2; //This should be +1 but somehow there's a bug in rust
-                            pos2 = pos1;
-                            self.tokens.push_back((tok, self.cur_line, self.cur_column));
-                        } else if let Some(tok) = check_litteral(&code[np1..np2]) {
-                            pos1 = pos2;
-                            pos2 = pos1;
-                            self.tokens.push_back((tok, self.cur_line, self.cur_column));
-                        } else if let Some(tok) = check_namespace(&code[np1..np2]) {
-                            pos1 = pos2;
-                            pos2 = pos1;
-                            self.tokens.push_back((tok, self.cur_line, self.cur_column));
-                        }
-                        //At this point it has to be an identifier otherwise it's bad unexpected token
-                        else if let Some(tok) = check_identifier(&code[np1..np2]) {
-                            pos1 = pos2;
-                            pos2 = pos1;
-                            self.tokens.push_back((tok, self.cur_line, self.cur_column));
-                        } else {
-                            return Err(format!(
-                                "[Shader Annotation Language] Unidentified token '{}' at line {}, column {}",
-                                &code[np1..np2],
-                                self.cur_line,
-                                self.cur_column
-                            ));
-                        }
-                    }
+                    self.parse_token(pos1, pos2, code)?;
+                    pos1 = pos2; //This should be +1 but somehow there's a bug in rust
+                    pos2 = pos1;
                 }
             }
             self.cur_token = (pos1, pos2);
         }
-        let (_, pos2) = self.cur_token;
+        let (pos1, pos2) = self.cur_token;
         if pos2 + 1 < code.len() {
             //We have an error: input code is incomplete
             return Err(format!(
                 "[Shader Annotation Language] Unexpected EOF at line {}, column {}",
                 self.cur_line, self.cur_column
             ));
+        }
+        if pos2 - pos1 > 0 {
+            self.parse_token(pos1, pos2, code)?;
         }
         return Ok(());
     }
@@ -406,6 +408,27 @@ const mat4f ModelView;
 ";
         let mut lexer = Lexer::new();
         lexer.push_str(source_code).unwrap();
+        let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        assert_typical(toks);
+    }
+
+    #[test]
+    fn typical_line_per_line()
+    {
+        let mut lexer = Lexer::new();
+        lexer.push_str("vformat struct Vertex").unwrap();
+        lexer.push_str("{").unwrap();
+        lexer.push_str("    vec4f Color;").unwrap();
+        lexer.push_str("    vec3f Pos;").unwrap();
+        lexer.push_str("    vec3f Normal;").unwrap();
+        lexer.push_str("}").unwrap();
+        lexer.push_str("").unwrap();
+        lexer.push_str("const struct Projection").unwrap();
+        lexer.push_str("{").unwrap();
+        lexer.push_str("    mat4f ProjectionMatrix;").unwrap();
+        lexer.push_str("}").unwrap();
+        lexer.push_str("").unwrap();
+        lexer.push_str("const mat4f ModelView;").unwrap();
         let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
         assert_typical(toks);
     }
