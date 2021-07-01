@@ -26,11 +26,41 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use clap::clap_app;
+use std::{
+    path::{Path, PathBuf},
+    vec::Vec
+};
 
+use clap::clap_app;
+use crate::error::Error;
+
+mod assembler;
 mod preprocessor;
 mod sal;
-mod assembler;
+mod error;
+
+fn run_salc(input: &Path, output: &Path, module_paths: Vec<PathBuf>) -> Result<(), error::Error>
+{
+    //Stage 1: apply preprocessor
+    let shader = preprocessor::run(input)?;
+    //Stage 2: apply lexer to SAL code
+    let mut lexer = sal::lexer::Lexer::new();
+    for v in &shader.sal_code {
+        if let Err(e) = lexer.push_str(&v) {
+            return Err(error::Error::Lexer(e));
+        }
+    }
+    //Stage 3: parse SAL code and reconstruct AST
+    let statements = match sal::parse(lexer, true, &module_paths) {
+        Err(e) => return Err(error::Error::Parser(e)),
+        Ok(v) => v
+    };
+    //Stage 4: compile AST to lower level object code
+    let objects = sal::compiler::compile(statements);
+    //Stage 5: assemble output BPX
+    assembler::assemble(output, objects)?;
+    return Ok(());
+}
 
 fn main()
 {
@@ -40,9 +70,36 @@ fn main()
         (about: "BlockProject 3D SDK - SAL compiler")
         (@arg input: -i --input +takes_value +required "Input shader file name")
         (@arg output: -o --output +takes_value "Output file name")
-        (@arg includes: -I --include +takes_value +multiple "Path to a directory to use to find SAL modules and ")
+        (@arg includes: -I --include +takes_value +multiple "Path to a directory to use to find SAL modules")
     )
     .get_matches();
-
-    println!("Hello, world!");
+    let input = matches.value_of("input").unwrap();
+    let output = matches.value_of("output");
+    let includes = matches.values_of("includes");
+    let mut module_paths: Vec<PathBuf> = Vec::new();
+    if let Some(v) = includes {
+        for vv in v {
+            module_paths.push(PathBuf::from(vv));
+        }
+    }
+    let path;
+    if let Some(s) = output {
+        path = PathBuf::from(s);
+    } else {
+        let mut s = String::from(input);
+        s.push_str(".o.bpx");
+        path = PathBuf::from(s);
+    }
+    if let Err(e) = run_salc(Path::new(input), &path, module_paths) {
+        match e {
+            Error::Io(e) => eprintln!("Io error: {}", e),
+            Error::Bpx(e) => eprintln!("BPX error: {}", e),
+            Error::Link(e) => eprintln!("Link error: {}", e),
+            Error::Lexer(e) => eprintln!("Lexer error: {}", e),
+            Error::Parser(e) => eprintln!("Parse error: {}", e)
+        }
+        std::process::exit(1);
+    }
+    println!("Wrote '{}'", path.display());
+    std::process::exit(0);
 }
