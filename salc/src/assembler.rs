@@ -26,23 +26,51 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use clap::clap_app;
+use bpx::encoder::Encoder;
+use std::path::Path;
+use std::fs::File;
+use bpx::variant::package::PackageBuilder;
+use crate::sal::compiler::ObjectType;
+use bpx::sd::Object;
+use std::vec::Vec;
+use std::collections::HashSet;
+use std::string::String;
 
-mod preprocessor;
-mod sal;
-mod assembler;
-
-fn main()
+pub enum Error
 {
-    let matches = clap_app!(salc =>
-        (version: "1.0.0")
-        (author: "BlockProject 3D")
-        (about: "BlockProject 3D SDK - SAL compiler")
-        (@arg input: -i --input +takes_value +required "Input shader file name")
-        (@arg output: -o --output +takes_value "Output file name")
-        (@arg includes: -I --include +takes_value +multiple "Path to a directory to use to find SAL modules and ")
-    )
-    .get_matches();
+    Io(std::io::Error),
+    Bpx(bpx::error::Error),
+    Link(String)
+}
 
-    println!("Hello, world!");
+impl From<std::io::Error> for Error
+{
+    fn from(e: std::io::Error) -> Self {
+        return Error::Io(e);
+    }
+}
+
+impl From<bpx::error::Error> for Error
+{
+    fn from(e: bpx::error::Error) -> Self {
+        return Error::Bpx(e);
+    }
+}
+
+pub fn assemble(out: &Path, objects: Vec<(String, Object)>) -> Result<(), Error>
+{
+    let mut set: HashSet<&String> = HashSet::new();
+    let mut bpx = Encoder::new(File::create(out)?)?;
+    let mut bpxp = PackageBuilder::new().with_variant([0x53, 0x4F]).build(&mut bpx)?;
+    for (o_name, o_data) in &objects {
+        if set.contains(o_name) {
+            return Err(Error::Link(format!("Multiple definitions of '{}'", &o_name)));
+        }
+        set.insert(&o_name);
+        let mut bytebuf: Vec<u8> = Vec::new();
+        o_data.write(&mut bytebuf)?;
+        bpxp.pack_object(&o_name, &mut bytebuf.as_slice())?;
+    }
+    bpx.save()?;
+    return Ok(());
 }

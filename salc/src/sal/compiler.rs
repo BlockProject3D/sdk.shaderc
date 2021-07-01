@@ -73,30 +73,29 @@ fn encode_prop_type(pt: PropertyType) -> u32
     };
 }
 
-fn encode_property(p: Property) -> Object
+fn encode_property(p: Property) -> (String, Object)
 {
     let mut prop = Object::new();
-    prop.set("Name", p.pname.into());
     prop.set("Type", encode_prop_type(p.ptype).into());
-    return prop;
+    return (p.pname, prop);
 }
 
-fn encode_struct(st: Struct) -> Object
+fn encode_struct(st: Struct) -> (String, Object)
 {
     let mut o = Object::new();
     let mut a = Array::new();
-    o.set("Name", st.name.into());
     for v in st.properties {
-        a.add(encode_property(v).into());
+        let (s, mut o) = encode_property(v);
+        o.set("Name", s.into());
+        a.add(o.into());
     }
     o.set("Properties", a.into());
-    return o;
+    return (st.name, o);
 }
 
-fn encode_pipeline(pipeline: PipelineStatement) -> Object
+fn encode_pipeline(pipeline: PipelineStatement) -> (String, Object)
 {
     let mut o = Object::new();
-    o.set("Name", pipeline.name.into());
     o.set("DepthEnable", pipeline.depth_enable.into());
     o.set("DepthWriteEnable", pipeline.depth_write_enable.into());
     o.set("ScissorEnable", pipeline.scissor_enable.into());
@@ -110,33 +109,38 @@ fn encode_pipeline(pipeline: PipelineStatement) -> Object
         a.add(o.into());
     }
     o.set("BlendFunctions", a.into());
-    return o;
+    return (pipeline.name, o);
 }
 
-fn encode_blendfunc(blendfunc: BlendfuncStatement) -> Object
+fn encode_blendfunc(blendfunc: BlendfuncStatement) -> (String, Object)
 {
     let mut o = Object::new();
-    o.set("Name", blendfunc.name.into());
     o.set("SrcColor", (blendfunc.src_color as u8).into());
     o.set("DstColor", (blendfunc.dst_color as u8).into());
     o.set("SrcAlpha", (blendfunc.src_alpha as u8).into());
     o.set("DstAlpha", (blendfunc.dst_alpha as u8).into());
     o.set("ColorOp", (blendfunc.color_op as u8).into());
     o.set("AlphaOp", (blendfunc.alpha_op as u8).into());
-    return o;
+    return (blendfunc.name, o);
 }
 
-pub fn compile(root: Vec<Statement>) -> Vec<(ObjectType, Object)>
+fn encode_object(t: ObjectType, (name, mut obj): (String, Object)) -> (String, Object)
+{
+    obj.set("Type", (t as u8).into());
+    return (name, obj);
+}
+
+pub fn compile(root: Vec<Statement>) -> Vec<(String, Object)>
 {
     let mut lst = Vec::new();
     for v in root {
         match v {
-            Statement::Constant(p) => lst.push((ObjectType::Constant, encode_property(p))),
-            Statement::ConstantBuffer(st) => lst.push((ObjectType::ConstantBuffer, encode_struct(st))),
-            Statement::Output(p) => lst.push((ObjectType::Output, encode_property(p))),
-            Statement::VertexFormat(st) => lst.push((ObjectType::VertexFormat, encode_struct(st))),
-            Statement::Pipeline(p) => lst.push((ObjectType::Pipeline, encode_pipeline(p))),
-            Statement::Blendfunc(b) => lst.push((ObjectType::BlendFunc, encode_blendfunc(b))),
+            Statement::Constant(p) => lst.push(encode_object(ObjectType::Constant, encode_property(p))),
+            Statement::ConstantBuffer(st) => lst.push(encode_object(ObjectType::ConstantBuffer, encode_struct(st))),
+            Statement::Output(p) => lst.push(encode_object(ObjectType::Output, encode_property(p))),
+            Statement::VertexFormat(st) => lst.push(encode_object(ObjectType::VertexFormat, encode_struct(st))),
+            Statement::Pipeline(p) => lst.push(encode_object(ObjectType::Pipeline, encode_pipeline(p))),
+            Statement::Blendfunc(b) => lst.push(encode_object(ObjectType::BlendFunc, encode_blendfunc(b))),
             Statement::Noop => ()
         }
     }
