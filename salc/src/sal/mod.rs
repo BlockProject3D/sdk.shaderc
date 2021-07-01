@@ -37,6 +37,7 @@ pub mod ast;
 pub mod generator;
 pub mod lexer;
 pub mod parser;
+pub mod compiler;
 
 pub fn parse(lexer: lexer::Lexer, expand_use: bool, module_paths: &Vec<PathBuf>)
     -> Result<Vec<ast::Statement>, String>

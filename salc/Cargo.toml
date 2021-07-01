@@ -10,3 +10,4 @@ edition = "2018"
 clap = "2.33.3"
 regex = "1.4.5"
 phf = { version = "0.8", features = ["macros"] }
+bpx = "3.0.0"
