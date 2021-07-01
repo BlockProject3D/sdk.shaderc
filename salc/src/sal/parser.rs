@@ -222,7 +222,7 @@ impl Parser
 
     fn try_parse_const(&mut self, (token, line, col): &(Token, usize, usize)) -> Result<Option<tree::Root>, String>
     {
-        if token == &Token::Output {
+        if token == &Token::Const {
             if let Some((tok, _, _)) = self.tokens.front() {
                 if tok == &Token::Struct {
                     let st = self.parse_struct(*line, *col)?;
