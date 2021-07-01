@@ -90,17 +90,17 @@ impl Display for Token
 
 fn check_keyword(substr: &str) -> Option<Token>
 {
-    match substr {
-        CONST => return Some(Token::Const),
-        STRUCT => return Some(Token::Struct),
-        PIPELINE => return Some(Token::Pipeline),
-        VFORMAT => return Some(Token::Vformat),
-        USE => return Some(Token::Use),
-        EQ => return Some(Token::Eq),
-        BLOCK_START => return Some(Token::BlockStart),
-        BLOCK_END => return Some(Token::BlockEnd),
-        OUTPUT => return Some(Token::Output),
-        _ => return None
+    return match substr {
+        CONST => Some(Token::Const),
+        STRUCT => Some(Token::Struct),
+        PIPELINE => Some(Token::Pipeline),
+        VFORMAT => Some(Token::Vformat),
+        USE => Some(Token::Use),
+        EQ => Some(Token::Eq),
+        BLOCK_START => Some(Token::BlockStart),
+        BLOCK_END => Some(Token::BlockEnd),
+        OUTPUT => Some(Token::Output),
+        _ => None
     };
 }
 
@@ -201,7 +201,8 @@ impl Lexer
                     self.cur_line += 1;
                     self.cur_column = 0;
                 }
-            } else if !self.in_comment {
+            }
+            if !self.in_comment {
                 if is_whitespace(&code[pos2 - 1..pos2]) {
                     let (np1, np2) = trim_token(code, (pos1, pos2));
                     if np2 - np1 > 0 {
@@ -258,23 +259,8 @@ mod test
 {
     use super::*;
 
-    #[test]
-    fn basic_lexer()
+    fn basic_assert(toks: Vec<Token>)
     {
-        let source_code = r"
-            const float DeltaTime;
-            const uint FrameCount;
-            const mat3f ModelViewMatrix;
-            const mat3f ProjectionMatrix;
-            const struct PerMaterial
-            {
-                vec4f BaseColor;
-                float UvMultiplier;
-            }
-        ";
-        let mut lexer = Lexer::new();
-        lexer.push_str(source_code).unwrap();
-        let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
         assert_eq!(
             toks,
             vec![
@@ -304,6 +290,26 @@ mod test
     }
 
     #[test]
+    fn basic_lexer()
+    {
+        let source_code = r"
+            const float DeltaTime;
+            const uint FrameCount;
+            const mat3f ModelViewMatrix;
+            const mat3f ProjectionMatrix;
+            const struct PerMaterial
+            {
+                vec4f BaseColor;
+                float UvMultiplier;
+            }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.push_str(source_code).unwrap();
+        let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        basic_assert(toks);
+    }
+
+    #[test]
     fn lexer_comments()
     {
         let source_code = r"
@@ -323,32 +329,85 @@ mod test
         let mut lexer = Lexer::new();
         lexer.push_str(source_code).unwrap();
         let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        basic_assert(toks);
+    }
+
+    fn assert_typical(toks: Vec<Token>)
+    {
         assert_eq!(
             toks,
             vec![
-                Token::Const,
-                Token::Identifier(String::from("float")),
-                Token::Identifier(String::from("DeltaTime")),
-                Token::Const,
-                Token::Identifier(String::from("uint")),
-                Token::Identifier(String::from("FrameCount")),
-                Token::Const,
-                Token::Identifier(String::from("mat3f")),
-                Token::Identifier(String::from("ModelViewMatrix")),
-                Token::Const,
-                Token::Identifier(String::from("mat3f")),
-                Token::Identifier(String::from("ProjectionMatrix")),
-                Token::Const,
+                Token::Vformat,
                 Token::Struct,
-                Token::Identifier(String::from("PerMaterial")),
+                Token::Identifier(String::from("Vertex")),
                 Token::BlockStart,
                 Token::Identifier(String::from("vec4f")),
-                Token::Identifier(String::from("BaseColor")),
-                Token::Identifier(String::from("float")),
-                Token::Identifier(String::from("UvMultiplier")),
-                Token::BlockEnd
+                Token::Identifier(String::from("Color")),
+                Token::Identifier(String::from("vec3f")),
+                Token::Identifier(String::from("Pos")),
+                Token::Identifier(String::from("vec3f")),
+                Token::Identifier(String::from("Normal")),
+                Token::BlockEnd,
+                Token::Const,
+                Token::Struct,
+                Token::Identifier(String::from("Projection")),
+                Token::BlockStart,
+                Token::Identifier(String::from("mat4f")),
+                Token::Identifier(String::from("ProjectionMatrix")),
+                Token::BlockEnd,
+                Token::Const,
+                Token::Identifier(String::from("mat4f")),
+                Token::Identifier(String::from("ModelView"))
             ]
         );
+    }
+
+    #[test]
+    fn typical_space()
+    {
+        let source_code = r"
+            vformat struct Vertex
+            {
+                vec4f Color;
+                vec3f Pos;
+                vec3f Normal;
+            }
+
+            const struct Projection
+            {
+                mat4f ProjectionMatrix;
+            }
+
+            const mat4f ModelView;
+        ";
+        let mut lexer = Lexer::new();
+        lexer.push_str(source_code).unwrap();
+        let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        assert_typical(toks);
+    }
+
+    #[test]
+    fn typical_no_space()
+    {
+        let source_code = r"
+vformat struct Vertex
+{
+    vec4f Color;
+    vec3f Pos;
+    vec3f Normal;
+}
+
+const struct Projection
+{
+    mat4f ProjectionMatrix;
+}
+
+const mat4f ModelView;
+";
+        let mut lexer = Lexer::new();
+        lexer.push_str(source_code).unwrap();
+        let toks: Vec<Token> = lexer.get_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        assert_typical(toks);
     }
 
     #[test]
