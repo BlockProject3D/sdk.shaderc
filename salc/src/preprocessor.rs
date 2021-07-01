@@ -58,9 +58,9 @@ static SHADERSTAGE: phf::Map<&'static str, ShaderStage> = phf_map! {
 
 pub struct ShaderObject
 {
-    stage: ShaderStage,
-    sal_code: Vec<String>,
-    shader_code: Vec<String>
+    pub stage: ShaderStage,
+    pub sal_code: Vec<String>,
+    pub shader_code: Vec<String>
 }
 
 pub fn run(file: &Path) -> io::Result<ShaderObject>
