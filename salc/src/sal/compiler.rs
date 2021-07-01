@@ -30,7 +30,7 @@ use std::vec::Vec;
 
 use bpx::sd::{Array, Object};
 
-use crate::sal::ast::{BaseType, Property, PropertyType, Statement, Struct, PipelineStatement, BlendfuncStatement};
+use crate::sal::ast::{BaseType, BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
 
 /* Op name | Op code | Nb arguments | Desc
  * NOOP    | 0x1     | 0            | No operation
@@ -103,8 +103,7 @@ fn encode_pipeline(pipeline: PipelineStatement) -> Object
     o.set("RenderMode", (pipeline.render_mode as u8).into());
     o.set("CullingMode", (pipeline.culling_mode as u8).into());
     let mut a = Array::new();
-    for (out, blend) in pipeline.blend_functions
-    {
+    for (out, blend) in pipeline.blend_functions {
         let mut o = Object::new();
         o.set("Output", out.into());
         o.set("Blend", blend.into());
