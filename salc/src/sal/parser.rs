@@ -122,8 +122,8 @@ impl Parser
                 let module = String::from(v[0]);
                 let member = String::from(v[0]);
                 return Ok(Some(tree::Root::Use(tree::Use {
-                    module: module,
-                    member: member
+                    module,
+                    member
                 })));
             }
             return Err(format!(
@@ -172,6 +172,17 @@ impl Parser
         return Ok(None);
     }
 
+    fn check_block_end(&mut self, line: usize, col: usize) -> Result<bool, String>
+    {
+        if let Some((tok, _, _)) = self.tokens.front() {
+            if tok == &Token::BlockEnd {
+                self.pop(line, col)?;
+                return Ok(true);
+            }
+        }
+        return Ok(false);
+    }
+
     fn parse_struct(&mut self, line: usize, col: usize) -> Result<tree::Struct, String>
     {
         let (tok, line, col) = self.pop(line, col)?;
@@ -184,11 +195,8 @@ impl Parser
                     loop {
                         let prop = self.parse_property(line, col)?;
                         v.push(prop);
-                        if let Some((tok, _, _)) = self.tokens.front() {
-                            if tok == &Token::BlockEnd {
-                                self.pop(line, col)?;
-                                break;
-                            }
+                        if self.check_block_end(line, col)? {
+                            break;
                         }
                     }
                     return Ok(tree::Struct {
@@ -285,11 +293,8 @@ impl Parser
                 loop {
                     let var = self.parse_var(line, col)?;
                     v.push(var);
-                    if let Some((tok, _, _)) = self.tokens.front() {
-                        if tok == &Token::BlockEnd {
-                            self.pop(line, col)?;
-                            break;
-                        }
+                    if self.check_block_end(line, col)? {
+                        break;
                     }
                 }
                 return Ok(tree::VariableList {
