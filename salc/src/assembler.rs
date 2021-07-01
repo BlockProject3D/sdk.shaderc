@@ -26,17 +26,25 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::{collections::HashSet, fs::File, path::Path, string::String, vec::Vec};
+use std::{collections::HashSet, fs::File, io::Write, path::Path, string::String, vec::Vec};
 
 use bpx::{encoder::Encoder, sd::Object, variant::package::PackageBuilder};
 
 use crate::error::Error;
 
-pub fn assemble(out: &Path, objects: Vec<(String, Object)>) -> Result<(), Error>
+pub fn assemble(
+    out: &Path,
+    objects: Vec<(String, Object)>,
+    shader_code: Vec<String>,
+    metadata: Object
+) -> Result<(), Error>
 {
     let mut set: HashSet<&String> = HashSet::new();
     let mut bpx = Encoder::new(File::create(out)?)?;
-    let mut bpxp = PackageBuilder::new().with_variant([0x53, 0x4F]).build(&mut bpx)?;
+    let mut bpxp = PackageBuilder::new()
+        .with_metadata(metadata)
+        .with_variant([0x53, 0x4F])
+        .build(&mut bpx)?;
     for (o_name, o_data) in &objects {
         if set.contains(o_name) {
             return Err(Error::Link(format!("Multiple definitions of '{}'", &o_name)));
@@ -46,6 +54,11 @@ pub fn assemble(out: &Path, objects: Vec<(String, Object)>) -> Result<(), Error>
         o_data.write(&mut bytebuf)?;
         bpxp.pack_object(&o_name, &mut bytebuf.as_slice())?;
     }
+    let mut v: Vec<u8> = Vec::new();
+    for l in shader_code {
+        v.write(l.as_bytes())?;
+    }
+    bpxp.pack_object("#SHADER#", &mut v.as_slice())?;
     bpx.save()?;
     return Ok(());
 }

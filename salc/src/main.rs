@@ -32,12 +32,14 @@ use std::{
 };
 
 use clap::clap_app;
+
 use crate::error::Error;
+use bpx::sd::Object;
 
 mod assembler;
+mod error;
 mod preprocessor;
 mod sal;
-mod error;
 
 fn run_salc(input: &Path, output: &Path, module_paths: Vec<PathBuf>) -> Result<(), error::Error>
 {
@@ -58,7 +60,9 @@ fn run_salc(input: &Path, output: &Path, module_paths: Vec<PathBuf>) -> Result<(
     //Stage 4: compile AST to lower level object code
     let objects = sal::compiler::compile(statements);
     //Stage 5: assemble output BPX
-    assembler::assemble(output, objects)?;
+    let mut obj = Object::new();
+    obj.set("Stage", (shader.stage as u8).into());
+    assembler::assemble(output, objects, shader.shader_code, obj)?;
     return Ok(());
 }
 
