@@ -26,26 +26,27 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::{collections::HashSet, fs::File, path::Path, string::String, vec::Vec};
-
-use bpx::{encoder::Encoder, sd::Object, variant::package::PackageBuilder};
-
-use crate::error::Error;
-
-pub fn assemble(out: &Path, objects: Vec<(String, Object)>) -> Result<(), Error>
+pub enum Error
 {
-    let mut set: HashSet<&String> = HashSet::new();
-    let mut bpx = Encoder::new(File::create(out)?)?;
-    let mut bpxp = PackageBuilder::new().with_variant([0x53, 0x4F]).build(&mut bpx)?;
-    for (o_name, o_data) in &objects {
-        if set.contains(o_name) {
-            return Err(Error::Link(format!("Multiple definitions of '{}'", &o_name)));
-        }
-        set.insert(&o_name);
-        let mut bytebuf: Vec<u8> = Vec::new();
-        o_data.write(&mut bytebuf)?;
-        bpxp.pack_object(&o_name, &mut bytebuf.as_slice())?;
+    Io(std::io::Error),
+    Bpx(bpx::error::Error),
+    Link(String),
+    Lexer(String),
+    Parser(String)
+}
+
+impl From<std::io::Error> for Error
+{
+    fn from(e: std::io::Error) -> Self
+    {
+        return Error::Io(e);
     }
-    bpx.save()?;
-    return Ok(());
+}
+
+impl From<bpx::error::Error> for Error
+{
+    fn from(e: bpx::error::Error) -> Self
+    {
+        return Error::Bpx(e);
+    }
 }
