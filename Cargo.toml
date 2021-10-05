@@ -3,5 +3,6 @@ members = [
     "shaderc",
     "shaderl",
     "salc",
-    "glslang"
+    "rglslang",
+    "glslang-sys"
 ]
