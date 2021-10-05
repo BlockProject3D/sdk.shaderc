@@ -11,5 +11,5 @@ authors = ["Yuri Edward <yuri6037@outlook.com>"]
 [dependencies]
 
 [build-dependencies]
-cc = "1.0.70"
+cc = { version = "1.0", features = ["parallel"] }
 regex = "1.5.4"

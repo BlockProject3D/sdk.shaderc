@@ -48,7 +48,7 @@ fn parse_version(proj: &Path) -> Version
     for res in reader.lines() {
         let line = res.expect("Failed to read line");
         if let Some(res) = re.captures(&line) {
-            let major = &res[1]; //There is a bug in the regex crate somehow the first group is moved to index 1 instead of 0, and index 0 contains garbage
+            let major = &res[1];
             let minor = &res[2];
             let patch = &res[3];
             let flavor = match res.get(4) {
@@ -188,4 +188,6 @@ fn main()
     build_ogl(&proj, &mut builder);
     build_spirv(&proj, &mut builder);
     builder.compile("glslang");
+    println!("cargo:rerun-if-changed=./build.rs");
+    println!("cargo:rerun-if-changed=./glslang");
 }
