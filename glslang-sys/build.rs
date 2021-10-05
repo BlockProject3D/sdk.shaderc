@@ -188,6 +188,5 @@ fn main()
     build_ogl(&proj, &mut builder);
     build_spirv(&proj, &mut builder);
     builder.compile("glslang");
-    println!("cargo:rerun-if-changed=./build.rs");
     println!("cargo:rerun-if-changed=./glslang");
 }
