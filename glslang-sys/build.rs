@@ -26,11 +26,14 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use regex::Regex;
-use std::path::{Path, PathBuf};
-use std::fs::File;
-use std::io::{BufReader, BufRead};
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+    path::Path
+};
+
 use cc::{Build, Tool};
+use regex::Regex;
 
 struct Version
 {
@@ -44,7 +47,7 @@ fn parse_version(proj: &Path) -> Version
 {
     let re = Regex::new(r"#+ *([0-9]+)\.([0-9]+)\.([0-9]+)(-[a-zA-Z0-9]+)?").expect("Failed to compile regex");
     let file = File::open(proj.join("CHANGES.md")).expect("Failed to open CHANGES.md file");
-    let mut reader = BufReader::new(file);
+    let reader = BufReader::new(file);
     for res in reader.lines() {
         let line = res.expect("Failed to read line");
         if let Some(res) = re.captures(&line) {
@@ -69,7 +72,8 @@ fn parse_version(proj: &Path) -> Version
 fn generate_build_info_h(proj: &Path, out_dir: &Path)
 {
     let dir = out_dir.join("glslang");
-    let mut file = std::fs::read_to_string(proj.join("build_info.h.tmpl")).expect("Failed to read build_info.h template");
+    let mut file =
+        std::fs::read_to_string(proj.join("build_info.h.tmpl")).expect("Failed to read build_info.h template");
     let version = parse_version(&proj);
     let out = dir.join("build_info.h");
 
@@ -100,10 +104,7 @@ fn build_glslang(proj: &Path, builder: &mut Build, compiler: &Tool)
     } else if os == "unix" {
         builder.file(root.join("OSDependent/Unix/ossource.cpp"));
     }
-    const GENERIC_CODE_GEN: &'static [&'static str] = &[
-        "GenericCodeGen/CodeGen.cpp",
-        "GenericCodeGen/Link.cpp"
-    ];
+    const GENERIC_CODE_GEN: &'static [&'static str] = &["GenericCodeGen/CodeGen.cpp", "GenericCodeGen/Link.cpp"];
     const MACHINE_INDEPENDENT: &'static [&'static str] = &[
         "MachineIndependent/glslang_tab.cpp",
         "MachineIndependent/attribute.cpp",
@@ -134,12 +135,10 @@ fn build_glslang(proj: &Path, builder: &mut Build, compiler: &Tool)
         "MachineIndependent/preprocessor/PpTokens.cpp",
         "MachineIndependent/propagateNoContraction.cpp"
     ];
-    const GLSLLANG_SOURCES: &'static [&'static str] = &[
-        "CInterface/glslang_c_interface.cpp"
-    ];
-    append_files(builder, &root,GENERIC_CODE_GEN);
-    append_files(builder, &root,MACHINE_INDEPENDENT);
-    append_files(builder, &root,GLSLLANG_SOURCES);
+    const GLSLLANG_SOURCES: &'static [&'static str] = &["CInterface/glslang_c_interface.cpp"];
+    append_files(builder, &root, GENERIC_CODE_GEN);
+    append_files(builder, &root, MACHINE_INDEPENDENT);
+    append_files(builder, &root, GLSLLANG_SOURCES);
 }
 
 fn build_ogl(proj: &Path, builder: &mut Build)
@@ -162,7 +161,7 @@ fn build_spirv(proj: &Path, builder: &mut Build)
         "disassemble.cpp",
         "CInterface/spirv_c_interface.cpp"
     ];
-    append_files(builder, &root,SOURCES);
+    append_files(builder, &root, SOURCES);
 }
 
 fn main()
@@ -187,6 +186,9 @@ fn main()
     build_glslang(&proj, &mut builder, &compiler);
     build_ogl(&proj, &mut builder);
     build_spirv(&proj, &mut builder);
+    // Add glue cpp
+    builder.file(Path::new("./src/glue.cpp"));
     builder.compile("glslang");
     println!("cargo:rerun-if-changed=./glslang");
+    println!("cargo:rerun-if-changed=./src/glue.cpp");
 }
