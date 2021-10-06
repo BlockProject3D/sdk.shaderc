@@ -34,6 +34,7 @@ pub mod limits;
 
 use std::os::raw::{c_int, c_ulonglong, c_uint, c_char, c_void};
 
+/// typedef enum EShLanguage
 #[repr(transparent)]
 pub struct EShLanguage(c_int);
 
