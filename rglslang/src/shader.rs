@@ -489,7 +489,7 @@ impl Builder
             );
             return Shader {
                 valid: flag,
-                storage: self.storage,
+                _storage: self.storage,
                 low_level: self.low_level
             };
         }
@@ -499,7 +499,7 @@ impl Builder
 pub struct Shader
 {
     valid: bool,
-    storage: ShaderStorage,
+    _storage: ShaderStorage,
     low_level: *const TShader
 }
 
