@@ -110,6 +110,7 @@ pub const EShTargetSpv: EShTargetLanguage = EShTargetLanguage(1);
 #[repr(transparent)]
 pub struct EShTargetClientVersion(c_int);
 
+pub const EShTargetVersionNone: EShTargetClientVersion = EShTargetClientVersion(0);
 pub const EShTargetVulkan_1_0: EShTargetClientVersion = EShTargetClientVersion(1 << 22);
 pub const EShTargetVulkan_1_1: EShTargetClientVersion = EShTargetClientVersion((1 << 22) | (1 << 12));
 pub const EShTargetVulkan_1_2: EShTargetClientVersion = EShTargetClientVersion((1 << 22) | (2 << 12));
