@@ -120,6 +120,7 @@ pub const EShTargetOpenGL_450: EShTargetClientVersion = EShTargetClientVersion(4
 #[repr(transparent)]
 pub struct EShTargetLanguageVersion(c_int);
 
+pub const EShTargetLangNone: EShTargetLanguageVersion = EShTargetLanguageVersion(0);
 pub const EShTargetSpv_1_0: EShTargetLanguageVersion = EShTargetLanguageVersion(1 << 16);
 pub const EShTargetSpv_1_1: EShTargetLanguageVersion = EShTargetLanguageVersion((1 << 16) | (1 << 8));
 pub const EShTargetSpv_1_2: EShTargetLanguageVersion = EShTargetLanguageVersion((1 << 16) | (2 << 8));
