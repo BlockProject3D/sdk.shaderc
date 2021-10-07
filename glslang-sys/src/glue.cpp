@@ -27,6 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../glslang/glslang/Public/ShaderLang.h"
+#include "../glslang/StandAlone/ResourceLimits.h"
 
 using namespace glslang;
 
@@ -455,6 +456,11 @@ void TProgram_destroy(void *self)
 {
     auto *prog = (TProgram *)self;
     delete prog;
+}
+
+const TBuiltInResource *TBuiltInResource_default()
+{
+    return &DefaultTBuiltInResource;
 }
 
 }

@@ -144,3 +144,7 @@ pub struct TBuiltInResource
 
     limits: TLimits
 }
+
+extern "C" {
+    pub fn TBuiltInResource_default() -> *const TBuiltInResource;
+}

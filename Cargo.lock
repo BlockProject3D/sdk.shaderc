@@ -388,6 +388,9 @@ dependencies = [
 [[package]]
 name = "rglslang"
 version = "0.1.0"
+dependencies = [
+ "glslang-sys",
+]
 
 [[package]]
 name = "salc"
