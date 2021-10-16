@@ -135,6 +135,25 @@ pub struct Part
     name: Option<CString>  //Optional name of source code
 }
 
+impl Part
+{
+    pub fn new<T: AsRef<str>>(code: T) -> Part
+    {
+        return Part {
+            code: String::from(code.as_ref()),
+            name: None
+        };
+    }
+
+    pub fn new_with_name<T: AsRef<str>, T1: AsRef<str>>(code: T, name: T1) -> Part
+    {
+        return Part {
+            code: String::from(code.as_ref()),
+            name: Some(CString::new(name.as_ref()).unwrap())
+        };
+    }
+}
+
 #[derive(Default)]
 struct ShaderStorage
 {
@@ -181,25 +200,25 @@ impl Messages
         };
     }
 
-    pub fn suppress_warnings(&mut self) -> &mut Self
+    pub fn suppress_warnings(mut self) -> Self
     {
         self.messages |= EShMsgSuppressWarnings;
         return self;
     }
 
-    pub fn debug(&mut self) -> &mut Self
+    pub fn debug(mut self) -> Self
     {
         self.messages |= EShMsgDebugInfo;
         return self;
     }
 
-    pub fn relaxed_errors(&mut self) -> &mut Self
+    pub fn relaxed_errors(mut self) -> Self
     {
         self.messages |= EShMsgRelaxedErrors;
         return self;
     }
 
-    pub fn ast(&mut self) -> &mut Self
+    pub fn ast(mut self) -> Self
     {
         self.messages |= EShMsgAST;
         return self;
@@ -236,7 +255,7 @@ impl Builder
         }
     }
 
-    pub fn preamble<T: AsRef<str>>(&mut self, preamble: T) -> &mut Self
+    pub fn preamble<T: AsRef<str>>(mut self, preamble: T) -> Self
     {
         self.storage.preamble = Some(CString::new(preamble.as_ref()).unwrap());
         unsafe {
@@ -245,7 +264,7 @@ impl Builder
         return self;
     }
 
-    pub fn entry_point<T: AsRef<str>>(&mut self, name: T) -> &mut Self
+    pub fn entry_point<T: AsRef<str>>(mut self, name: T) -> Self
     {
         self.storage.entry_point = Some(CString::new(name.as_ref()).unwrap());
         unsafe {
@@ -254,7 +273,7 @@ impl Builder
         return self;
     }
 
-    pub fn source_entry_point<T: AsRef<str>>(&mut self, name: T) -> &mut Self
+    pub fn source_entry_point<T: AsRef<str>>(mut self, name: T) -> Self
     {
         self.storage.source_entry_point_name = Some(CString::new(name.as_ref()).unwrap());
         unsafe {
@@ -266,7 +285,7 @@ impl Builder
         return self;
     }
 
-    pub fn global_uniform_block_name<T: AsRef<str>>(&mut self, name: T) -> &mut Self
+    pub fn global_uniform_block_name<T: AsRef<str>>(mut self, name: T) -> Self
     {
         self.storage.global_uniform_block_name = Some(CString::new(name.as_ref()).unwrap());
         unsafe {
@@ -278,7 +297,7 @@ impl Builder
         return self;
     }
 
-    pub fn atomic_counter_block_name<T: AsRef<str>>(&mut self, name: T) -> &mut Self
+    pub fn atomic_counter_block_name<T: AsRef<str>>(mut self, name: T) -> Self
     {
         self.storage.atomic_counter_block_name = Some(CString::new(name.as_ref()).unwrap());
         unsafe {
@@ -290,7 +309,7 @@ impl Builder
         return self;
     }
 
-    pub fn add_block_storage_override<T: AsRef<str>>(&mut self, name: T, backing: BlockStorageClass) -> &mut Self
+    pub fn add_block_storage_override<T: AsRef<str>>(mut self, name: T, backing: BlockStorageClass) -> Self
     {
         self.storage
             .block_storage_overrides
@@ -302,7 +321,7 @@ impl Builder
         return self;
     }
 
-    pub fn add_uniform_location_override<T: AsRef<str>>(&mut self, name: T, loc: i32) -> &mut Self
+    pub fn add_uniform_location_override<T: AsRef<str>>(mut self, name: T, loc: i32) -> Self
     {
         self.storage
             .uniform_location_overrides
@@ -314,13 +333,13 @@ impl Builder
         return self;
     }
 
-    pub fn add_part(&mut self, p: Part) -> &mut Self
+    pub fn add_part(mut self, p: Part) -> Self
     {
         self.storage.parts.push(p);
         return self;
     }
 
-    pub fn unique_id(&mut self, id: u64) -> &mut Self
+    pub fn unique_id(self, id: u64) -> Self
     {
         unsafe {
             TShader_setUniqueId(self.low_level, id);
@@ -328,7 +347,7 @@ impl Builder
         return self;
     }
 
-    pub fn auto_map_bindings(&mut self) -> &mut Self
+    pub fn auto_map_bindings(self) -> Self
     {
         unsafe {
             TShader_setAutoMapBindings(self.low_level, true);
@@ -336,7 +355,7 @@ impl Builder
         return self;
     }
 
-    pub fn auto_map_locations(&mut self) -> &mut Self
+    pub fn auto_map_locations(self) -> Self
     {
         unsafe {
             TShader_setAutoMapLocations(self.low_level, true);
@@ -344,7 +363,7 @@ impl Builder
         return self;
     }
 
-    pub fn uniform_location_base(&mut self, base: i32) -> &mut Self
+    pub fn uniform_location_base(self, base: i32) -> Self
     {
         unsafe {
             TShader_setUniformLocationBase(self.low_level, base);
@@ -352,7 +371,7 @@ impl Builder
         return self;
     }
 
-    pub fn invert_y(&mut self) -> &mut Self
+    pub fn invert_y(self) -> Self
     {
         unsafe {
             TShader_setInvertY(self.low_level, true);
@@ -360,7 +379,7 @@ impl Builder
         return self;
     }
 
-    pub fn no_storage_format(&mut self) -> &mut Self
+    pub fn no_storage_format(self) -> Self
     {
         unsafe {
             TShader_setNoStorageFormat(self.low_level, true);
@@ -368,7 +387,7 @@ impl Builder
         return self;
     }
 
-    pub fn nan_min_max_clamp(&mut self) -> &mut Self
+    pub fn nan_min_max_clamp(self) -> Self
     {
         unsafe {
             TShader_setNanMinMaxClamp(self.low_level, true);
@@ -376,7 +395,7 @@ impl Builder
         return self;
     }
 
-    pub fn use_combined_texture_sampler(&mut self) -> &mut Self
+    pub fn use_combined_texture_sampler(self) -> Self
     {
         unsafe {
             TShader_setTextureSamplerTransformMode(self.low_level, EShTexSampTransUpgradeTextureRemoveSampler);
@@ -384,7 +403,7 @@ impl Builder
         return self;
     }
 
-    pub fn global_uniform_set(&mut self, set: u32) -> &mut Self
+    pub fn global_uniform_set(self, set: u32) -> Self
     {
         unsafe {
             TShader_setGlobalUniformSet(self.low_level, set);
@@ -392,7 +411,7 @@ impl Builder
         return self;
     }
 
-    pub fn global_uniform_binding(&mut self, binding: u32) -> &mut Self
+    pub fn global_uniform_binding(self, binding: u32) -> Self
     {
         unsafe {
             TShader_setGlobalUniformBinding(self.low_level, binding);
@@ -400,7 +419,7 @@ impl Builder
         return self;
     }
 
-    pub fn atomic_counter_block_set(&mut self, set: u32) -> &mut Self
+    pub fn atomic_counter_block_set(self, set: u32) -> Self
     {
         unsafe {
             TShader_setAtomicCounterBlockSet(self.low_level, set);
@@ -408,7 +427,7 @@ impl Builder
         return self;
     }
 
-    pub fn atomic_counter_block_binding(&mut self, binding: u32) -> &mut Self
+    pub fn atomic_counter_block_binding(self, binding: u32) -> Self
     {
         unsafe {
             TShader_setAtomicCounterBlockBinding(self.low_level, binding);
@@ -416,7 +435,7 @@ impl Builder
         return self;
     }
 
-    pub fn vulkan_rules_relaxed(&mut self) -> &mut Self
+    pub fn vulkan_rules_relaxed(self) -> Self
     {
         unsafe {
             TShader_setEnvInputVulkanRulesRelaxed(self.low_level);
@@ -424,31 +443,31 @@ impl Builder
         return self;
     }
 
-    pub fn default_version(&mut self, version: i32) -> &mut Self
+    pub fn default_version(mut self, version: i32) -> Self
     {
         self.default_version = version;
         return self;
     }
 
-    pub fn default_profile(&mut self, profile: Profile) -> &mut Self
+    pub fn default_profile(mut self, profile: Profile) -> Self
     {
         self.default_profile = profile;
         return self;
     }
 
-    pub fn forward_incompatible(&mut self) -> &mut Self
+    pub fn forward_incompatible(mut self) -> Self
     {
         self.forward_compatible = false;
         return self;
     }
 
-    pub fn force_default_version_and_profile(&mut self) -> &mut Self
+    pub fn force_default_version_and_profile(mut self) -> Self
     {
         self.force_default_version_and_profile = true;
         return self;
     }
 
-    pub fn messages(&mut self, msgs: Messages) -> &mut Self
+    pub fn messages(mut self, msgs: Messages) -> Self
     {
         self.messages = msgs.messages;
         return self;
