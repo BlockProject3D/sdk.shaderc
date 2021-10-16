@@ -186,6 +186,8 @@ fn main()
     build_glslang(&proj, &mut builder, &compiler);
     build_ogl(&proj, &mut builder);
     build_spirv(&proj, &mut builder);
+    //Add part of standalone EXE in order to get DefaultTBuiltinResource
+    builder.file(proj.join("StandAlone/ResourceLimits.cpp"));
     // Add glue cpp
     builder.file(Path::new("./src/glue.cpp"));
     builder.compile("glslang");

@@ -27,13 +27,27 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use clap::clap_app;
+use rglslang::environment::{Stage, Client};
+use rglslang::shader::{Profile, Messages, Part};
+use std::ffi::OsString;
 
-mod sal;
+//mod sal;
 
-pub use sal::Lexer;
+//pub use sal::Lexer;
 
 fn main()
 {
+    rglslang::main(|| {
+        let shader = rglslang::shader::Builder::new(rglslang::environment::Environment::new_opengl(Stage::Vertex, Client::OpenGL, None))
+            .default_profile(Profile::Core)
+            .default_version(330)
+            .force_default_version_and_profile()
+            .entry_point("main")
+            .source_entry_point("main")
+            .messages(Messages::new().debug().ast())
+            .add_part(Part::new_with_name(std::fs::read_to_string("./shaderc/shader_file.glsl").unwrap(), "My shader")).parse();
+        println!("OK {}\n\n Info log\n{}\n\n Debug log\n{}", shader.check(), shader.get_info_log(), shader.get_info_debug_log());
+    });
     let matches = clap_app!(shaderc =>
         (version: "1.0.0")
         (author: "BlockProject 3D")
@@ -43,6 +57,6 @@ fn main()
         (@arg output: -o --output +takes_value "Output file name")
         (@arg includes: -I --include +takes_value +multiple "Path to a directory to use as includes for SAL or shader code")
     ).get_matches();
-
-    println!("Hello, world!");
+    let args: Vec<OsString> = std::env::args_os().collect();
+    println!("Hello, world! {:?}", args);
 }

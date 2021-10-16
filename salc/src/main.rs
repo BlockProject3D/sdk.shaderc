@@ -75,8 +75,7 @@ fn main()
         (@arg input: -i --input +takes_value +required "Input shader file name")
         (@arg output: -o --output +takes_value "Output file name")
         (@arg includes: -I --include +takes_value +multiple "Path to a directory to use to find SAL modules")
-    )
-    .get_matches();
+    ).get_matches();
     let input = matches.value_of("input").unwrap();
     let output = matches.value_of("output");
     let includes = matches.values_of("includes");
