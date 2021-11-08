@@ -2,7 +2,7 @@
 members = [
     "shaderc",
     "shaderl",
-    "salc",
     "rglslang",
-    "glslang-sys"
+    "glslang-sys",
+    "sal"
 ]
