@@ -31,6 +31,7 @@ mod lexer;
 mod parser;
 pub mod ast;
 pub mod utils;
+pub mod preprocessor;
 
 pub use lexer::Lexer;
 pub use parser::Parser;
