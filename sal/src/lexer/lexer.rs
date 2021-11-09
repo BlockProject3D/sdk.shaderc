@@ -45,6 +45,7 @@ use crate::lexer::token::{
     CHR_NL
 };
 use std::str::from_utf8_unchecked;
+use crate::lexer::error::Error;
 
 fn check_punct(chr: u8) -> Option<Token>
 {
@@ -102,7 +103,7 @@ fn check_identifier(substr: &[u8]) -> Option<Token>
 {
     let re = Regex::new(r"^[A-z]([A-z]|\d)*$").unwrap();
     if re.is_match(substr) {
-        //SAFETY: If we get there but substr is not valid UTF8 then regex crate is broken!
+        //SAFETY: If we get there but substr is not valid UTF8 well then regex crate is broken!
         unsafe {
             return Some(Token::Identifier(from_utf8_unchecked(substr).into()));
         }
@@ -168,7 +169,7 @@ impl Lexer
         };
     }
 
-    fn parse_token(&mut self, pos1: usize, pos2: usize, code: &[u8]) -> Result<(), String>
+    fn parse_token(&mut self, pos1: usize, pos2: usize, code: &[u8]) -> Result<(), Error>
     {
         let (np1, np2) = trim_token(code, (pos1, pos2));
         if np2 - np1 > 0 {
@@ -181,18 +182,13 @@ impl Lexer
             else if let Some(tok) = check_identifier(&code[np1..np2]) {
                 self.tokens.push_back((tok, self.cur_line, self.cur_column));
             } else {
-                return Err(format!(
-                    "[Shader Annotation Language] Unidentified token '{}' at line {}, column {}",
-                    String::from_utf8_lossy(&code[np1..np2]), //This is intended for display so we don't care that much of possibly loosing some data.
-                    self.cur_line,
-                    self.cur_column
-                ));
+                return Err(Error::unidentified_token(self.cur_line, self.cur_column, &code[np1..np2]));
             }
         }
         return Ok(());
     }
 
-    pub fn process(&mut self, code: &[u8]) -> Result<(), String>
+    pub fn process(&mut self, code: &[u8]) -> Result<(), Error>
     {
         self.cur_token = (0, 0);
         loop {
@@ -229,10 +225,7 @@ impl Lexer
         let (pos1, pos2) = self.cur_token;
         if pos2 + 1 < code.len() {
             //We have an error: input code is incomplete
-            return Err(format!(
-                "[Shader Annotation Language] Unexpected EOF at line {}, column {}",
-                self.cur_line, self.cur_column
-            ));
+            return Err(Error::eof(self.cur_line, self.cur_column));
         }
         if pos2 - pos1 > 0 {
             self.parse_token(pos1, pos2, code)?;

@@ -26,8 +26,38 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod lexer;
-pub mod error;
-pub mod token;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Type
+{
+    UnidentifiedToken(Vec<u8>),
+    Eof
+}
 
-pub use lexer::Lexer;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Error
+{
+    pub line: usize,
+    pub col: usize,
+    pub etype: Type
+}
+
+impl Error
+{
+    pub fn unidentified_token(line: usize, col: usize, token: &[u8]) -> Self
+    {
+        Self {
+            line,
+            col,
+            etype: Type::UnidentifiedToken(token.into())
+        }
+    }
+
+    pub fn eof(line: usize, col: usize) -> Self
+    {
+        Self {
+            line,
+            col,
+            etype: Type::Eof
+        }
+    }
+}

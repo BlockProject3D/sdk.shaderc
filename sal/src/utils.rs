@@ -47,6 +47,6 @@ pub fn parse_file(file: &Path, expand_use: bool, module_paths: &Vec<PathBuf>) ->
         Ok(v) => v
     };
     let mut lexer = Lexer::new();
-    lexer.process(str.as_bytes())?;
+    lexer.process(str.as_bytes()).unwrap(); //TODO: fix
     return parse(lexer, expand_use, module_paths);
 }
