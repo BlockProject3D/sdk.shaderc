@@ -110,19 +110,6 @@ fn check_identifier(substr: &[u8]) -> Option<Token>
     return None;
 }
 
-/*fn check_namespace(substr: &[u8]) -> Option<Token>
-{
-    let re = Regex::new(r"^[A-z]([A-z]|\d)*::([A-z]|\d)+$").unwrap();
-    if let Some(groups) = re.captures(substr) {
-        let module = &groups[1];
-        let element = &groups[3];
-        unsafe {
-            return Some(Token::Namespace(from_utf8_unchecked(module).into(), from_utf8_unchecked(element).into()));
-        }
-    }
-    return None;
-}*/
-
 fn check_terminator(chr: u8) -> Option<Token>
 {
     if is_whitespace(chr) {
