@@ -47,6 +47,13 @@ use crate::lexer::token::{
 use std::str::from_utf8_unchecked;
 use crate::lexer::error::Error;
 
+pub struct TokenEntry
+{
+    pub line: usize,
+    pub col: usize,
+    pub token: Token
+}
+
 fn check_punct(chr: u8) -> Option<Token>
 {
     match chr {
@@ -149,7 +156,7 @@ fn trim_token(code: &[u8], token: (usize, usize)) -> (usize, usize)
 
 pub struct Lexer
 {
-    tokens: VecDeque<(Token, usize, usize)>,
+    tokens: VecDeque<TokenEntry>,
     cur_token: (usize, usize),
     cur_line: usize,
     cur_column: usize,
@@ -174,13 +181,25 @@ impl Lexer
         let (np1, np2) = trim_token(code, (pos1, pos2));
         if np2 - np1 > 0 {
             if let Some(tok) = check_keyword(&code[np1..np2]) {
-                self.tokens.push_back((tok, self.cur_line, self.cur_column));
+                self.tokens.push_back(TokenEntry {
+                    token: tok,
+                    line: self.cur_line,
+                    col: self.cur_column
+                });
             } else if let Some(tok) = check_litteral(&code[np1..np2]) {
-                self.tokens.push_back((tok, self.cur_line, self.cur_column));
+                self.tokens.push_back(TokenEntry {
+                    token: tok,
+                    line: self.cur_line,
+                    col: self.cur_column
+                });
             }
             //At this point it has to be an identifier otherwise it's a bad unexpected token
             else if let Some(tok) = check_identifier(&code[np1..np2]) {
-                self.tokens.push_back((tok, self.cur_line, self.cur_column));
+                self.tokens.push_back(TokenEntry {
+                    token: tok,
+                    line: self.cur_line,
+                    col: self.cur_column
+                });
             } else {
                 return Err(Error::unidentified_token(self.cur_line, self.cur_column, &code[np1..np2]));
             }
@@ -217,7 +236,11 @@ impl Lexer
                     self.parse_token(pos1, pos2 - 1, code)?;
                     pos1 = pos2; //This should be +1 but somehow there's a bug in rust
                     pos2 = pos1;
-                    self.tokens.push_back((tok, self.cur_line, self.cur_column));
+                    self.tokens.push_back(TokenEntry {
+                        token: tok,
+                        line: self.cur_line,
+                        col: self.cur_column
+                    });
                 }
             }
             self.cur_token = (pos1, pos2);
@@ -235,15 +258,15 @@ impl Lexer
 
     pub fn eliminate_whitespace(&mut self)
     {
-        self.tokens.retain(|(tok, _, _)| tok != &Token::Whitespace);
+        self.tokens.retain(|TokenEntry {token, .. }| token != &Token::Whitespace);
     }
 
     pub fn eliminate_breaks(&mut self)
     {
-        self.tokens.retain(|(tok, _, _)| tok != &Token::Break);
+        self.tokens.retain(|TokenEntry {token, ..}| token != &Token::Break);
     }
 
-    pub fn into_tokens(self) -> VecDeque<(Token, usize, usize)>
+    pub fn into_tokens(self) -> VecDeque<TokenEntry>
     {
         return self.tokens;
     }
@@ -302,7 +325,7 @@ mod test
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
         basic_assert(toks);
     }
 
@@ -327,7 +350,7 @@ mod test
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
         basic_assert(toks);
     }
 
@@ -383,7 +406,7 @@ mod test
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
         assert_typical(toks);
     }
 
@@ -409,7 +432,7 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
         assert_typical(toks);
     }
 
@@ -432,7 +455,7 @@ const mat4f ModelView;
         lexer.process(b"const mat4f ModelView;").unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
         assert_typical(toks);
     }
 
@@ -444,7 +467,7 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
         assert_eq!(
             toks,
             vec![
@@ -463,7 +486,7 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
         assert_eq!(
             toks,
             vec![
@@ -482,7 +505,7 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
         assert_eq!(
             toks,
             vec![
@@ -501,8 +524,17 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
-        assert_eq!(toks, vec![Token::Use, Token::Identifier("test".into()), Token::Colon, Token::Colon, Token::Identifier("test".into())]);
+        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
+        assert_eq!(
+            toks,
+            vec![
+                Token::Use,
+                Token::Identifier("test".into()),
+                Token::Colon,
+                Token::Colon,
+                Token::Identifier("test".into())
+            ]
+        );
     }
 
     #[test]
@@ -515,7 +547,7 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
+        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
         assert_eq!(
             toks,
             vec![
