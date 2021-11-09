@@ -28,7 +28,7 @@
 
 use std::collections::VecDeque;
 use crate::lexer::Lexer;
-use crate::token::Token;
+use crate::lexer::token::Token;
 use crate::parser::tree;
 
 pub struct Parser

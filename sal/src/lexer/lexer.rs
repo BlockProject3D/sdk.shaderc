@@ -29,8 +29,8 @@
 use std::{collections::VecDeque, fmt::Display, string::String};
 
 use regex::bytes::Regex;
-use crate::token::{CHR_COMMENT, STR_FALSE, STR_TRUE, Token};
-use crate::token::{
+use crate::lexer::token::{CHR_COMMENT, STR_FALSE, STR_TRUE, Token};
+use crate::lexer::token::{
     STR_CONST,
     STR_STRUCT,
     STR_PIPELINE,
