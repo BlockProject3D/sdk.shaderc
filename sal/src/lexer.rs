@@ -28,83 +28,132 @@
 
 use std::{collections::VecDeque, fmt::Display, string::String};
 
-use regex::Regex;
-use crate::token::{STR_COMMENT, Token};
+use regex::bytes::Regex;
+use crate::token::{CHR_COMMENT, STR_FALSE, STR_TRUE, Token};
 use crate::token::{
     STR_CONST,
     STR_STRUCT,
     STR_PIPELINE,
     STR_VFORMAT,
     STR_USE,
-    STR_EQ,
-    STR_BLOCK_START,
-    STR_BLOCK_END,
+    CHR_EQ,
+    CHR_BLOCK_START,
+    CHR_BLOCK_END,
     STR_OUTPUT,
-    STR_BREAK
+    CHR_BREAK,
+    CHR_COLON,
+    CHR_NL
 };
+use std::str::from_utf8_unchecked;
 
-fn check_keyword(substr: &str) -> Option<Token>
+fn check_punct(chr: u8) -> Option<Token>
 {
-    return match substr {
-        STR_CONST => Some(Token::Const),
-        STR_STRUCT => Some(Token::Struct),
-        STR_PIPELINE => Some(Token::Pipeline),
-        STR_VFORMAT => Some(Token::Vformat),
-        STR_USE => Some(Token::Use),
-        STR_EQ => Some(Token::Eq),
-        STR_BLOCK_START => Some(Token::BlockStart),
-        STR_BLOCK_END => Some(Token::BlockEnd),
-        STR_OUTPUT => Some(Token::Output),
+    match chr {
+        CHR_EQ => Some(Token::Eq),
+        CHR_BLOCK_START => Some(Token::BlockStart),
+        CHR_BLOCK_END => Some(Token::BlockEnd),
         _ => None
-    };
+    }
 }
 
-fn check_litteral(substr: &str) -> Option<Token>
+fn check_keyword(substr: &[u8]) -> Option<Token>
 {
-    if substr == "true" {
+    if substr.len() == 1 {
+        check_punct(substr[0])
+    } else {
+        match substr {
+            STR_CONST => Some(Token::Const),
+            STR_STRUCT => Some(Token::Struct),
+            STR_PIPELINE => Some(Token::Pipeline),
+            STR_VFORMAT => Some(Token::Vformat),
+            STR_USE => Some(Token::Use),
+            STR_OUTPUT => Some(Token::Output),
+            _ => None
+        }
+    }
+}
+
+fn check_litteral(substr: &[u8]) -> Option<Token>
+{
+    if substr == STR_TRUE {
         return Some(Token::Bool(true));
-    } else if substr == "false" {
+    } else if substr == STR_FALSE {
         return Some(Token::Bool(false));
     }
-    if let Ok(v) = substr.parse::<i32>() {
-        return Some(Token::Int(v));
+    //^\d+$
+    let int = Regex::new(r"^\d+$").unwrap();
+    let float = Regex::new(r"^\d*.\d+$").unwrap();
+    if int.is_match(substr) {
+        //SAFETY: If we get there and that we don't have a valid int well then regex crate is broken!
+        unsafe {
+            return Some(Token::Int(from_utf8_unchecked(substr).parse().unwrap()));
+        }
     }
-    if let Ok(v) = substr.parse::<f32>() {
-        return Some(Token::Float(v));
+    if float.is_match(substr) {
+        //SAFETY: If we get there and that we don't have a valid float well then regex crate is broken!
+        unsafe {
+            return Some(Token::Float(from_utf8_unchecked(substr).parse().unwrap()));
+        }
+    }
+    None
+}
+
+fn check_identifier(substr: &[u8]) -> Option<Token>
+{
+    let re = Regex::new(r"^[A-z]([A-z]|\d)*$").unwrap();
+    if re.is_match(substr) {
+        //SAFETY: If we get there but substr is not valid UTF8 then regex crate is broken!
+        unsafe {
+            return Some(Token::Identifier(from_utf8_unchecked(substr).into()));
+        }
     }
     return None;
 }
 
-fn check_identifier(substr: &str) -> Option<Token>
+/*fn check_namespace(substr: &[u8]) -> Option<Token>
 {
-    let re = Regex::new(r"[A-z]([A-z]|\d)*").unwrap();
-    if re.replace(substr, "") == "" {
-        return Some(Token::Identifier(String::from(substr)));
+    let re = Regex::new(r"^[A-z]([A-z]|\d)*::([A-z]|\d)+$").unwrap();
+    if let Some(groups) = re.captures(substr) {
+        let module = &groups[1];
+        let element = &groups[3];
+        unsafe {
+            return Some(Token::Namespace(from_utf8_unchecked(module).into(), from_utf8_unchecked(element).into()));
+        }
     }
     return None;
-}
+}*/
 
-fn check_namespace(substr: &str) -> Option<Token>
+fn check_terminator(chr: u8) -> Option<Token>
 {
-    let re = Regex::new(r"[A-z]([A-z]|\d)*::([A-z]|\d)+").unwrap();
-    if re.replace(substr, "") == "" {
-        return Some(Token::Namespace(String::from(substr)));
+    if is_whitespace(chr) {
+        Some(Token::Whitespace)
+    } else {
+        match chr {
+            CHR_BREAK => Some(Token::Break),
+            CHR_COLON => Some(Token::Colon),
+            _ => None
+        }
     }
-    return None;
 }
 
-fn is_whitespace(substr: &str) -> bool
+fn is_whitespace(chr: u8) -> bool
 {
-    return substr == " " || substr == "\t" || substr == "\r" || substr == "\n" || substr == STR_BREAK;
+    match chr {
+        b'\t' => true,
+        b' ' => true,
+        b'\r' => true,
+        CHR_NL => true,
+        _ => false
+    }
 }
 
-fn trim_token(code: &str, token: (usize, usize)) -> (usize, usize)
+fn trim_token(code: &[u8], token: (usize, usize)) -> (usize, usize)
 {
     let (mut pos1, mut pos2) = token;
-    while pos1 < pos2 && is_whitespace(&code[pos1..pos1 + 1]) {
+    while pos1 < pos2 && is_whitespace(code[pos1]) {
         pos1 += 1;
     }
-    while pos2 > pos1 && is_whitespace(&code[pos2 - 1..pos2]) {
+    while pos2 > pos1 && is_whitespace(code[pos2 - 1]) {
         pos2 -= 1;
     }
     return (pos1, pos2);
@@ -132,7 +181,7 @@ impl Lexer
         };
     }
 
-    fn parse_token(&mut self, pos1: usize, pos2: usize, code: &str) -> Result<(), String>
+    fn parse_token(&mut self, pos1: usize, pos2: usize, code: &[u8]) -> Result<(), String>
     {
         let (np1, np2) = trim_token(code, (pos1, pos2));
         if np2 - np1 > 0 {
@@ -140,16 +189,14 @@ impl Lexer
                 self.tokens.push_back((tok, self.cur_line, self.cur_column));
             } else if let Some(tok) = check_litteral(&code[np1..np2]) {
                 self.tokens.push_back((tok, self.cur_line, self.cur_column));
-            } else if let Some(tok) = check_namespace(&code[np1..np2]) {
-                self.tokens.push_back((tok, self.cur_line, self.cur_column));
             }
-            //At this point it has to be an identifier otherwise it's bad unexpected token
+            //At this point it has to be an identifier otherwise it's a bad unexpected token
             else if let Some(tok) = check_identifier(&code[np1..np2]) {
                 self.tokens.push_back((tok, self.cur_line, self.cur_column));
             } else {
                 return Err(format!(
                     "[Shader Annotation Language] Unidentified token '{}' at line {}, column {}",
-                    &code[np1..np2],
+                    String::from_utf8_lossy(&code[np1..np2]), //This is intended for display so we don't care that much of possibly loosing some data.
                     self.cur_line,
                     self.cur_column
                 ));
@@ -158,7 +205,7 @@ impl Lexer
         return Ok(());
     }
 
-    pub fn push_str(&mut self, code: &str) -> Result<(), String>
+    pub fn process(&mut self, code: &[u8]) -> Result<(), String>
     {
         self.cur_token = (0, 0);
         loop {
@@ -169,24 +216,25 @@ impl Lexer
                 //Should be ">=" but somehow there's a bug in rust
                 break;
             }
-            if &code[pos2 - 1..pos2] == STR_COMMENT {
+            if code[pos2 - 1] == CHR_COMMENT {
                 self.in_comment = true;
-            } else if &code[pos2 - 1..pos2] == "\r" || &code[pos2 - 1..pos2] == "\n" {
+            } else if code[pos2 - 1] == CHR_NL {
                 if self.in_comment {
                     self.in_comment = false;
                     pos1 = pos2 + 1;
                     pos2 = pos1 + 1;
                 }
-                if &code[pos2 - 1..pos2] == "\n" {
+                if code[pos2 - 1] == b'\n' {
                     self.cur_line += 1;
                     self.cur_column = 0;
                 }
             }
             if !self.in_comment {
-                if is_whitespace(&code[pos2 - 1..pos2]) {
-                    self.parse_token(pos1, pos2, code)?;
+                if let Some(tok) = check_terminator(code[pos2 - 1]) {
+                    self.parse_token(pos1, pos2 - 1, code)?;
                     pos1 = pos2; //This should be +1 but somehow there's a bug in rust
                     pos2 = pos1;
+                    self.tokens.push_back((tok, self.cur_line, self.cur_column));
                 }
             }
             self.cur_token = (pos1, pos2);
@@ -203,6 +251,16 @@ impl Lexer
             self.parse_token(pos1, pos2, code)?;
         }
         return Ok(());
+    }
+
+    pub fn eliminate_whitespace(&mut self)
+    {
+        self.tokens.retain(|(tok, _, _)| tok != &Token::Whitespace);
+    }
+
+    pub fn eliminate_breaks(&mut self)
+    {
+        self.tokens.retain(|(tok, _, _)| tok != &Token::Break);
     }
 
     pub fn into_tokens(self) -> VecDeque<(Token, usize, usize)>
@@ -222,25 +280,25 @@ mod test
             toks,
             vec![
                 Token::Const,
-                Token::Identifier(String::from("float")),
-                Token::Identifier(String::from("DeltaTime")),
+                Token::Identifier("float".into()),
+                Token::Identifier("DeltaTime".into()),
                 Token::Const,
-                Token::Identifier(String::from("uint")),
-                Token::Identifier(String::from("FrameCount")),
+                Token::Identifier("uint".into()),
+                Token::Identifier("FrameCount".into()),
                 Token::Const,
-                Token::Identifier(String::from("mat3f")),
-                Token::Identifier(String::from("ModelViewMatrix")),
+                Token::Identifier("mat3f".into()),
+                Token::Identifier("ModelViewMatrix".into()),
                 Token::Const,
-                Token::Identifier(String::from("mat3f")),
-                Token::Identifier(String::from("ProjectionMatrix")),
+                Token::Identifier("mat3f".into()),
+                Token::Identifier("ProjectionMatrix".into()),
                 Token::Const,
                 Token::Struct,
-                Token::Identifier(String::from("PerMaterial")),
+                Token::Identifier("PerMaterial".into()),
                 Token::BlockStart,
-                Token::Identifier(String::from("vec4f")),
-                Token::Identifier(String::from("BaseColor")),
-                Token::Identifier(String::from("float")),
-                Token::Identifier(String::from("UvMultiplier")),
+                Token::Identifier("vec4f".into()),
+                Token::Identifier("BaseColor".into()),
+                Token::Identifier("float".into()),
+                Token::Identifier("UvMultiplier".into()),
                 Token::BlockEnd
             ]
         );
@@ -249,7 +307,7 @@ mod test
     #[test]
     fn basic_lexer()
     {
-        let source_code = r"
+        let source_code = b"
             const float DeltaTime;
             const uint FrameCount;
             const mat3f ModelViewMatrix;
@@ -261,7 +319,9 @@ mod test
             }
         ";
         let mut lexer = Lexer::new();
-        lexer.push_str(source_code).unwrap();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
         let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
         basic_assert(toks);
     }
@@ -269,7 +329,7 @@ mod test
     #[test]
     fn lexer_comments()
     {
-        let source_code = r"
+        let source_code = b"
             #this is a single line comment
             const float DeltaTime; # delta time
             const uint FrameCount; # frame count
@@ -284,7 +344,9 @@ mod test
             }
         ";
         let mut lexer = Lexer::new();
-        lexer.push_str(source_code).unwrap();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
         let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
         basic_assert(toks);
     }
@@ -296,25 +358,25 @@ mod test
             vec![
                 Token::Vformat,
                 Token::Struct,
-                Token::Identifier(String::from("Vertex")),
+                Token::Identifier("Vertex".into()),
                 Token::BlockStart,
-                Token::Identifier(String::from("vec4f")),
-                Token::Identifier(String::from("Color")),
-                Token::Identifier(String::from("vec3f")),
-                Token::Identifier(String::from("Pos")),
-                Token::Identifier(String::from("vec3f")),
-                Token::Identifier(String::from("Normal")),
+                Token::Identifier("vec4f".into()),
+                Token::Identifier("Color".into()),
+                Token::Identifier("vec3f".into()),
+                Token::Identifier("Pos".into()),
+                Token::Identifier("vec3f".into()),
+                Token::Identifier("Normal".into()),
                 Token::BlockEnd,
                 Token::Const,
                 Token::Struct,
-                Token::Identifier(String::from("Projection")),
+                Token::Identifier("Projection".into()),
                 Token::BlockStart,
-                Token::Identifier(String::from("mat4f")),
-                Token::Identifier(String::from("ProjectionMatrix")),
+                Token::Identifier("mat4f".into()),
+                Token::Identifier("ProjectionMatrix".into()),
                 Token::BlockEnd,
                 Token::Const,
-                Token::Identifier(String::from("mat4f")),
-                Token::Identifier(String::from("ModelView"))
+                Token::Identifier("mat4f".into()),
+                Token::Identifier("ModelView".into())
             ]
         );
     }
@@ -322,7 +384,7 @@ mod test
     #[test]
     fn typical_space()
     {
-        let source_code = r"
+        let source_code = b"
             vformat struct Vertex
             {
                 vec4f Color;
@@ -338,7 +400,9 @@ mod test
             const mat4f ModelView;
         ";
         let mut lexer = Lexer::new();
-        lexer.push_str(source_code).unwrap();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
         let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
         assert_typical(toks);
     }
@@ -346,7 +410,7 @@ mod test
     #[test]
     fn typical_no_space()
     {
-        let source_code = r"
+        let source_code = b"
 vformat struct Vertex
 {
     vec4f Color;
@@ -362,7 +426,9 @@ const struct Projection
 const mat4f ModelView;
 ";
         let mut lexer = Lexer::new();
-        lexer.push_str(source_code).unwrap();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
         let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
         assert_typical(toks);
     }
@@ -371,19 +437,21 @@ const mat4f ModelView;
     fn typical_line_per_line()
     {
         let mut lexer = Lexer::new();
-        lexer.push_str("vformat struct Vertex").unwrap();
-        lexer.push_str("{").unwrap();
-        lexer.push_str("    vec4f Color;").unwrap();
-        lexer.push_str("    vec3f Pos;").unwrap();
-        lexer.push_str("    vec3f Normal;").unwrap();
-        lexer.push_str("}").unwrap();
-        lexer.push_str("").unwrap();
-        lexer.push_str("const struct Projection").unwrap();
-        lexer.push_str("{").unwrap();
-        lexer.push_str("    mat4f ProjectionMatrix;").unwrap();
-        lexer.push_str("}").unwrap();
-        lexer.push_str("").unwrap();
-        lexer.push_str("const mat4f ModelView;").unwrap();
+        lexer.process(b"vformat struct Vertex").unwrap();
+        lexer.process(b"{").unwrap();
+        lexer.process(b"    vec4f Color;").unwrap();
+        lexer.process(b"    vec3f Pos;").unwrap();
+        lexer.process(b"    vec3f Normal;").unwrap();
+        lexer.process(b"}").unwrap();
+        lexer.process(b"").unwrap();
+        lexer.process(b"const struct Projection").unwrap();
+        lexer.process(b"{").unwrap();
+        lexer.process(b"    mat4f ProjectionMatrix;").unwrap();
+        lexer.process(b"}").unwrap();
+        lexer.process(b"").unwrap();
+        lexer.process(b"const mat4f ModelView;").unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
         let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
         assert_typical(toks);
     }
@@ -391,16 +459,18 @@ const mat4f ModelView;
     #[test]
     fn lexer_non_trailing()
     {
-        let source_code = r"output vec4f color;";
+        let source_code = b"output vec4f color;";
         let mut lexer = Lexer::new();
-        lexer.push_str(source_code).unwrap();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
         let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
         assert_eq!(
             toks,
             vec![
                 Token::Output,
-                Token::Identifier(String::from("vec4f")),
-                Token::Identifier(String::from("color"))
+                Token::Identifier("vec4f".into()),
+                Token::Identifier("color".into())
             ]
         );
     }
@@ -408,16 +478,18 @@ const mat4f ModelView;
     #[test]
     fn lexer_whitespace1()
     {
-        let source_code = r"  output	  	vec4f  	  color;	 ";
+        let source_code = b"  output	  	vec4f  	  color;	 ";
         let mut lexer = Lexer::new();
-        lexer.push_str(source_code).unwrap();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
         let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
         assert_eq!(
             toks,
             vec![
                 Token::Output,
-                Token::Identifier(String::from("vec4f")),
-                Token::Identifier(String::from("color"))
+                Token::Identifier("vec4f".into()),
+                Token::Identifier("color".into())
             ]
         );
     }
@@ -425,16 +497,18 @@ const mat4f ModelView;
     #[test]
     fn lexer_whitespace2()
     {
-        let source_code = r"output	  	vec4f  	  color;";
+        let source_code = b"output	  	vec4f  	  color;";
         let mut lexer = Lexer::new();
-        lexer.push_str(source_code).unwrap();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
         let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
         assert_eq!(
             toks,
             vec![
                 Token::Output,
-                Token::Identifier(String::from("vec4f")),
-                Token::Identifier(String::from("color"))
+                Token::Identifier("vec4f".into()),
+                Token::Identifier("color".into())
             ]
         );
     }
@@ -442,28 +516,32 @@ const mat4f ModelView;
     #[test]
     fn lexer_use()
     {
-        let source_code = r"use test::test;";
+        let source_code = b"use test::test;";
         let mut lexer = Lexer::new();
-        lexer.push_str(source_code).unwrap();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
         let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
-        assert_eq!(toks, vec![Token::Use, Token::Namespace(String::from("test::test"))]);
+        assert_eq!(toks, vec![Token::Use, Token::Identifier("test".into()), Token::Colon, Token::Colon, Token::Identifier("test".into())]);
     }
 
     #[test]
     fn lexer_outputs()
     {
-        let source_code = r"#this is a single line comment
+        let source_code = b"#this is a single line comment
             output vec4f color;
         ";
         let mut lexer = Lexer::new();
-        lexer.push_str(source_code).unwrap();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
         let toks: Vec<Token> = lexer.into_tokens().iter().map(|(v, _, __)| v.clone()).collect();
         assert_eq!(
             toks,
             vec![
                 Token::Output,
-                Token::Identifier(String::from("vec4f")),
-                Token::Identifier(String::from("color"))
+                Token::Identifier("vec4f".into()),
+                Token::Identifier("color".into())
             ]
         );
     }

@@ -26,20 +26,27 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::Display;
+use std::fmt::{Display, Write};
+use std::str::from_utf8_unchecked;
 
-pub const STR_BREAK: &'static str = ";";
-pub const STR_CONST: &'static str = "const";
-pub const STR_STRUCT: &'static str = "struct";
-pub const STR_PIPELINE: &'static str = "pipeline";
-pub const STR_BLENDFUNC: &'static str = "blendfunc";
-pub const STR_VFORMAT: &'static str = "vformat";
-pub const STR_USE: &'static str = "use";
-pub const STR_EQ: &'static str = "=";
-pub const STR_BLOCK_START: &'static str = "{";
-pub const STR_BLOCK_END: &'static str = "}";
-pub const STR_COMMENT: &'static str = "#";
-pub const STR_OUTPUT: &'static str = "output";
+pub const STR_CONST: &'static [u8] = b"const";
+pub const STR_STRUCT: &'static [u8] = b"struct";
+pub const STR_PIPELINE: &'static [u8] = b"pipeline";
+pub const STR_BLENDFUNC: &'static [u8] = b"blendfunc";
+pub const STR_VFORMAT: &'static [u8] = b"vformat";
+pub const STR_USE: &'static [u8] = b"use";
+pub const STR_OUTPUT: &'static [u8] = b"output";
+pub const STR_TRUE: &'static [u8] = b"true";
+pub const STR_FALSE: &'static [u8] = b"false";
+
+pub const CHR_BREAK: u8 = b';';
+pub const CHR_EQ: u8 = b'=';
+pub const CHR_BLOCK_START: u8 = b'{';
+pub const CHR_BLOCK_END: u8 = b'}';
+pub const CHR_COMMENT: u8 = b'#';
+pub const CHR_COLON: u8 = b':';
+
+pub const CHR_NL: u8 = b'\n';
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token
@@ -57,31 +64,37 @@ pub enum Token
     Int(i32),
     Float(f32),
     Identifier(String),
-    Namespace(String),
-    Blendfunc
+    Colon,
+    Blendfunc,
+    Whitespace,
+    Break
 }
 
 impl Display for Token
 {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error>
     {
-        match self {
-            Token::Const => formatter.write_str(STR_CONST)?,
-            Token::Struct => formatter.write_str(STR_STRUCT)?,
-            Token::Pipeline => formatter.write_str(STR_PIPELINE)?,
-            Token::Vformat => formatter.write_str(STR_VFORMAT)?,
-            Token::Use => formatter.write_str(STR_USE)?,
-            Token::Eq => formatter.write_str("'='")?,
-            Token::BlockStart => formatter.write_str("'{'")?,
-            Token::BlockEnd => formatter.write_str("'}'")?,
-            Token::Output => formatter.write_str(STR_OUTPUT)?,
-            Token::Bool(_) => formatter.write_str("bool")?,
-            Token::Int(_) => formatter.write_str("int")?,
-            Token::Float(_) => formatter.write_str("float")?,
-            Token::Identifier(_) => formatter.write_str("identifier")?,
-            Token::Namespace(_) => formatter.write_str("namespace")?,
-            Token::Blendfunc => formatter.write_str(STR_BLENDFUNC)?
+        unsafe {
+            //SAFETY: we know that token litterals are valid UTF8 as they are valid ASCII
+            match self {
+                Token::Const => formatter.write_str(from_utf8_unchecked(STR_CONST)),
+                Token::Struct => formatter.write_str(from_utf8_unchecked(STR_STRUCT)),
+                Token::Pipeline => formatter.write_str(from_utf8_unchecked(STR_PIPELINE)),
+                Token::Vformat => formatter.write_str(from_utf8_unchecked(STR_VFORMAT)),
+                Token::Use => formatter.write_str(from_utf8_unchecked(STR_USE)),
+                Token::Eq => formatter.write_char(CHR_EQ as char),
+                Token::BlockStart => formatter.write_char(CHR_BLOCK_START as char),
+                Token::BlockEnd => formatter.write_char(CHR_BLOCK_END as char),
+                Token::Output => formatter.write_str(from_utf8_unchecked(STR_OUTPUT)),
+                Token::Bool(b) => write!(formatter, "{}", b),
+                Token::Int(i) => write!(formatter, "{}", i),
+                Token::Float(f) => write!(formatter, "{}", f),
+                Token::Identifier(s) => formatter.write_str(s),
+                Token::Colon => formatter.write_char(CHR_COLON as char),
+                Token::Blendfunc => formatter.write_str(from_utf8_unchecked(STR_BLENDFUNC)),
+                Token::Whitespace => formatter.write_str("whitespace"),
+                Token::Break => formatter.write_char(CHR_BREAK as char)
+            }
         }
-        return Ok(());
     }
 }

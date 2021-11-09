@@ -60,25 +60,48 @@ impl Parser
     {
         if token == &Token::Use {
             let (tok, line, col) = self.pop(*line, *col)?;
-            if let Token::Namespace(n) = tok {
-                let v: Vec<&str> = n.split("::").collect();
+            match tok {
+                Token::Identifier(module) => {
+                    //pop_expect Colon
+                    //pop_expect Colon
+                    let (tok, line, col) = self.pop(line, col)?;
+                    match tok {
+                        Token::Identifier(member) => {
+                            return Ok(Some(tree::Root::Use(tree::Use {
+                                module,
+                                member
+                            })));
+                        },
+                        _ => return Err(format!(
+                            "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
+                            &tok, line, col
+                        ))
+                    };
+                },
+                _ => return Err(format!(
+                    "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
+                    &tok, line, col
+                ))
+            };
+            /*if let Token::Namespace(module, item) = tok {
+                /*let v: Vec<&str> = n.split("::").collect();
                 if v.len() != 2 {
                     return Err(format!(
                         "[Shader Annotation Language] Bad namespace path format ('{}') at line {}, column {}",
                         &n, line, col
                     ));
-                }
+                }*/
                 let module = String::from(v[0]);
                 let member = String::from(v[0]);
                 return Ok(Some(tree::Root::Use(tree::Use {
                     module,
                     member
                 })));
-            }
-            return Err(format!(
-                "[Shader Annotation Language] Unexpected token, expected namespace but got {} at line {}, column {}",
+            }*/
+            /*return Err(format!(
+                "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
                 &tok, line, col
-            ));
+            ));*/
         }
         return Ok(None);
     }
@@ -96,7 +119,7 @@ impl Parser
                 &tok, line, col
             ));
         }
-        if let Token::Namespace(t) = tok {
+        /*if let Token::Namespace(t) = tok {
             let (tok, line, col) = self.pop(line, col)?;
             if let Token::Identifier(n) = tok {
                 return Ok(tree::Property { pname: n, ptype: t });
@@ -105,7 +128,7 @@ impl Parser
                 "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
                 &tok, line, col
             ));
-        }
+        }*/
         return Err(format!(
             "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
             &tok, line, col
@@ -222,13 +245,13 @@ impl Parser
                 name: vname,
                 value: val
             });
-        } else if let Token::Namespace(vname) = tok {
+        }/* else if let Token::Namespace(vname) = tok {
             let val = self.parse_pipeline_val(line, col)?;
             return Ok(tree::Variable {
                 name: vname,
                 value: val
             });
-        }
+        }*/
         return Err(format!("[Shader Annotation Language] Unexpected token, expected identifier or namespace but got {} at line {}, column {}", &tok, line, col));
     }
 
