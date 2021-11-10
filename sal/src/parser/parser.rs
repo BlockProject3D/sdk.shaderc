@@ -43,8 +43,9 @@ pub struct Parser
 
 impl Parser
 {
-    pub fn new(lexer: Lexer) -> Parser
+    pub fn new(mut lexer: Lexer) -> Parser
     {
+        lexer.eliminate_whitespace();
         return Parser {
             tokens: lexer.into_tokens(),
             cur_line: 0,
