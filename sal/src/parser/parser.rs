@@ -253,32 +253,21 @@ impl Parser
 
     fn parse_varlist(&mut self, line: usize, col: usize) -> Result<tree::VariableList, Error>
     {
-        let TokenEntry { token, line, col } = self.pop(line, col)?;
-        if let Token::Identifier(pname) = token {
-            let TokenEntry { token, line, col } = self.pop(line, col)?;
-            if token == Token::BlockStart {
-                let mut v = Vec::new();
-                loop {
-                    let var = self.parse_var(line, col)?;
-                    v.push(var);
-                    if self.check_block_end(line, col)? {
-                        break;
-                    }
-                }
-                return Ok(tree::VariableList {
-                    name: pname,
-                    vars: v
-                });
+        let TokenEntry { token, line, col } = self.pop_expect(TokenType::Identifier, line, col)?;
+        let name = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
+        let TokenEntry { line, col, .. } = self.pop_expect(TokenType::BlockStart, line, col)?;
+        let mut vars = Vec::new();
+        loop {
+            let var = self.parse_var(line, col)?;
+            vars.push(var);
+            if self.check_block_end(line, col)? {
+                break;
             }
-            return Err(Error::new(line, col, Type::UnexpectedToken {
-                expected: TokenType::BlockStart,
-                actual: token
-            }));
         }
-        return Err(Error::new(line, col, Type::UnexpectedToken {
-            expected: TokenType::Identifier,
-            actual: token
-        }));
+        Ok(tree::VariableList {
+            name,
+            vars
+        })
     }
 
     fn try_parse_pipeline(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
