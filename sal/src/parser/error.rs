@@ -26,8 +26,43 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod tree;
-mod parser;
-pub mod error;
+/*#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnexpectedToken
+{
+    pub actual: Token,
+    pub expected: Token
+}*/
 
-pub use parser::Parser;
+use crate::lexer::token::Token;
+use crate::lexer::token::Type as TokenType;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Type
+{
+    UnexpectedToken {
+        actual: Token,
+        expected: TokenType
+    },
+    UnknownToken(Token),
+    Eof
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Error
+{
+    pub line: usize,
+    pub col: usize,
+    pub etype: Type
+}
+
+impl Error
+{
+    pub fn new(line: usize, col: usize, etype: Type) -> Self
+    {
+        Self {
+            line,
+            col,
+            etype
+        }
+    }
+}

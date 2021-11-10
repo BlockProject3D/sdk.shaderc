@@ -29,7 +29,10 @@
 use std::collections::VecDeque;
 use crate::lexer::{Lexer, TokenEntry};
 use crate::lexer::token::Token;
+use crate::parser::error::{Error, Type};
 use crate::parser::tree;
+
+use crate::lexer::token::Type as TokenType;
 
 pub struct Parser
 {
@@ -45,18 +48,16 @@ impl Parser
         };
     }
 
-    fn pop(&mut self, line: usize, col: usize) -> Result<TokenEntry, String>
+    fn pop(&mut self, line: usize, col: usize) -> Result<TokenEntry, Error>
     {
         if let Some(entry) = self.tokens.pop_front() {
-            return Ok(entry);
+            Ok(entry)
+        } else {
+            Err(Error::new(line, col, Type::Eof))
         }
-        return Err(format!(
-            "[Shader Annotation Language] Unexpected EOF at line {}, column {}",
-            line, col
-        ));
     }
 
-    fn try_parse_use(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, String>
+    fn try_parse_use(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Use {
             let TokenEntry { token, line, col } = self.pop(*line, *col)?;
@@ -72,16 +73,16 @@ impl Parser
                                 member
                             })));
                         },
-                        _ => return Err(format!(
-                            "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
-                            &token, line, col
-                        ))
+                        _ => return Err(Error::new(line, col, Type::UnexpectedToken {
+                            expected: TokenType::Identifier,
+                            actual: token
+                        }))
                     };
                 },
-                _ => return Err(format!(
-                    "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
-                    &token, line, col
-                ))
+                _ => return Err(Error::new(line, col, Type::UnexpectedToken {
+                    expected: TokenType::Identifier,
+                    actual: token
+                }))
             };
             /*if let Token::Namespace(module, item) = tok {
                 /*let v: Vec<&str> = n.split("::").collect();
@@ -106,7 +107,7 @@ impl Parser
         return Ok(None);
     }
 
-    fn parse_property(&mut self, line: usize, col: usize) -> Result<tree::Property, String>
+    fn parse_property(&mut self, line: usize, col: usize) -> Result<tree::Property, Error>
     {
         let TokenEntry { token, line, col } = self.pop(line, col)?;
         if let Token::Identifier(t) = token {
@@ -114,10 +115,10 @@ impl Parser
             if let Token::Identifier(n) = token {
                 return Ok(tree::Property { pname: n, ptype: t });
             }
-            return Err(format!(
-                "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
-                &token, line, col
-            ));
+            return Err(Error::new(line, col, Type::UnexpectedToken {
+                expected: TokenType::Identifier,
+                actual: token
+            }));
         }
         /*if let Token::Namespace(t) = tok {
             let (tok, line, col) = self.pop(line, col)?;
@@ -129,13 +130,13 @@ impl Parser
                 &tok, line, col
             ));
         }*/
-        return Err(format!(
-            "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
-            &token, line, col
-        ));
+        return Err(Error::new(line, col, Type::UnexpectedToken {
+            expected: TokenType::Identifier,
+            actual: token
+        }));
     }
 
-    fn try_parse_output(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, String>
+    fn try_parse_output(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Output {
             let prop = self.parse_property(*line, *col)?;
@@ -144,7 +145,7 @@ impl Parser
         return Ok(None);
     }
 
-    fn check_block_end(&mut self, line: usize, col: usize) -> Result<bool, String>
+    fn check_block_end(&mut self, line: usize, col: usize) -> Result<bool, Error>
     {
         if let Some(TokenEntry {token, ..}) = self.tokens.front() {
             if token == &Token::BlockEnd {
@@ -155,7 +156,7 @@ impl Parser
         return Ok(false);
     }
 
-    fn parse_struct(&mut self, line: usize, col: usize) -> Result<tree::Struct, String>
+    fn parse_struct(&mut self, line: usize, col: usize) -> Result<tree::Struct, Error>
     {
         let TokenEntry { token, line, col } = self.pop(line, col)?;
         if token == Token::Struct {
@@ -176,23 +177,23 @@ impl Parser
                         properties: v
                     });
                 }
-                return Err(format!(
-                    "[Shader Annotation Language] Unexpected token, expected '{{' but got {} at line {}, column {}",
-                    &token, line, col
-                ));
+                return Err(Error::new(line, col, Type::UnexpectedToken {
+                    expected: TokenType::BlockStart,
+                    actual: token
+                }));
             }
-            return Err(format!(
-                "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
-                &token, line, col
-            ));
+            return Err(Error::new(line, col, Type::UnexpectedToken {
+                expected: TokenType::Identifier,
+                actual: token
+            }));
         }
-        return Err(format!(
-            "[Shader Annotation Language] Unexpected token, expected struct but got {} at line {}, column {}",
-            &token, line, col
-        ));
+        return Err(Error::new(line, col, Type::UnexpectedToken {
+            expected: TokenType::Struct,
+            actual: token
+        }));
     }
 
-    fn try_parse_const(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, String>
+    fn try_parse_const(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Const {
             if let Some(TokenEntry {token, ..}) = self.tokens.front() {
@@ -204,15 +205,12 @@ impl Parser
                     return Ok(Some(tree::Root::Constant(prop)));
                 }
             }
-            return Err(format!(
-                "[Shader Annotation Language] Unexpected EOF at line {}, column {}",
-                line, col
-            ));
+            return Err(Error::new(*line, *col, Type::Eof));
         }
         return Ok(None);
     }
 
-    fn try_parse_vformat(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, String>
+    fn try_parse_vformat(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Vformat {
             let st = self.parse_struct(*line, *col)?;
@@ -221,7 +219,7 @@ impl Parser
         return Ok(None);
     }
 
-    fn parse_pipeline_val(&mut self, line: usize, col: usize) -> Result<tree::Value, String>
+    fn parse_pipeline_val(&mut self, line: usize, col: usize) -> Result<tree::Value, Error>
     {
         let TokenEntry { token, line, col } = self.pop(line, col)?;
         if let Token::Float(f) = token {
@@ -233,10 +231,13 @@ impl Parser
         } else if let Token::Identifier(id) = token {
             return Ok(tree::Value::Identifier(id));
         }
-        return Err(format!("[Shader Annotation Language] Unexpected token, expected identifier or namespace but got {} at line {}, column {}", &token, line, col));
+        return Err(Error::new(line, col, Type::UnexpectedToken {
+            expected: TokenType::Literal,
+            actual: token
+        }));
     }
 
-    fn parse_var(&mut self, line: usize, col: usize) -> Result<tree::Variable, String>
+    fn parse_var(&mut self, line: usize, col: usize) -> Result<tree::Variable, Error>
     {
         let TokenEntry { token, line, col } = self.pop(line, col)?;
         if let Token::Identifier(vname) = token {
@@ -252,10 +253,13 @@ impl Parser
                 value: val
             });
         }*/
-        return Err(format!("[Shader Annotation Language] Unexpected token, expected identifier or namespace but got {} at line {}, column {}", &token, line, col));
+        return Err(Error::new(line, col, Type::UnexpectedToken {
+            expected: TokenType::Identifier,
+            actual: token
+        }));
     }
 
-    fn parse_varlist(&mut self, line: usize, col: usize) -> Result<tree::VariableList, String>
+    fn parse_varlist(&mut self, line: usize, col: usize) -> Result<tree::VariableList, Error>
     {
         let TokenEntry { token, line, col } = self.pop(line, col)?;
         if let Token::Identifier(pname) = token {
@@ -274,18 +278,18 @@ impl Parser
                     variables: v
                 });
             }
-            return Err(format!(
-                "[Shader Annotation Language] Unexpected token, expected '{{' but got {} at line {}, column {}",
-                &token, line, col
-            ));
+            return Err(Error::new(line, col, Type::UnexpectedToken {
+                expected: TokenType::BlockStart,
+                actual: token
+            }));
         }
-        return Err(format!(
-            "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
-            &token, line, col
-        ));
+        return Err(Error::new(line, col, Type::UnexpectedToken {
+            expected: TokenType::Identifier,
+            actual: token
+        }));
     }
 
-    fn try_parse_pipeline(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, String>
+    fn try_parse_pipeline(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Pipeline {
             let varlist = self.parse_varlist(*line, *col)?;
@@ -295,7 +299,7 @@ impl Parser
     }
 
     fn try_parse_blendfunc(&mut self, TokenEntry {token, line, col}: &TokenEntry)
-                           -> Result<Option<tree::Root>, String>
+                           -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Blendfunc {
             let varlist = self.parse_varlist(*line, *col)?;
@@ -304,7 +308,7 @@ impl Parser
         return Ok(None);
     }
 
-    pub fn parse(&mut self) -> Result<Vec<tree::Root>, String>
+    pub fn parse(&mut self) -> Result<Vec<tree::Root>, Error>
     {
         let mut dfj = Vec::new();
 
@@ -322,10 +326,7 @@ impl Parser
             } else if let Some(elem) = self.try_parse_const(&v)? {
                 dfj.push(elem);
             } else {
-                return Err(format!(
-                    "[Shader Annotation Language] Unknown token at line {}, column {}",
-                    v.line, v.col
-                ));
+                return Err(Error::new(v.line, v.col, Type::UnknownToken(v.token)));
             }
         }
         return Ok(dfj);

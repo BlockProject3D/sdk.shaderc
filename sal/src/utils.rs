@@ -36,7 +36,7 @@ pub fn parse(lexer: Lexer, expand_use: bool, module_paths: &Vec<PathBuf>)
              -> Result<Vec<Statement>, String>
 {
     let mut parser = Parser::new(lexer);
-    let tree = parser.parse()?;
+    let tree = parser.parse().unwrap(); //TODO: fix
     return build_ast(tree, expand_use, module_paths);
 }
 
