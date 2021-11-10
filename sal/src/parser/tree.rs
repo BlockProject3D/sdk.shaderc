@@ -26,6 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Property
 {
     pub ptype: String,
@@ -34,18 +35,21 @@ pub struct Property
     pub pattr: Option<String>
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Struct
 {
     pub name: String,
     pub props: Vec<Property>
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Use
 {
     pub module: String,
     pub member: String
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value
 {
     Int(i32),
@@ -54,6 +58,7 @@ pub enum Value
     Identifier(String)
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Variable
 {
     pub name: String,
@@ -61,12 +66,14 @@ pub struct Variable
     pub value: Value
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct VariableList
 {
     pub name: String,
     pub vars: Vec<Variable>
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Root
 {
     Constant(Property),

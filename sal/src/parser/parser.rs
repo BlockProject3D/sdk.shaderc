@@ -310,3 +310,74 @@ impl Parser
         return Ok(dfj);
     }
 }
+
+#[cfg(test)]
+mod tests
+{
+    use crate::parser::tree::{Property, Root, Struct};
+    use super::*;
+
+    #[test]
+    fn basic_parser()
+    {
+        let source_code = b"
+            const float DeltaTime;
+            const uint FrameCount;
+            const mat3f ModelViewMatrix;
+            const mat3f ProjectionMatrix;
+            const struct PerMaterial
+            {
+                vec4f BaseColor;
+                float UvMultiplier;
+            }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let expected_roots = vec![
+            Root::Constant(Property {
+                pname: "DeltaTime".into(),
+                ptype: "float".into(),
+                pattr: None,
+                ptype_attr: None
+            }),
+            Root::Constant(Property {
+                pname: "FrameCount".into(),
+                ptype: "uint".into(),
+                pattr: None,
+                ptype_attr: None
+            }),
+            Root::Constant(Property {
+                pname: "ModelViewMatrix".into(),
+                ptype: "mat3f".into(),
+                pattr: None,
+                ptype_attr: None
+            }),
+            Root::Constant(Property {
+                pname: "ProjectionMatrix".into(),
+                ptype: "mat3f".into(),
+                pattr: None,
+                ptype_attr: None
+            }),
+            Root::ConstantBuffer(Struct {
+                name: "PerMaterial".into(),
+                props: vec![
+                    Property {
+                        pname: "BaseColor".into(),
+                        ptype: "vec4f".into(),
+                        pattr: None,
+                        ptype_attr: None
+                    },
+                    Property {
+                        pname: "UvMultiplier".into(),
+                        ptype: "float".into(),
+                        pattr: None,
+                        ptype_attr: None
+                    }
+                ]
+            })
+        ];
+        assert_eq!(roots, expected_roots);
+    }
+}
