@@ -380,5 +380,6 @@ mod tests
             })
         ];
         assert_eq!(roots, expected_roots);
+        assert!(parser.tokens.is_empty());
     }
 }
