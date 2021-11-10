@@ -26,7 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::{collections::VecDeque, fmt::Display, string::String};
+use std::{collections::VecDeque};
 
 use regex::bytes::Regex;
 use crate::lexer::token::{CHR_COMMENT, STR_FALSE, STR_TRUE, Token};
@@ -35,6 +35,7 @@ use crate::lexer::token::{
     STR_STRUCT,
     STR_PIPELINE,
     STR_VFORMAT,
+    STR_BLENDFUNC,
     STR_USE,
     CHR_EQ,
     CHR_BLOCK_START,
@@ -74,6 +75,7 @@ fn check_keyword(substr: &[u8]) -> Option<Token>
             STR_STRUCT => Some(Token::Struct),
             STR_PIPELINE => Some(Token::Pipeline),
             STR_VFORMAT => Some(Token::Vformat),
+            STR_BLENDFUNC => Some(Token::Blendfunc),
             STR_USE => Some(Token::Use),
             STR_OUTPUT => Some(Token::Output),
             _ => None
