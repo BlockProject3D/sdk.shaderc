@@ -29,13 +29,15 @@
 pub struct Property
 {
     pub ptype: String,
-    pub pname: String
+    pub ptype_attr: Option<String>,
+    pub pname: String,
+    pub pattr: Option<String>
 }
 
 pub struct Struct
 {
     pub name: String,
-    pub properties: Vec<Property>
+    pub props: Vec<Property>
 }
 
 pub struct Use
@@ -55,13 +57,14 @@ pub enum Value
 pub struct Variable
 {
     pub name: String,
+    pub member: Option<String>,
     pub value: Value
 }
 
 pub struct VariableList
 {
     pub name: String,
-    pub variables: Vec<Variable>
+    pub vars: Vec<Variable>
 }
 
 pub enum Root

@@ -145,7 +145,7 @@ fn parse_struct(s: tree::Struct, err: &str) -> Result<ast::Struct, String>
 {
     let mut plist = Vec::new();
 
-    for v in s.properties {
+    for v in s.props {
         let p = parse_prop(v)?;
         match p.ptype {
             ast::PropertyType::Sampler => {
@@ -329,7 +329,7 @@ fn parse_varlist<T: ast::VarlistStatement>(
 {
     let mut obj = T::new(varlist.name);
 
-    for v in varlist.variables {
+    for v in varlist.vars {
         if let Some(func) = map.get(&*v.name) {
             func(&mut obj, v.value)?;
         } else if let Some(func) = fallback {

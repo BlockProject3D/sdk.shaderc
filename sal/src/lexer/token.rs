@@ -152,6 +152,42 @@ impl Token
             Token::Break => Type::Break
         }
     }
+
+    pub fn identifier(self) -> Option<String>
+    {
+        if let Token::Identifier(s) = self {
+            Some(s)
+        } else {
+            None
+        }
+    }
+
+    pub fn bool(self) -> Option<bool>
+    {
+        if let Token::Bool(b) = self {
+            Some(b)
+        } else {
+            None
+        }
+    }
+
+    pub fn int(self) -> Option<i32>
+    {
+        if let Token::Int(i) = self {
+            Some(i)
+        } else {
+            None
+        }
+    }
+
+    pub fn float(self) -> Option<f32>
+    {
+        if let Token::Float(f) = self {
+            Some(f)
+        } else {
+            None
+        }
+    }
 }
 
 impl Display for Token
