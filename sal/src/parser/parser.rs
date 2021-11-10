@@ -110,7 +110,7 @@ impl Parser
                 pname = token.identifier().unwrap();
             },
             _ => return Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
-                expected: TokenType::Identifier,
+                expected: TokenType::combined([TokenType::Identifier, TokenType::Colon]),
                 actual: token
             }))
         };
@@ -123,7 +123,7 @@ impl Parser
             },
             Token::Break => None,
             _ => return Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
-                expected: TokenType::Break,
+                expected: TokenType::combined([TokenType::Colon, TokenType::Break]),
                 actual: token
             }))
         };
@@ -210,7 +210,7 @@ impl Parser
             Token::Bool(b) => Ok(tree::Value::Bool(b)),
             Token::Identifier(s) => Ok(tree::Value::Identifier(s)),
             _ => Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
-                expected: TokenType::Literal,
+                expected: TokenType::combined([TokenType::Float, TokenType::Int, TokenType::Bool, TokenType::Identifier]),
                 actual: token
             }))
         }
@@ -243,7 +243,7 @@ impl Parser
                 })
             },
             _ => Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
-                expected: TokenType::Eq,
+                expected: TokenType::combined([TokenType::Eq, TokenType::Colon]),
                 actual: token
             }))
         }

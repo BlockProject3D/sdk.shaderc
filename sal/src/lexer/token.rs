@@ -26,8 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::{Display, Formatter, Write};
-use std::str::from_utf8_unchecked;
+use std::fmt::{Display, Formatter};
 
 pub const STR_CONST: &'static [u8] = b"const";
 pub const STR_STRUCT: &'static [u8] = b"struct";
@@ -68,7 +67,7 @@ pub enum Type
     Blendfunc,
     Whitespace,
     Break,
-    Literal
+    Combined(Vec<Type>)
 }
 
 impl Type
@@ -93,8 +92,13 @@ impl Type
             Type::Blendfunc => "blendfunc",
             Type::Whitespace => "whitespace",
             Type::Break => "';'",
-            Type::Literal => "literal"
+            Type::Combined(_) => "combined"
         }
+    }
+
+    pub fn combined<T: AsRef<[Type]>>(t: T) -> Self
+    {
+        Self::Combined(t.as_ref().into())
     }
 }
 
@@ -102,7 +106,17 @@ impl Display for Type
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
     {
-        f.write_str(self.name())
+        if let Type::Combined(v) = self {
+            for (i, t) in v.iter().enumerate() {
+                f.write_str(t.name())?;
+                if i != v.len() - 1 {
+                    f.write_str(" or ")?;
+                }
+            }
+            Ok(())
+        } else {
+            f.write_str(self.name())
+        }
     }
 }
 
