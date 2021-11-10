@@ -382,4 +382,56 @@ mod tests
         assert_eq!(roots, expected_roots);
         assert!(parser.tokens.is_empty());
     }
+
+    #[test]
+    fn basic_output()
+    {
+        let source_code = b"
+            output vec4f FragColor;
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let expected_roots = vec![
+            Root::Output(Property {
+                pname: "FragColor".into(),
+                ptype: "vec4f".into(),
+                pattr: None,
+                ptype_attr: None
+            })
+        ];
+        assert_eq!(roots, expected_roots);
+        assert!(parser.tokens.is_empty());
+    }
+
+    #[test]
+    fn basic_vformat()
+    {
+        let source_code = b"
+            vformat struct Vertex
+            {
+                vec3f Pos;
+            }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let expected_roots = vec![
+            Root::VertexFormat(Struct {
+                name: "Vertex".into(),
+                props: vec![
+                    Property {
+                        pname: "Pos".into(),
+                        ptype: "vec3f".into(),
+                        pattr: None,
+                        ptype_attr: None
+                    }
+                ]
+            })
+        ];
+        assert_eq!(roots, expected_roots);
+        assert!(parser.tokens.is_empty());
+    }
 }
