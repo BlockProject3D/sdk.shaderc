@@ -36,7 +36,9 @@ use crate::lexer::token::Type as TokenType;
 
 pub struct Parser
 {
-    tokens: VecDeque<TokenEntry>
+    tokens: VecDeque<TokenEntry>,
+    cur_line: usize,
+    cur_column: usize
 }
 
 impl Parser
@@ -44,40 +46,44 @@ impl Parser
     pub fn new(lexer: Lexer) -> Parser
     {
         return Parser {
-            tokens: lexer.into_tokens()
+            tokens: lexer.into_tokens(),
+            cur_line: 0,
+            cur_column: 0
         };
     }
 
-    fn pop_expect(&mut self, ttype: TokenType, line: usize, col: usize) -> Result<TokenEntry, Error>
+    fn pop_expect(&mut self, ttype: TokenType) -> Result<Token, Error>
     {
-        let entry = self.pop(line, col)?;
-        if entry.token.get_type() != ttype {
-            Err(Error::new(line, col, Type::UnexpectedToken {
+        let token = self.pop()?;
+        if token.get_type() != ttype {
+            Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
                 expected: ttype,
-                actual: entry.token
+                actual: token
             }))
         } else {
-            Ok(entry)
+            Ok(token)
         }
     }
 
-    fn pop(&mut self, line: usize, col: usize) -> Result<TokenEntry, Error>
+    fn pop(&mut self) -> Result<Token, Error>
     {
         if let Some(entry) = self.tokens.pop_front() {
-            Ok(entry)
+            self.cur_column = entry.col;
+            self.cur_line = entry.line;
+            Ok(entry.token)
         } else {
-            Err(Error::new(line, col, Type::Eof))
+            Err(Error::new(self.cur_line, self.cur_column, Type::Eof))
         }
     }
 
-    fn try_parse_use(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
+    fn try_parse_use(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Use {
-            let TokenEntry { token, line, col } = self.pop_expect(TokenType::Identifier, *line, *col)?;
+            let token = self.pop_expect(TokenType::Identifier)?;
             let module = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
-            let TokenEntry { line, col, .. } = self.pop_expect(TokenType::Colon, line, col)?;
-            let TokenEntry { line, col, .. } = self.pop_expect(TokenType::Colon, line, col)?;
-            let TokenEntry { token, line, col } = self.pop_expect(TokenType::Identifier, line, col)?;
+            self.pop_expect(TokenType::Colon)?;
+            self.pop_expect(TokenType::Colon)?;
+            let token = self.pop_expect(TokenType::Identifier)?;
             let member = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
             Ok(Some(tree::Root::Use(tree::Use {
                 module,
@@ -88,43 +94,35 @@ impl Parser
         }
     }
 
-    fn parse_property(&mut self, line: usize, col: usize) -> Result<tree::Property, Error>
+    fn parse_property(&mut self) -> Result<tree::Property, Error>
     {
-        let TokenEntry { token, line, col } = self.pop_expect(TokenType::Identifier, line, col)?;
+        let token = self.pop_expect(TokenType::Identifier)?;
         let ptype = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
         let mut ptype_attr = None;
         let pname;
-        let l;
-        let c;
-        let TokenEntry { token, line, col } = self.pop(line, col)?;
+        let token = self.pop()?;
         match token {
-            Token::Identifier(n) => {
-                pname = n;
-                l = line;
-                c = col;
-            },
+            Token::Identifier(n) => pname = n,
             Token::Colon => {
-                let TokenEntry { token, line, col } = self.pop_expect(TokenType::Identifier, line, col)?;
+                let token = self.pop_expect(TokenType::Identifier)?;
                 ptype_attr = Some(token.identifier().unwrap()); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
-                let TokenEntry { token, line, col } = self.pop_expect(TokenType::Identifier, line, col)?;
+                let token = self.pop_expect(TokenType::Identifier)?;
                 pname = token.identifier().unwrap();
-                l = line;
-                c = col;
             },
-            _ => return Err(Error::new(line, col, Type::UnexpectedToken {
+            _ => return Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
                 expected: TokenType::Identifier,
                 actual: token
             }))
         };
-        let TokenEntry { token, line, col } = self.pop(l, c)?;
+        let token = self.pop()?;
         let pattr = match token {
             Token::Colon => {
-                let TokenEntry { token, line, col } = self.pop_expect(TokenType::Identifier, line, col)?;
-                self.pop_expect(TokenType::Break, line, col)?;
+                let token = self.pop_expect(TokenType::Identifier)?;
+                self.pop_expect(TokenType::Break)?;
                 Some(token.identifier().unwrap()) // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
             },
             Token::Break => None,
-            _ => return Err(Error::new(line, col, Type::UnexpectedToken {
+            _ => return Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
                 expected: TokenType::Break,
                 actual: token
             }))
@@ -137,37 +135,37 @@ impl Parser
         })
     }
 
-    fn try_parse_output(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
+    fn try_parse_output(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Output {
-            let prop = self.parse_property(*line, *col)?;
+            let prop = self.parse_property()?;
             return Ok(Some(tree::Root::Output(prop)));
         }
         return Ok(None);
     }
 
-    fn check_block_end(&mut self, line: usize, col: usize) -> Result<bool, Error>
+    fn check_block_end(&mut self) -> Result<bool, Error>
     {
         if let Some(TokenEntry {token, ..}) = self.tokens.front() {
             if token == &Token::BlockEnd {
-                self.pop(line, col)?;
+                self.pop()?;
                 return Ok(true);
             }
         }
         return Ok(false);
     }
 
-    fn parse_struct(&mut self, line: usize, col: usize) -> Result<tree::Struct, Error>
+    fn parse_struct(&mut self) -> Result<tree::Struct, Error>
     {
-        let TokenEntry { line, col, .. } = self.pop_expect(TokenType::Struct, line, col)?;
-        let TokenEntry { token, line, col } = self.pop_expect(TokenType::Identifier, line, col)?;
+        self.pop_expect(TokenType::Struct)?;
+        let token = self.pop_expect(TokenType::Identifier)?;
         let name = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
-        let TokenEntry { line, col, .. } = self.pop_expect(TokenType::BlockStart, line, col)?;
+        self.pop_expect(TokenType::BlockStart)?;
         let mut props = Vec::new();
         loop {
-            let prop = self.parse_property(line, col)?;
+            let prop = self.parse_property()?;
             props.push(prop);
-            if self.check_block_end(line, col)? {
+            if self.check_block_end()? {
                 break;
             }
         }
@@ -177,55 +175,55 @@ impl Parser
         })
     }
 
-    fn try_parse_const(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
+    fn try_parse_const(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Const {
             if let Some(TokenEntry {token, ..}) = self.tokens.front() {
                 if token == &Token::Struct {
-                    let st = self.parse_struct(*line, *col)?;
+                    let st = self.parse_struct()?;
                     return Ok(Some(tree::Root::ConstantBuffer(st)));
                 } else {
-                    let prop = self.parse_property(*line, *col)?;
+                    let prop = self.parse_property()?;
                     return Ok(Some(tree::Root::Constant(prop)));
                 }
             }
-            return Err(Error::new(*line, *col, Type::Eof));
+            return Err(Error::new(self.cur_line, self.cur_column, Type::Eof));
         }
         return Ok(None);
     }
 
-    fn try_parse_vformat(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
+    fn try_parse_vformat(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Vformat {
-            let st = self.parse_struct(*line, *col)?;
+            let st = self.parse_struct()?;
             return Ok(Some(tree::Root::VertexFormat(st)));
         }
         return Ok(None);
     }
 
-    fn parse_pipeline_val(&mut self, line: usize, col: usize) -> Result<tree::Value, Error>
+    fn parse_pipeline_val(&mut self) -> Result<tree::Value, Error>
     {
-        let TokenEntry { token, line, col } = self.pop(line, col)?;
+        let token = self.pop()?;
         match token {
             Token::Float(f) => Ok(tree::Value::Float(f)),
             Token::Int(i) => Ok(tree::Value::Int(i)),
             Token::Bool(b) => Ok(tree::Value::Bool(b)),
             Token::Identifier(s) => Ok(tree::Value::Identifier(s)),
-            _ => Err(Error::new(line, col, Type::UnexpectedToken {
+            _ => Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
                 expected: TokenType::Literal,
                 actual: token
             }))
         }
     }
 
-    fn parse_var(&mut self, line: usize, col: usize) -> Result<tree::Variable, Error>
+    fn parse_var(&mut self) -> Result<tree::Variable, Error>
     {
-        let TokenEntry { token, line, col } = self.pop_expect(TokenType::Identifier, line, col)?;
+        let token = self.pop_expect(TokenType::Identifier)?;
         let name = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
-        let TokenEntry { token, line, col } = self.pop(line, col)?;
+        let token = self.pop()?;
         match token {
             Token::Eq => {
-                let value = self.parse_pipeline_val(line, col)?;
+                let value = self.parse_pipeline_val()?;
                 Ok(tree::Variable {
                     name,
                     value,
@@ -233,34 +231,34 @@ impl Parser
                 })
             },
             Token::Colon => {
-                let TokenEntry { line, col, .. } = self.pop_expect(TokenType::Colon, line, col)?;
-                let TokenEntry { token, line, col } = self.pop_expect(TokenType::Identifier, line, col)?;
+                self.pop_expect(TokenType::Colon)?;
+                let token = self.pop_expect(TokenType::Identifier)?;
                 let member = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
-                let TokenEntry { line, col, .. } = self.pop_expect(TokenType::Eq, line, col)?;
-                let value = self.parse_pipeline_val(line, col)?;
+                self.pop_expect(TokenType::Eq)?;
+                let value = self.parse_pipeline_val()?;
                 Ok(tree::Variable {
                     name,
                     value,
                     member: Some(member)
                 })
             },
-            _ => Err(Error::new(line, col, Type::UnexpectedToken {
+            _ => Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
                 expected: TokenType::Eq,
                 actual: token
             }))
         }
     }
 
-    fn parse_varlist(&mut self, line: usize, col: usize) -> Result<tree::VariableList, Error>
+    fn parse_varlist(&mut self) -> Result<tree::VariableList, Error>
     {
-        let TokenEntry { token, line, col } = self.pop_expect(TokenType::Identifier, line, col)?;
+        let token = self.pop_expect(TokenType::Identifier)?;
         let name = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
-        let TokenEntry { line, col, .. } = self.pop_expect(TokenType::BlockStart, line, col)?;
+        self.pop_expect(TokenType::BlockStart)?;
         let mut vars = Vec::new();
         loop {
-            let var = self.parse_var(line, col)?;
+            let var = self.parse_var()?;
             vars.push(var);
-            if self.check_block_end(line, col)? {
+            if self.check_block_end()? {
                 break;
             }
         }
@@ -270,20 +268,19 @@ impl Parser
         })
     }
 
-    fn try_parse_pipeline(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
+    fn try_parse_pipeline(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Pipeline {
-            let varlist = self.parse_varlist(*line, *col)?;
+            let varlist = self.parse_varlist()?;
             return Ok(Some(tree::Root::Pipeline(varlist)));
         }
         return Ok(None);
     }
 
-    fn try_parse_blendfunc(&mut self, TokenEntry {token, line, col}: &TokenEntry)
-                           -> Result<Option<tree::Root>, Error>
+    fn try_parse_blendfunc(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Blendfunc {
-            let varlist = self.parse_varlist(*line, *col)?;
+            let varlist = self.parse_varlist()?;
             return Ok(Some(tree::Root::Blendfunc(varlist)));
         }
         return Ok(None);
@@ -294,17 +291,17 @@ impl Parser
         let mut dfj = Vec::new();
 
         while let Some(v) = self.tokens.pop_front() {
-            if let Some(elem) = self.try_parse_use(&v)? {
+            if let Some(elem) = self.try_parse_use(&v.token)? {
                 dfj.push(elem);
-            } else if let Some(elem) = self.try_parse_output(&v)? {
+            } else if let Some(elem) = self.try_parse_output(&v.token)? {
                 dfj.push(elem);
-            } else if let Some(elem) = self.try_parse_vformat(&v)? {
+            } else if let Some(elem) = self.try_parse_vformat(&v.token)? {
                 dfj.push(elem);
-            } else if let Some(elem) = self.try_parse_pipeline(&v)? {
+            } else if let Some(elem) = self.try_parse_pipeline(&v.token)? {
                 dfj.push(elem);
-            } else if let Some(elem) = self.try_parse_blendfunc(&v)? {
+            } else if let Some(elem) = self.try_parse_blendfunc(&v.token)? {
                 dfj.push(elem);
-            } else if let Some(elem) = self.try_parse_const(&v)? {
+            } else if let Some(elem) = self.try_parse_const(&v.token)? {
                 dfj.push(elem);
             } else {
                 return Err(Error::new(v.line, v.col, Type::UnknownToken(v.token)));
