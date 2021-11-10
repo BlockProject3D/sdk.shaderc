@@ -83,49 +83,6 @@ impl Parser
                 module,
                 member
             })))
-            //let TokenEntry { token, line, col } = self.pop(*line, *col)?;
-            /*match token {
-                Token::Identifier(module) => {
-                    //pop_expect Colon
-                    //pop_expect Colon
-                    let TokenEntry { token, line, col } = self.pop(line, col)?;
-                    match token {
-                        Token::Identifier(member) => {
-                            return Ok(Some(tree::Root::Use(tree::Use {
-                                module,
-                                member
-                            })));
-                        },
-                        _ => return Err(Error::new(line, col, Type::UnexpectedToken {
-                            expected: TokenType::Identifier,
-                            actual: token
-                        }))
-                    };
-                },
-                _ => return Err(Error::new(line, col, Type::UnexpectedToken {
-                    expected: TokenType::Identifier,
-                    actual: token
-                }))
-            };*/
-            /*if let Token::Namespace(module, item) = tok {
-                /*let v: Vec<&str> = n.split("::").collect();
-                if v.len() != 2 {
-                    return Err(format!(
-                        "[Shader Annotation Language] Bad namespace path format ('{}') at line {}, column {}",
-                        &n, line, col
-                    ));
-                }*/
-                let module = String::from(v[0]);
-                let member = String::from(v[0]);
-                return Ok(Some(tree::Root::Use(tree::Use {
-                    module,
-                    member
-                })));
-            }*/
-            /*return Err(format!(
-                "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
-                &tok, line, col
-            ));*/
         } else {
             Ok(None)
         }
@@ -178,20 +135,6 @@ impl Parser
             ptype_attr,
             pattr
         })
-        /*if let Token::Namespace(t) = tok {
-            let (tok, line, col) = self.pop(line, col)?;
-            if let Token::Identifier(n) = tok {
-                return Ok(tree::Property { pname: n, ptype: t });
-            }
-            return Err(format!(
-                "[Shader Annotation Language] Unexpected token, expected identifier but got {} at line {}, column {}",
-                &tok, line, col
-            ));
-        }*/
-        /*return Err(Error::new(line, col, Type::UnexpectedToken {
-            expected: TokenType::Identifier,
-            actual: token
-        }));*/
     }
 
     fn try_parse_output(&mut self, TokenEntry {token, line, col}: &TokenEntry) -> Result<Option<tree::Root>, Error>
@@ -306,32 +249,6 @@ impl Parser
                 actual: token
             }))
         }
-        /*if let Some(value) = self.try_parse_pipeline_val(line, col)? {
-            Ok(tree::Variable {
-                name,
-                value
-            })
-        } else {
-            let TokenEntry { line, col, .. } = self.pop_expect(TokenType::Identifier, line, col)?;
-
-        }*/
-        /*if let Token::Identifier(vname) = token {
-            let val = self.parse_pipeline_val(line, col)?;
-            return Ok(tree::Variable {
-                name: vname,
-                value: val
-            });
-        }/* else if let Token::Namespace(vname) = tok {
-            let val = self.parse_pipeline_val(line, col)?;
-            return Ok(tree::Variable {
-                name: vname,
-                value: val
-            });
-        }*/
-        return Err(Error::new(line, col, Type::UnexpectedToken {
-            expected: TokenType::Identifier,
-            actual: token
-        }));*/
     }
 
     fn parse_varlist(&mut self, line: usize, col: usize) -> Result<tree::VariableList, Error>
