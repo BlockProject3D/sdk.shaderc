@@ -26,11 +26,24 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+use std::fmt::{Debug, Formatter};
+
+#[derive(Clone, PartialEq, Eq)]
 pub enum Type
 {
     UnidentifiedToken(Vec<u8>),
     Eof
+}
+
+impl Debug for Type
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        match self {
+            Type::UnidentifiedToken(v) => write!(f, "UnidentifiedToken({})", String::from_utf8_lossy(&v).as_ref()),
+            Type::Eof => f.write_str("Eof")
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
