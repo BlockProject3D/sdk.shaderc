@@ -382,7 +382,6 @@ pub fn build_ast(
 #[cfg(test)]
 mod tests
 {
-    use std::collections::HashMap;
     use crate::{Lexer, Parser};
     use crate::ast::tree::{BaseType, BlendFactor, BlendfuncStatement, BlendOperator, CullingMode, PipelineStatement, Property, PropertyType, RenderMode, Statement, Struct};
     use super::*;
