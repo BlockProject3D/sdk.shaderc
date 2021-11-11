@@ -26,7 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::{path::PathBuf, string::String, vec::Vec};
+use std::{path::PathBuf, vec::Vec};
 
 use phf::phf_map;
 use crate::ast::error::{Error, ValueType};
@@ -227,7 +227,6 @@ fn parse_bool(value: tree::Value) -> Result<bool, Error>
 }
 
 type VarParseFunc<T> = fn(obj: &mut T, value: tree::Value) -> Result<(), Error>;
-type VarParseFallback<T> = fn(obj: &mut T, name: &str, value: tree::Value) -> Result<(), Error>;
 
 static VARLIST_BLENDFUNC: phf::Map<&'static str, VarParseFunc<ast::BlendfuncStatement>> = phf_map! {
     "SrcColor" => |obj, val|
@@ -290,19 +289,13 @@ static VARLIST_PIPELINE: phf::Map<&'static str, VarParseFunc<ast::PipelineStatem
     }
 };
 
-fn parse_varlist<T: ast::VarlistStatement>(
-    varlist: tree::VariableList,
-    map: &phf::Map<&'static str, VarParseFunc<T>>,
-    fallback: Option<VarParseFallback<T>>
-) -> Result<T, Error>
+fn parse_varlist<T: ast::VarlistStatement>(varlist: tree::VariableList, map: &phf::Map<&'static str, VarParseFunc<T>>) -> Result<T, Error>
 {
     let mut obj = T::new(varlist.name);
 
     for v in varlist.vars {
         if let Some(func) = map.get(&*v.name) {
             func(&mut obj, v.value)?;
-        } else if let Some(func) = fallback {
-            func(&mut obj, &v.name, v.value)?;
         } else {
             return Err(Error::UnknownVariable(v.name));
         }
@@ -340,33 +333,11 @@ fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> 
             return Ok(ast::Statement::VertexFormat(st));
         },
         tree::Root::Pipeline(v) => {
-            let vl = parse_varlist(
-                v,
-                &VARLIST_PIPELINE,
-                Some(|obj, name, val| {
-                    if let Some(id) = name.find("::") {
-                        let prop = &name[0..id];
-                        let output = &name[id + 2..];
-                        if prop == "BlendFunc" {
-                            if let tree::Value::Identifier(v) = val {
-                                obj.blend_functions.insert(String::from(output), String::from(v));
-                                return Ok(());
-                            }
-                            return Err(Error::UnexpectedType {
-                                expected: ValueType::Identifier,
-                                actual: val
-                            });
-                        } else {
-                            return Err(Error::UnknownVariable(prop.into()));
-                        }
-                    }
-                    return Err(Error::UnknownVariable(name.into()));
-                })
-            )?;
+            let vl = parse_varlist(v, &VARLIST_PIPELINE)?;
             return Ok(ast::Statement::Pipeline(vl));
         },
         tree::Root::Blendfunc(v) => {
-            let vl = parse_varlist(v, &VARLIST_BLENDFUNC, None)?;
+            let vl = parse_varlist(v, &VARLIST_BLENDFUNC)?;
             return Ok(ast::Statement::Blendfunc(vl));
         },
         tree::Root::Use(mut u) => {
@@ -413,7 +384,7 @@ mod tests
 {
     use std::collections::HashMap;
     use crate::{Lexer, Parser};
-    use crate::ast::tree::{BaseType, CullingMode, PipelineStatement, Property, PropertyType, RenderMode, Statement, Struct};
+    use crate::ast::tree::{BaseType, BlendFactor, BlendfuncStatement, BlendOperator, CullingMode, PipelineStatement, Property, PropertyType, RenderMode, Statement, Struct};
     use super::*;
 
     #[test]
@@ -569,8 +540,51 @@ mod tests
                 depth_write_enable: true,
                 scissor_enable: false,
                 render_mode: RenderMode::Triangles,
-                culling_mode: CullingMode::BackFace,
-                blend_functions: HashMap::new()
+                culling_mode: CullingMode::BackFace
+            })
+        ];
+        assert_eq!(ast, expected_ast);
+    }
+
+    #[test]
+    fn blendfunc_output()
+    {
+        let source_code = b"
+            output vec4f FragColor;
+
+            blendfunc FragColor
+            {
+                SrcColor = SrcAlpha;
+                DstColor = OneMinusSrcAlpha;
+                SrcAlpha = SrcAlpha;
+                DstAlpha = OneMinusSrcAlpha;
+                ColorOp = Add;
+                AlphaOp = Add;
+            }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let incs = Vec::new();
+        let ast = build_ast(roots, false, &incs).unwrap();
+        let expected_ast = vec![
+            Statement::Output(Property {
+                pname: "FragColor".into(),
+                ptype: PropertyType::Vector(VectorType {
+                    item: BaseType::Float,
+                    size: 4
+                }),
+                pattr: None
+            }),
+            Statement::Blendfunc(BlendfuncStatement {
+                name: "FragColor".into(),
+                src_color: BlendFactor::SrcAlpha,
+                dst_color: BlendFactor::OneMinusSrcAlpha,
+                src_alpha: BlendFactor::SrcAlpha,
+                dst_alpha: BlendFactor::OneMinusSrcAlpha,
+                color_op: BlendOperator::Add,
+                alpha_op: BlendOperator::Add
             })
         ];
         assert_eq!(ast, expected_ast);

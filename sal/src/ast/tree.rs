@@ -109,8 +109,7 @@ pub struct PipelineStatement
     pub depth_write_enable: bool,
     pub scissor_enable: bool,
     pub render_mode: RenderMode,
-    pub culling_mode: CullingMode,
-    pub blend_functions: HashMap<String, String>
+    pub culling_mode: CullingMode
 }
 
 impl VarlistStatement for PipelineStatement
@@ -123,8 +122,7 @@ impl VarlistStatement for PipelineStatement
             depth_write_enable: true,
             scissor_enable: false,
             render_mode: RenderMode::Triangles,
-            culling_mode: CullingMode::BackFace,
-            blend_functions: HashMap::new()
+            culling_mode: CullingMode::BackFace
         };
     }
 }
