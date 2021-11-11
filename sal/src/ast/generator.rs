@@ -435,7 +435,7 @@ mod tests
         let roots = parser.parse().unwrap();
         let incs = Vec::new();
         let ast = build_ast(roots, false, &incs).unwrap();
-        let expected_roots = vec![
+        let expected_ast = vec![
             Statement::Constant(Property {
                 pname: "DeltaTime".into(),
                 ptype: PropertyType::Scalar(BaseType::Float),
@@ -481,7 +481,7 @@ mod tests
                 ]
             })
         ];
-        assert_eq!(ast, expected_roots);
+        assert_eq!(ast, expected_ast);
     }
 
     #[test]
@@ -496,7 +496,7 @@ mod tests
         let roots = parser.parse().unwrap();
         let incs = Vec::new();
         let ast = build_ast(roots, false, &incs).unwrap();
-        let expected_roots = vec![
+        let expected_ast = vec![
             Statement::Output(Property {
                 pname: "FragColor".into(),
                 ptype: PropertyType::Vector(VectorType {
@@ -506,6 +506,39 @@ mod tests
                 pattr: None
             })
         ];
-        assert_eq!(ast, expected_roots);
+        assert_eq!(ast, expected_ast);
+    }
+
+    #[test]
+    fn basic_vformat()
+    {
+        let source_code = b"
+            vformat struct Vertex
+            {
+                vec3f Pos;
+            }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let incs = Vec::new();
+        let ast = build_ast(roots, false, &incs).unwrap();
+        let expected_ast = vec![
+            Statement::VertexFormat(Struct {
+                name: "Vertex".into(),
+                props: vec![
+                    Property {
+                        pname: "Pos".into(),
+                        ptype: PropertyType::Vector(VectorType {
+                            item: BaseType::Float,
+                            size: 3
+                        }),
+                        pattr: None
+                    }
+                ]
+            })
+        ];
+        assert_eq!(ast, expected_ast);
     }
 }
