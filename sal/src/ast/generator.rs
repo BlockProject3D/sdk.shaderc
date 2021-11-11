@@ -36,22 +36,22 @@ use crate::ast::tree::{TextureType, VectorType};
 use crate::parser::tree as tree;
 use crate::utils::parse_file;
 
-fn parse_vec_base(t: &str) -> Result<VectorType, Error>
+fn parse_vec_base(ptype: &str) -> Result<VectorType, Error>
 {
-    let size = match &t[3..t.len() - 1].parse::<u8>() {
+    let size = match &ptype[3..ptype.len() - 1].parse::<u8>() {
         Err(e) => {
             return Err(Error::VectorSize(e.clone()));
         },
         Ok(v) => *v
     };
-    let item = match &t[t.len() - 1..] {
+    let item = match &ptype[ptype.len() - 1..] {
         "f" => ast::BaseType::Float,
         "d" => ast::BaseType::Double,
         "u" => ast::BaseType::Uint,
         "i" => ast::BaseType::Int,
         "b" => ast::BaseType::Bool,
         _ => {
-            return Err(Error::UnknownVectorType(t[t.len() - 1..].into()));
+            return Err(Error::UnknownVectorType(ptype[ptype.len() - 1..].into()));
         },
     };
     return Ok(VectorType {
@@ -60,39 +60,39 @@ fn parse_vec_base(t: &str) -> Result<VectorType, Error>
     });
 }
 
-fn parse_vec(t: &str) -> Result<VectorType, Error>
+fn parse_vec(ptype: &str) -> Result<VectorType, Error>
 {
-    if !t.starts_with("vec") {
-        return Err(Error::UnknownType(t.into()));
+    if !ptype.starts_with("vec") {
+        return Err(Error::UnknownType(ptype.into()));
     }
-    return parse_vec_base(t);
+    return parse_vec_base(ptype);
 }
 
-fn try_parse_matrix(t: &str) -> Result<Option<ast::PropertyType>, Error>
+fn try_parse_matrix(ptype: &str) -> Result<Option<ast::PropertyType>, Error>
 {
-    if !t.starts_with("mat") {
+    if !ptype.starts_with("mat") {
         return Ok(None);
     }
-    let vtype = parse_vec_base(t)?;
+    let vtype = parse_vec_base(ptype)?;
     return Ok(Some(ast::PropertyType::Matrix(vtype)));
 }
 
-fn try_parse_texture(t: &str, subt: Option<&str>) -> Result<Option<ast::PropertyType>, Error>
+fn try_parse_texture(ptype: &str, ptype_attr: Option<&str>) -> Result<Option<ast::PropertyType>, Error>
 {
-    if let Some(st) = subt {
-        return match t {
+    if let Some(subtype) = ptype_attr {
+        return match ptype {
             "Texture2D" | "Texture3D" | "Texture2DArray" | "TextureCube" => {
-                let ptype = match parse_type(st)? {
+                let ttype = match parse_type(subtype, None)? {
                     ast::PropertyType::Scalar(t) => TextureType::Scalar(t),
                     ast::PropertyType::Vector(t) => TextureType::Vector(t),
-                    _ => return Err(Error::UnknownTextureType([t, st].join(":")))
+                    _ => return Err(Error::UnknownTextureType([ptype, subtype].join(":")))
                 };
                 unsafe {
-                    match t {
-                        "Texture2D" => Ok(Some(ast::PropertyType::Texture2D(ptype))),
-                        "Texture3D" => Ok(Some(ast::PropertyType::Texture3D(ptype))),
-                        "Texture2DArray" => Ok(Some(ast::PropertyType::Texture2DArray(ptype))),
-                        "TextureCube" => Ok(Some(ast::PropertyType::TextureCube(ptype))),
+                    match ptype {
+                        "Texture2D" => Ok(Some(ast::PropertyType::Texture2D(ttype))),
+                        "Texture3D" => Ok(Some(ast::PropertyType::Texture3D(ttype))),
+                        "Texture2DArray" => Ok(Some(ast::PropertyType::Texture2DArray(ttype))),
+                        "TextureCube" => Ok(Some(ast::PropertyType::TextureCube(ttype))),
                         _ => std::hint::unreachable_unchecked()
                     }
                 }
@@ -103,13 +103,9 @@ fn try_parse_texture(t: &str, subt: Option<&str>) -> Result<Option<ast::Property
     return Ok(None);
 }
 
-fn parse_type(t: &str) -> Result<ast::PropertyType, Error>
+fn parse_type(ptype: &str, ptype_attr: Option<&str>) -> Result<ast::PropertyType, Error>
 {
-    let mut sub_type = None;
-    if let Some(id) = t.find("::") {
-        sub_type = Some(&t[id + 2..]);
-    }
-    return match t {
+    return match ptype {
         "Sampler" => Ok(ast::PropertyType::Sampler),
         "float" => Ok(ast::PropertyType::Scalar(ast::BaseType::Float)),
         "double" => Ok(ast::PropertyType::Scalar(ast::BaseType::Double)),
@@ -117,13 +113,13 @@ fn parse_type(t: &str) -> Result<ast::PropertyType, Error>
         "uint" => Ok(ast::PropertyType::Scalar(ast::BaseType::Uint)),
         "bool" => Ok(ast::PropertyType::Scalar(ast::BaseType::Bool)),
         _ => {
-            if let Some(elem) = try_parse_matrix(t)? {
+            if let Some(elem) = try_parse_matrix(ptype)? {
                 return Ok(elem);
             }
-            if let Some(elem) = try_parse_texture(t, sub_type)? {
+            if let Some(elem) = try_parse_texture(ptype, ptype_attr)? {
                 return Ok(elem);
             }
-            let vtype = parse_vec(t)?;
+            let vtype = parse_vec(ptype)?;
             Ok(ast::PropertyType::Vector(vtype))
         }
     }
@@ -131,7 +127,7 @@ fn parse_type(t: &str) -> Result<ast::PropertyType, Error>
 
 fn parse_prop(p: tree::Property) -> Result<ast::Property, Error>
 {
-    let ptype = parse_type(&p.ptype)?;
+    let ptype = parse_type(&p.ptype, p.ptype_attr.as_deref())?;
     return Ok(ast::Property {
         ptype,
         pname: p.pname,
