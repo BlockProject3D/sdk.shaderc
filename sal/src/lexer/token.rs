@@ -208,15 +208,12 @@ impl Display for Token
 {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error>
     {
-        unsafe {
-            //SAFETY: we know that token litterals are valid UTF8 as they are valid ASCII
-            match self {
-                Token::Bool(b) => write!(formatter, "bool({})", b),
-                Token::Int(i) => write!(formatter, "int({})", i),
-                Token::Float(f) => write!(formatter, "float({})", f),
-                Token::Identifier(s) => write!(formatter, "identifier({})", s),
-                _ => formatter.write_str(self.get_type().name())
-            }
+        match self {
+            Token::Bool(b) => write!(formatter, "bool({})", b),
+            Token::Int(i) => write!(formatter, "int({})", i),
+            Token::Float(f) => write!(formatter, "float({})", f),
+            Token::Identifier(s) => write!(formatter, "identifier({})", s),
+            _ => formatter.write_str(self.get_type().name())
         }
     }
 }
