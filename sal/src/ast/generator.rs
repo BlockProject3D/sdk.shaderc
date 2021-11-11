@@ -457,6 +457,72 @@ mod tests
     }
 
     #[test]
+    fn complex_ast()
+    {
+        let source_code = b"
+            const Sampler BaseSampler;
+            const Texture2D:vec4f BaseTexture : BaseSampler;
+            const Texture2D:float NoiseTexture : BaseSampler;
+            const struct PerMaterial
+            {
+                vec4f BaseColor;
+                float Specular : Pack;
+                float UvMultiplier : Pack;
+            }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let incs = Vec::new();
+        let ast = build_ast(roots, false, &incs).unwrap();
+        let expected_ast = vec![
+            Statement::Constant(Property {
+                pname: "BaseSampler".into(),
+                ptype: PropertyType::Sampler,
+                pattr: None
+            }),
+            Statement::Constant(Property {
+                pname: "BaseTexture".into(),
+                ptype: PropertyType::Texture2D(TextureType::Vector(VectorType {
+                    item: BaseType::Float,
+                    size: 4
+                })),
+                pattr: Some("BaseSampler".into())
+            }),
+            Statement::Constant(Property {
+                pname: "NoiseTexture".into(),
+                ptype: PropertyType::Texture2D(TextureType::Scalar(BaseType::Float)),
+                pattr: Some("BaseSampler".into())
+            }),
+            Statement::ConstantBuffer(Struct {
+                name: "PerMaterial".into(),
+                props: vec![
+                    Property {
+                        pname: "BaseColor".into(),
+                        ptype: PropertyType::Vector(VectorType {
+                            item: BaseType::Float,
+                            size: 4
+                        }),
+                        pattr: None
+                    },
+                    Property {
+                        pname: "Specular".into(),
+                        ptype: PropertyType::Scalar(BaseType::Float),
+                        pattr: Some("Pack".into())
+                    },
+                    Property {
+                        pname: "UvMultiplier".into(),
+                        ptype: PropertyType::Scalar(BaseType::Float),
+                        pattr: Some("Pack".into())
+                    }
+                ]
+            })
+        ];
+        assert_eq!(ast, expected_ast);
+    }
+
+    #[test]
     fn basic_output()
     {
         let source_code = b"
