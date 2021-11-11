@@ -14,7 +14,7 @@ const struct Material
 }
 
 const Sampler BaseSampler;
-const Texture2D:4f BaseTexture : BaseSampler;
+const Texture2D:vec4f BaseTexture : BaseSampler;
 #sal
 
 void main()
