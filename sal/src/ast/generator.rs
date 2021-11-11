@@ -163,41 +163,41 @@ fn parse_struct(s: tree::Struct) -> Result<ast::Struct, Error>
 }
 
 static BLENDFACTOR: phf::Map<&'static str, ast::BlendFactor> = phf_map! {
-    "ZERO" => ast::BlendFactor::Zero,
-    "ONE" => ast::BlendFactor::One,
-    "SRC_COLOR" => ast::BlendFactor::SrcColor,
-    "ONE_MINUS_SRC_COLOR" => ast::BlendFactor::OneMinusSrcColor,
-    "SRC_ALPHA" => ast::BlendFactor::SrcAlpha,
-    "ONE_MINUS_SRC_ALPHA" => ast::BlendFactor::OneMinusSrcAlpha,
-    "DST_COLOR" => ast::BlendFactor::DstColor,
-    "ONE_MINUS_DST_COLOR" => ast::BlendFactor::OneMinusDstColor,
-    "DST_ALPHA" => ast::BlendFactor::DstAlpha,
-    "ONE_MINUS_DST_ALPHA" => ast::BlendFactor::OneMinusDstAlpha,
-    "SRC_ALPHA_SATURATE" => ast::BlendFactor::SrcAlphaSaturate,
-    "SRC1_COLOR" => ast::BlendFactor::Src1Color,
-    "ONE_MINUS_SRC!_COLOR" => ast::BlendFactor::OneMinusSrc1Color,
-    "SRC1_ALPHA" => ast::BlendFactor::Src1Alpha,
-    "ONE_MINUS_SRC1_ALPHA" => ast::BlendFactor::OneMinusSrc1Alpha
+    "Zero" => ast::BlendFactor::Zero,
+    "One" => ast::BlendFactor::One,
+    "SrcColor" => ast::BlendFactor::SrcColor,
+    "OneMinusSrcColor" => ast::BlendFactor::OneMinusSrcColor,
+    "SrcAlpha" => ast::BlendFactor::SrcAlpha,
+    "OneMinusSrcAlpha" => ast::BlendFactor::OneMinusSrcAlpha,
+    "DstColor" => ast::BlendFactor::DstColor,
+    "OneMinusDstColor" => ast::BlendFactor::OneMinusDstColor,
+    "DstAlpha" => ast::BlendFactor::DstAlpha,
+    "OneMinusDstAlpha" => ast::BlendFactor::OneMinusDstAlpha,
+    "SrcAlphaSaturate" => ast::BlendFactor::SrcAlphaSaturate,
+    "Src1Color" => ast::BlendFactor::Src1Color,
+    "OneMinusSrc1Color" => ast::BlendFactor::OneMinusSrc1Color,
+    "Src1Alpha" => ast::BlendFactor::Src1Alpha,
+    "OneMinusSrc1Alpha" => ast::BlendFactor::OneMinusSrc1Alpha
 };
 
 static BLENDOP: phf::Map<&'static str, ast::BlendOperator> = phf_map! {
-    "ADD" => ast::BlendOperator::Add,
-    "SUBTRACT" => ast::BlendOperator::Subtract,
-    "INV_SUBTRACT" => ast::BlendOperator::InverseSubtract,
-    "MIN" => ast::BlendOperator::Min,
-    "MAX" => ast::BlendOperator::Max
+    "Add" => ast::BlendOperator::Add,
+    "Sub" => ast::BlendOperator::Subtract,
+    "InvSub" => ast::BlendOperator::InverseSubtract,
+    "Min" => ast::BlendOperator::Min,
+    "Max" => ast::BlendOperator::Max
 };
 
 static RENDERMODE: phf::Map<&'static str, ast::RenderMode> = phf_map! {
-    "TRIANGLES" => ast::RenderMode::Triangles,
-    "WIREFRAME" => ast::RenderMode::Wireframe,
-    "PATCHES" => ast::RenderMode::Patches
+    "Triangles" => ast::RenderMode::Triangles,
+    "Wireframe" => ast::RenderMode::Wireframe,
+    "Patches" => ast::RenderMode::Patches
 };
 
 static CULLINGMODE: phf::Map<&'static str, ast::CullingMode> = phf_map! {
-    "FRONT_FACE" => ast::CullingMode::FrontFace,
-    "BACK_FACE" => ast::CullingMode::BackFace,
-    "DISABLED" => ast::CullingMode::Disabled
+    "FrontFace" => ast::CullingMode::FrontFace,
+    "BackFace" => ast::CullingMode::BackFace,
+    "Disabled" => ast::CullingMode::Disabled
 };
 
 fn parse_enum<T: Copy>(value: tree::Value, map: &phf::Map<&'static str, T>) -> Result<T, Error>
@@ -411,8 +411,9 @@ pub fn build_ast(
 #[cfg(test)]
 mod tests
 {
+    use std::collections::HashMap;
     use crate::{Lexer, Parser};
-    use crate::ast::tree::{BaseType, Property, PropertyType, Statement, Struct};
+    use crate::ast::tree::{BaseType, CullingMode, PipelineStatement, Property, PropertyType, RenderMode, Statement, Struct};
     use super::*;
 
     #[test]
@@ -537,6 +538,39 @@ mod tests
                         pattr: None
                     }
                 ]
+            })
+        ];
+        assert_eq!(ast, expected_ast);
+    }
+
+    #[test]
+    fn basic_pipeline()
+    {
+        let source_code = b"
+            pipeline Test
+            {
+                DepthEnable = true;
+                DepthWriteEnable = true;
+                ScissorEnable = false;
+                RenderMode = Triangles;
+                CullingMode = BackFace;
+            }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let incs = Vec::new();
+        let ast = build_ast(roots, false, &incs).unwrap();
+        let expected_ast = vec![
+            Statement::Pipeline(PipelineStatement {
+                name: "Test".into(),
+                depth_enable: true,
+                depth_write_enable: true,
+                scissor_enable: false,
+                render_mode: RenderMode::Triangles,
+                culling_mode: CullingMode::BackFace,
+                blend_functions: HashMap::new()
             })
         ];
         assert_eq!(ast, expected_ast);
