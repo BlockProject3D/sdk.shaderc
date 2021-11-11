@@ -391,8 +391,8 @@ mod tests
     {
         let source_code = b"
             const Sampler BaseSampler;
-            const Texture2D:4f BaseTexture : BaseSampler;
-            const Texture2D:1f NoiseTexture : BaseSampler;
+            const Texture2D:vec4f BaseTexture : BaseSampler;
+            const Texture2D:float NoiseTexture : BaseSampler;
             const struct PerMaterial
             {
                 vec4f BaseColor;
@@ -415,13 +415,13 @@ mod tests
                 pname: "BaseTexture".into(),
                 ptype: "Texture2D".into(),
                 pattr: Some("BaseSampler".into()),
-                ptype_attr: Some("4f".into())
+                ptype_attr: Some("vec4f".into())
             }),
             Root::Constant(Property {
                 pname: "NoiseTexture".into(),
                 ptype: "Texture2D".into(),
                 pattr: Some("BaseSampler".into()),
-                ptype_attr: Some("1f".into())
+                ptype_attr: Some("float".into())
             }),
             Root::ConstantBuffer(Struct {
                 name: "PerMaterial".into(),
@@ -562,6 +562,47 @@ mod tests
                         member: None,
                         name: "Val4".into(),
                         value: Value::Identifier("AnIdent".into())
+                    }
+                ]
+            })
+        ];
+        assert_eq!(roots, expected_roots);
+        assert!(parser.tokens.is_empty());
+    }
+
+    #[test]
+    fn complex_varlist()
+    {
+        let source_code = b"
+            pipeline Test
+            {
+                Val1::member1 = 0.1;
+                Val1::member2 = 0.5;
+                Val2 = 12;
+            }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let expected_roots = vec![
+            Root::Pipeline(VariableList {
+                name: "Test".into(),
+                vars: vec![
+                    Variable {
+                        member: Some("member1".into()),
+                        name: "Val1".into(),
+                        value: Value::Float(0.1)
+                    },
+                    Variable {
+                        member: Some("member2".into()),
+                        name: "Val1".into(),
+                        value: Value::Float(0.5)
+                    },
+                    Variable {
+                        member: None,
+                        name: "Val2".into(),
+                        value: Value::Int(12)
                     }
                 ]
             })
