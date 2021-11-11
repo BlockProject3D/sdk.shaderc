@@ -37,7 +37,8 @@ pub fn parse(lexer: Lexer, expand_use: bool, module_paths: &Vec<PathBuf>)
 {
     let mut parser = Parser::new(lexer);
     let tree = parser.parse().unwrap(); //TODO: fix
-    return build_ast(tree, expand_use, module_paths);
+    let ast = build_ast(tree, expand_use, module_paths).unwrap();  //TODO: fix
+    Ok(ast)
 }
 
 pub fn parse_file(file: &Path, expand_use: bool, module_paths: &Vec<PathBuf>) -> Result<Vec<Statement>, String>

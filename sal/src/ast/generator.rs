@@ -29,21 +29,18 @@
 use std::{path::PathBuf, string::String, vec::Vec};
 
 use phf::phf_map;
+use crate::ast::error::{Error, ValueType};
 
 use crate::ast::tree as ast;
 use crate::ast::tree::{TextureType, VectorType};
 use crate::parser::tree as tree;
 use crate::utils::parse_file;
 
-fn parse_vec_base(t: &str) -> Result<VectorType, String>
+fn parse_vec_base(t: &str) -> Result<VectorType, Error>
 {
     let size = match &t[3..t.len() - 1].parse::<u8>() {
         Err(e) => {
-            return Err(format!(
-                "[Shader Annotation Language] Invalid vector item count {}: {}",
-                &t[3..t.len() - 1],
-                e
-            ))
+            return Err(Error::VectorSize(e.clone()));
         },
         Ok(v) => *v
     };
@@ -54,10 +51,7 @@ fn parse_vec_base(t: &str) -> Result<VectorType, String>
         "i" => ast::BaseType::Int,
         "b" => ast::BaseType::Bool,
         _ => {
-            return Err(format!(
-                "[Shader Annotation Language] Unknown type letter {}",
-                &t[t.len() - 1..]
-            ))
+            return Err(Error::UnknownVectorType(t[t.len() - 1..].into()));
         },
     };
     return Ok(VectorType {
@@ -66,15 +60,15 @@ fn parse_vec_base(t: &str) -> Result<VectorType, String>
     });
 }
 
-fn pasre_vec(t: &str) -> Result<VectorType, String>
+fn parse_vec(t: &str) -> Result<VectorType, Error>
 {
     if !t.starts_with("vec") {
-        return Err(format!("[Shader Annotation Language] Unknown vector type {}", t));
+        return Err(Error::UnknownType(t.into()));
     }
     return parse_vec_base(t);
 }
 
-fn try_parse_matrix(t: &str) -> Result<Option<ast::PropertyType>, String>
+fn try_parse_matrix(t: &str) -> Result<Option<ast::PropertyType>, Error>
 {
     if !t.starts_with("mat") {
         return Ok(None);
@@ -83,16 +77,15 @@ fn try_parse_matrix(t: &str) -> Result<Option<ast::PropertyType>, String>
     return Ok(Some(ast::PropertyType::Matrix(vtype)));
 }
 
-fn try_parse_texture(t: &str, subt: Option<&str>) -> Result<Option<ast::PropertyType>, String>
+fn try_parse_texture(t: &str, subt: Option<&str>) -> Result<Option<ast::PropertyType>, Error>
 {
     if let Some(st) = subt {
-
         return match t {
             "Texture2D" | "Texture3D" | "Texture2DArray" | "TextureCube" => {
                 let ptype = match parse_type(st)? {
                     ast::PropertyType::Scalar(t) => TextureType::Scalar(t),
                     ast::PropertyType::Vector(t) => TextureType::Vector(t),
-                    _ => return Err(String::from("test")) //TODO: fix
+                    _ => return Err(Error::UnknownTextureType([t, st].join(":")))
                 };
                 unsafe {
                     match t {
@@ -110,7 +103,7 @@ fn try_parse_texture(t: &str, subt: Option<&str>) -> Result<Option<ast::Property
     return Ok(None);
 }
 
-fn parse_type(t: &str) -> Result<ast::PropertyType, String>
+fn parse_type(t: &str) -> Result<ast::PropertyType, Error>
 {
     let mut sub_type = None;
     if let Some(id) = t.find("::") {
@@ -130,13 +123,13 @@ fn parse_type(t: &str) -> Result<ast::PropertyType, String>
             if let Some(elem) = try_parse_texture(t, sub_type)? {
                 return Ok(elem);
             }
-            let vtype = pasre_vec(t)?;
+            let vtype = parse_vec(t)?;
             Ok(ast::PropertyType::Vector(vtype))
         }
     }
 }
 
-fn parse_prop(p: tree::Property) -> Result<ast::Property, String>
+fn parse_prop(p: tree::Property) -> Result<ast::Property, Error>
 {
     let ptype = parse_type(&p.ptype)?;
     return Ok(ast::Property {
@@ -146,43 +139,19 @@ fn parse_prop(p: tree::Property) -> Result<ast::Property, String>
     });
 }
 
-fn parse_struct(s: tree::Struct, err: &str) -> Result<ast::Struct, String>
+fn parse_struct(s: tree::Struct, err: &str) -> Result<ast::Struct, Error>
 {
     let mut plist = Vec::new();
 
     for v in s.props {
         let p = parse_prop(v)?;
         match p.ptype {
-            ast::PropertyType::Sampler => {
-                return Err(format!(
-                    "[Shader Annotation Language] Sampler definitions are not allowed in a {}",
-                    err
-                ))
-            },
-            ast::PropertyType::Texture2D(_) => {
-                return Err(format!(
-                    "[Shader Annotation Language] Texture2D definitions are not allowed in a {}",
-                    err
-                ))
-            },
-            ast::PropertyType::Texture3D(_) => {
-                return Err(format!(
-                    "[Shader Annotation Language] Texture3D definitions are not allowed in a {}",
-                    err
-                ))
-            },
-            ast::PropertyType::Texture2DArray(_) => {
-                return Err(format!(
-                    "[Shader Annotation Language] Texture2DArray definitions are not allowed in a {}",
-                    err
-                ))
-            },
-            ast::PropertyType::TextureCube(_) => {
-                return Err(format!(
-                    "[Shader Annotation Language] TextureCube definitions are not allowed in a {}",
-                    err
-                ))
-            },
+            ast::PropertyType::Sampler
+            | ast::PropertyType::Texture2D(_)
+            | ast::PropertyType::Texture3D(_)
+            | ast::PropertyType::Texture2DArray(_)
+            | ast::PropertyType::TextureCube(_)
+            => return Err(Error::BannedType(p.ptype)),
             _ => ()
         };
         plist.push(p);
@@ -231,55 +200,64 @@ static CULLINGMODE: phf::Map<&'static str, ast::CullingMode> = phf_map! {
     "DISABLED" => ast::CullingMode::Disabled
 };
 
-fn parse_enum<T: Copy>(value: tree::Value, map: &phf::Map<&'static str, T>) -> Result<T, String>
+fn parse_enum<T: Copy>(value: tree::Value, map: &phf::Map<&'static str, T>) -> Result<T, Error>
 {
     if let tree::Value::Identifier(id) = value {
         if let Some(e) = map.get(&*id) {
             return Ok(*e);
         }
-        return Err(format!("[Shader Annotation Language] Unknown enum {}", id));
+        return Err(Error::UnknownEnum(id));
     }
-    return Err(String::from("[Shader Annotation Language] Value is not an enumeration"));
+    return Err(Error::UnexpectedType {
+        expected: ValueType::Enum,
+        actual: value
+    });
 }
 
-type VarParseFunc<T> = fn(obj: &mut T, value: tree::Value) -> Result<(), String>;
-type VarParseFallback<T> = fn(obj: &mut T, name: &str, value: tree::Value) -> Result<(), String>;
+fn parse_bool(value: tree::Value) -> Result<bool, Error>
+{
+    if let tree::Value::Bool(b) = value {
+        Ok(b)
+    } else {
+        Err(Error::UnexpectedType {
+            expected: ValueType::Bool,
+            actual: value
+        })
+    }
+}
+
+type VarParseFunc<T> = fn(obj: &mut T, value: tree::Value) -> Result<(), Error>;
+type VarParseFallback<T> = fn(obj: &mut T, name: &str, value: tree::Value) -> Result<(), Error>;
 
 static VARLIST_BLENDFUNC: phf::Map<&'static str, VarParseFunc<ast::BlendfuncStatement>> = phf_map! {
     "SrcColor" => |obj, val|
     {
-        let e = parse_enum(val, &BLENDFACTOR)?;
-        obj.src_color = e;
+        obj.src_color = parse_enum(val, &BLENDFACTOR)?;
         return Ok(());
     },
     "DstColor" => |obj, val|
     {
-        let e = parse_enum(val, &BLENDFACTOR)?;
-        obj.dst_color = e;
+        obj.dst_color = parse_enum(val, &BLENDFACTOR)?;
         return Ok(());
     },
     "SrcAlpha" => |obj, val|
     {
-        let e = parse_enum(val, &BLENDFACTOR)?;
-        obj.src_alpha = e;
+        obj.src_alpha = parse_enum(val, &BLENDFACTOR)?;
         return Ok(());
     },
     "DstAlpha" => |obj, val|
     {
-        let e = parse_enum(val, &BLENDFACTOR)?;
-        obj.dst_alpha = e;
+        obj.dst_alpha = parse_enum(val, &BLENDFACTOR)?;
         return Ok(());
     },
     "ColorOp" => |obj, val|
     {
-        let e = parse_enum(val, &BLENDOP)?;
-        obj.color_op = e;
+        obj.color_op = parse_enum(val, &BLENDOP)?;
         return Ok(());
     },
     "AlphaOp" => |obj, val|
     {
-        let e = parse_enum(val, &BLENDOP)?;
-        obj.alpha_op = e;
+        obj.alpha_op = parse_enum(val, &BLENDOP)?;
         return Ok(());
     }
 };
@@ -287,41 +265,27 @@ static VARLIST_BLENDFUNC: phf::Map<&'static str, VarParseFunc<ast::BlendfuncStat
 static VARLIST_PIPELINE: phf::Map<&'static str, VarParseFunc<ast::PipelineStatement>> = phf_map! {
     "DepthEnable" => |obj, val|
     {
-        if let tree::Value::Bool(b) = val
-        {
-            obj.depth_enable = b;
-            return Ok(());
-        }
-        return Err(String::from("[Shader Annotation Language] Expected bool for variable 'DepthEnable'"));
+        obj.depth_enable = parse_bool(val)?;
+        Ok(())
     },
     "DepthWriteEnable" => |obj, val|
     {
-        if let tree::Value::Bool(b) = val
-        {
-            obj.depth_write_enable = b;
-            return Ok(());
-        }
-        return Err(String::from("[Shader Annotation Language] Expected bool for variable 'DepthWriteEnable'"));
+        obj.depth_write_enable = parse_bool(val)?;
+        Ok(())
     },
     "ScissorEnable" => |obj, val|
     {
-        if let tree::Value::Bool(b) = val
-        {
-            obj.scissor_enable = b;
-            return Ok(());
-        }
-        return Err(String::from("[Shader Annotation Language] Expected bool for variable 'ScissorEnable'"));
+        obj.scissor_enable = parse_bool(val)?;
+        Ok(())
     },
     "RenderMode" => |obj, val|
     {
-        let e = parse_enum(val, &RENDERMODE)?;
-        obj.render_mode = e;
+        obj.render_mode = parse_enum(val, &RENDERMODE)?;
         return Ok(());
     },
     "CullingMode" => |obj, val|
     {
-        let e = parse_enum(val, &CULLINGMODE)?;
-        obj.culling_mode = e;
+        obj.culling_mode = parse_enum(val, &CULLINGMODE)?;
         return Ok(());
     }
 };
@@ -330,7 +294,7 @@ fn parse_varlist<T: ast::VarlistStatement>(
     varlist: tree::VariableList,
     map: &phf::Map<&'static str, VarParseFunc<T>>,
     fallback: Option<VarParseFallback<T>>
-) -> Result<T, String>
+) -> Result<T, Error>
 {
     let mut obj = T::new(varlist.name);
 
@@ -340,13 +304,13 @@ fn parse_varlist<T: ast::VarlistStatement>(
         } else if let Some(func) = fallback {
             func(&mut obj, &v.name, v.value)?;
         } else {
-            return Err(format!("[Shader Annotation Language] Unknown variable name {}", v.name));
+            return Err(Error::UnknownVariable(v.name));
         }
     }
     return Ok(obj);
 }
 
-fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> Result<ast::Statement, String>
+fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> Result<ast::Statement, Error>
 {
     match elem {
         tree::Root::Constant(c) => {
@@ -360,36 +324,13 @@ fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> 
         tree::Root::Output(c) => {
             let prop = parse_prop(c)?;
             match prop.ptype {
-                ast::PropertyType::Sampler => {
-                    return Err(String::from(
-                        "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
-                    ))
-                },
-                ast::PropertyType::Texture2D(_) => {
-                    return Err(String::from(
-                        "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
-                    ))
-                },
-                ast::PropertyType::Texture3D(_) => {
-                    return Err(String::from(
-                        "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
-                    ))
-                },
-                ast::PropertyType::Texture2DArray(_) => {
-                    return Err(String::from(
-                        "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
-                    ))
-                },
-                ast::PropertyType::TextureCube(_) => {
-                    return Err(String::from(
-                        "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
-                    ))
-                },
-                ast::PropertyType::Matrix(_) => {
-                    return Err(String::from(
-                        "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
-                    ))
-                },
+                ast::PropertyType::Sampler
+                | ast::PropertyType::Texture2D(_)
+                | ast::PropertyType::Texture3D(_)
+                | ast::PropertyType::Texture2DArray(_)
+                | ast::PropertyType::TextureCube(_)
+                | ast::PropertyType::Matrix(_)
+                => return Err(Error::BannedType(prop.ptype)),
                 _ => ()
             };
             return Ok(ast::Statement::Output(prop));
@@ -411,14 +352,15 @@ fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> 
                                 obj.blend_functions.insert(String::from(output), String::from(v));
                                 return Ok(());
                             }
-                            return Err(String::from(
-                                "[Shader Annotation Language] Expected identifier for variable 'BlendFunc'"
-                            ));
+                            return Err(Error::UnexpectedType {
+                                expected: ValueType::Identifier,
+                                actual: val
+                            });
                         } else {
-                            return Err(format!("[Shader Annotation Language] Unknown variable name {}", prop));
+                            return Err(Error::UnknownVariable(prop.into()));
                         }
                     }
-                    return Err(format!("[Shader Annotation Language] Unknown variable name {}", name));
+                    return Err(Error::UnknownVariable(name.into()));
                 })
             )?;
             return Ok(ast::Statement::Pipeline(vl));
@@ -435,7 +377,7 @@ fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> 
                 u.module.push_str(".sal");
                 let file = p.join(&u.module);
                 if file.exists() && file.is_file() {
-                    let statements = parse_file(&file, false, &Vec::new())?;
+                    let statements = parse_file(&file, false, &Vec::new()).unwrap(); //TODO: fix
                     for stmt in statements {
                         if let Some(name) = stmt.get_name() {
                             if name == u.member {
@@ -443,10 +385,7 @@ fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> 
                             }
                         }
                     }
-                    return Err(format!(
-                        "[Shader Annotation Language] Could not find member {} in module {}",
-                        u.member, u.module
-                    ));
+                    return Err(Error::UseNotFound(u));
                 }
             }
         }
@@ -458,7 +397,7 @@ pub fn build_ast(
     elems: Vec<tree::Root>,
     expand_use: bool,
     module_paths: &Vec<PathBuf>
-) -> Result<Vec<ast::Statement>, String>
+) -> Result<Vec<ast::Statement>, Error>
 {
     let mut stvec = Vec::new();
 

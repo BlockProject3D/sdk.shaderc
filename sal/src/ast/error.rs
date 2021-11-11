@@ -26,7 +26,33 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod error;
-pub mod tree;
-mod generator;
-pub use generator::build_ast;
+use std::num::ParseIntError;
+use crate::parser::tree;
+use crate::ast::tree as ast;
+
+#[derive(Clone, Debug)]
+pub enum ValueType
+{
+    Bool,
+    Float,
+    Int,
+    Enum,
+    Identifier
+}
+
+#[derive(Clone, Debug)]
+pub enum Error
+{
+    VectorSize(ParseIntError),
+    UnknownVectorType(String),
+    UnknownTextureType(String),
+    UnknownType(String),
+    BannedType(ast::PropertyType),
+    UnknownEnum(String),
+    UnknownVariable(String),
+    UnexpectedType {
+        expected: ValueType,
+        actual: tree::Value
+    },
+    UseNotFound(tree::Use)
+}
