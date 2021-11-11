@@ -13,8 +13,8 @@ const struct Material
     float UvMult;
 }
 
-const Texture2D:4f BaseTexture;
-const Sampler BaseSampler : BaseTexture;
+const Sampler BaseSampler;
+const Texture2D:4f BaseTexture : BaseSampler;
 #sal
 
 void main()
