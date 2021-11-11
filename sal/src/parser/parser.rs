@@ -86,6 +86,7 @@ impl Parser
             self.pop_expect(TokenType::Colon)?;
             let token = self.pop_expect(TokenType::Identifier)?;
             let member = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
+            self.pop_expect(TokenType::Break)?;
             Ok(Some(tree::Root::Use(tree::Use {
                 module,
                 member
@@ -225,6 +226,7 @@ impl Parser
         match token {
             Token::Eq => {
                 let value = self.parse_pipeline_val()?;
+                self.pop_expect(TokenType::Break)?;
                 Ok(tree::Variable {
                     name,
                     value,
@@ -237,6 +239,7 @@ impl Parser
                 let member = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
                 self.pop_expect(TokenType::Eq)?;
                 let value = self.parse_pipeline_val()?;
+                self.pop_expect(TokenType::Break)?;
                 Ok(tree::Variable {
                     name,
                     value,
@@ -315,7 +318,7 @@ impl Parser
 #[cfg(test)]
 mod tests
 {
-    use crate::parser::tree::{Property, Root, Struct};
+    use crate::parser::tree::{Property, Root, Struct, Use, Value, Variable, VariableList};
     use super::*;
 
     #[test]
@@ -427,6 +430,73 @@ mod tests
                         ptype: "vec3f".into(),
                         pattr: None,
                         ptype_attr: None
+                    }
+                ]
+            })
+        ];
+        assert_eq!(roots, expected_roots);
+        assert!(parser.tokens.is_empty());
+    }
+
+    #[test]
+    fn basic_use()
+    {
+        let source_code = b"
+            use module::test;
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let expected_roots = vec![
+            Root::Use(Use {
+                member: "test".into(),
+                module: "module".into()
+            })
+        ];
+        assert_eq!(roots, expected_roots);
+        assert!(parser.tokens.is_empty());
+    }
+
+    #[test]
+    fn basic_varlist()
+    {
+        let source_code = b"
+            pipeline Test
+            {
+                Val1 = 0.1;
+                Val2 = 12;
+                Val3 = true;
+                Val4 = AnIdent;
+            }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let expected_roots = vec![
+            Root::Pipeline(VariableList {
+                name: "Test".into(),
+                vars: vec![
+                    Variable {
+                        member: None,
+                        name: "Val1".into(),
+                        value: Value::Float(0.1)
+                    },
+                    Variable {
+                        member: None,
+                        name: "Val2".into(),
+                        value: Value::Int(12)
+                    },
+                    Variable {
+                        member: None,
+                        name: "Val3".into(),
+                        value: Value::Bool(true)
+                    },
+                    Variable {
+                        member: None,
+                        name: "Val4".into(),
+                        value: Value::Identifier("AnIdent".into())
                     }
                 ]
             })
