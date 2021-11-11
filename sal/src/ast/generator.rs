@@ -139,7 +139,7 @@ fn parse_prop(p: tree::Property) -> Result<ast::Property, Error>
     });
 }
 
-fn parse_struct(s: tree::Struct, err: &str) -> Result<ast::Struct, Error>
+fn parse_struct(s: tree::Struct) -> Result<ast::Struct, Error>
 {
     let mut plist = Vec::new();
 
@@ -318,7 +318,7 @@ fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> 
             return Ok(ast::Statement::Constant(prop));
         },
         tree::Root::ConstantBuffer(s) => {
-            let st = parse_struct(s, "constant buffer")?;
+            let st = parse_struct(s)?;
             return Ok(ast::Statement::ConstantBuffer(st));
         },
         tree::Root::Output(c) => {
@@ -336,7 +336,7 @@ fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> 
             return Ok(ast::Statement::Output(prop));
         },
         tree::Root::VertexFormat(s) => {
-            let st = parse_struct(s, "vertex format")?;
+            let st = parse_struct(s)?;
             return Ok(ast::Statement::VertexFormat(st));
         },
         tree::Root::Pipeline(v) => {
