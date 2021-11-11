@@ -31,12 +31,13 @@ use std::{path::PathBuf, string::String, vec::Vec};
 use phf::phf_map;
 
 use crate::ast::tree as ast;
+use crate::ast::tree::{TextureType, VectorType};
 use crate::parser::tree as tree;
 use crate::utils::parse_file;
 
-fn parse_vec_base(t: &str) -> Result<(ast::BaseType, u8), String>
+fn parse_vec_base(t: &str) -> Result<VectorType, String>
 {
-    let len = match &t[3..t.len() - 1].parse::<u8>() {
+    let size = match &t[3..t.len() - 1].parse::<u8>() {
         Err(e) => {
             return Err(format!(
                 "[Shader Annotation Language] Invalid vector item count {}: {}",
@@ -46,7 +47,7 @@ fn parse_vec_base(t: &str) -> Result<(ast::BaseType, u8), String>
         },
         Ok(v) => *v
     };
-    let base_type = match &t[t.len() - 1..] {
+    let item = match &t[t.len() - 1..] {
         "f" => ast::BaseType::Float,
         "d" => ast::BaseType::Double,
         "u" => ast::BaseType::Uint,
@@ -59,16 +60,18 @@ fn parse_vec_base(t: &str) -> Result<(ast::BaseType, u8), String>
             ))
         },
     };
-    return Ok((base_type, len));
+    return Ok(VectorType {
+        item,
+        size
+    });
 }
 
-fn pasre_vec(t: &str) -> Result<(ast::BaseType, u8), String>
+fn pasre_vec(t: &str) -> Result<VectorType, String>
 {
     if !t.starts_with("vec") {
         return Err(format!("[Shader Annotation Language] Unknown vector type {}", t));
     }
-    let (base_type, len) = parse_vec_base(t)?;
-    return Ok((base_type, len));
+    return parse_vec_base(t);
 }
 
 fn try_parse_matrix(t: &str) -> Result<Option<ast::PropertyType>, String>
@@ -76,29 +79,30 @@ fn try_parse_matrix(t: &str) -> Result<Option<ast::PropertyType>, String>
     if !t.starts_with("mat") {
         return Ok(None);
     }
-    let (base_type, len) = parse_vec_base(t)?;
-    return Ok(Some(ast::PropertyType::Matrix(base_type, len)));
+    let vtype = parse_vec_base(t)?;
+    return Ok(Some(ast::PropertyType::Matrix(vtype)));
 }
 
 fn try_parse_texture(t: &str, subt: Option<&str>) -> Result<Option<ast::PropertyType>, String>
 {
     if let Some(st) = subt {
+
         return match t {
-            "Texture2D" => {
-                let (t, c) = pasre_vec(st)?;
-                Ok(Some(ast::PropertyType::Texture2D(t, c)))
-            },
-            "Texture3D" => {
-                let (t, c) = pasre_vec(st)?;
-                Ok(Some(ast::PropertyType::Texture3D(t, c)))
-            },
-            "Texture2DArray" => {
-                let (t, c) = pasre_vec(st)?;
-                Ok(Some(ast::PropertyType::Texture2DArray(t, c)))
-            },
-            "TextureCube" => {
-                let (t, c) = pasre_vec(st)?;
-                Ok(Some(ast::PropertyType::TextureCube(t, c)))
+            "Texture2D" | "Texture3D" | "Texture2DArray" | "TextureCube" => {
+                let ptype = match parse_type(st)? {
+                    ast::PropertyType::Scalar(t) => TextureType::Scalar(t),
+                    ast::PropertyType::Vector(t) => TextureType::Vector(t),
+                    _ => return Err(String::from("test")) //TODO: fix
+                };
+                unsafe {
+                    match t {
+                        "Texture2D" => Ok(Some(ast::PropertyType::Texture2D(ptype))),
+                        "Texture3D" => Ok(Some(ast::PropertyType::Texture3D(ptype))),
+                        "Texture2DArray" => Ok(Some(ast::PropertyType::Texture2DArray(ptype))),
+                        "TextureCube" => Ok(Some(ast::PropertyType::TextureCube(ptype))),
+                        _ => std::hint::unreachable_unchecked()
+                    }
+                }
             },
             _ => Ok(None)
         };
@@ -126,8 +130,8 @@ fn parse_type(t: &str) -> Result<ast::PropertyType, String>
             if let Some(elem) = try_parse_texture(t, sub_type)? {
                 return Ok(elem);
             }
-            let (t, c) = pasre_vec(t)?;
-            Ok(ast::PropertyType::Vector(t, c))
+            let vtype = pasre_vec(t)?;
+            Ok(ast::PropertyType::Vector(vtype))
         }
     }
 }
@@ -137,7 +141,8 @@ fn parse_prop(p: tree::Property) -> Result<ast::Property, String>
     let ptype = parse_type(&p.ptype)?;
     return Ok(ast::Property {
         ptype,
-        pname: p.pname
+        pname: p.pname,
+        pattr: p.pattr
     });
 }
 
@@ -154,25 +159,25 @@ fn parse_struct(s: tree::Struct, err: &str) -> Result<ast::Struct, String>
                     err
                 ))
             },
-            ast::PropertyType::Texture2D(_, _) => {
+            ast::PropertyType::Texture2D(_) => {
                 return Err(format!(
                     "[Shader Annotation Language] Texture2D definitions are not allowed in a {}",
                     err
                 ))
             },
-            ast::PropertyType::Texture3D(_, _) => {
+            ast::PropertyType::Texture3D(_) => {
                 return Err(format!(
                     "[Shader Annotation Language] Texture3D definitions are not allowed in a {}",
                     err
                 ))
             },
-            ast::PropertyType::Texture2DArray(_, _) => {
+            ast::PropertyType::Texture2DArray(_) => {
                 return Err(format!(
                     "[Shader Annotation Language] Texture2DArray definitions are not allowed in a {}",
                     err
                 ))
             },
-            ast::PropertyType::TextureCube(_, _) => {
+            ast::PropertyType::TextureCube(_) => {
                 return Err(format!(
                     "[Shader Annotation Language] TextureCube definitions are not allowed in a {}",
                     err
@@ -184,7 +189,7 @@ fn parse_struct(s: tree::Struct, err: &str) -> Result<ast::Struct, String>
     }
     return Ok(ast::Struct {
         name: s.name,
-        properties: plist
+        props: plist
     });
 }
 
@@ -360,27 +365,27 @@ fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> 
                         "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
                     ))
                 },
-                ast::PropertyType::Texture2D(_, _) => {
+                ast::PropertyType::Texture2D(_) => {
                     return Err(String::from(
                         "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
                     ))
                 },
-                ast::PropertyType::Texture3D(_, _) => {
+                ast::PropertyType::Texture3D(_) => {
                     return Err(String::from(
                         "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
                     ))
                 },
-                ast::PropertyType::Texture2DArray(_, _) => {
+                ast::PropertyType::Texture2DArray(_) => {
                     return Err(String::from(
                         "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
                     ))
                 },
-                ast::PropertyType::TextureCube(_, _) => {
+                ast::PropertyType::TextureCube(_) => {
                     return Err(String::from(
                         "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
                     ))
                 },
-                ast::PropertyType::Matrix(_, _) => {
+                ast::PropertyType::Matrix(_) => {
                     return Err(String::from(
                         "[Shader Annotation Language] Only vectors and scalars are allowed as render target outputs"
                     ))
@@ -462,4 +467,81 @@ pub fn build_ast(
         stvec.push(item);
     }
     return Ok(stvec);
+}
+
+#[cfg(test)]
+mod tests
+{
+    use crate::{Lexer, Parser};
+    use crate::ast::tree::{BaseType, Property, PropertyType, Statement, Struct};
+    use super::*;
+
+    #[test]
+    fn basic_ast()
+    {
+        let source_code = b"
+            const float DeltaTime;
+            const uint FrameCount;
+            const mat3f ModelViewMatrix;
+            const mat3f ProjectionMatrix;
+            const struct PerMaterial
+            {
+                vec4f BaseColor;
+                float UvMultiplier;
+            }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let incs = Vec::new();
+        let ast = build_ast(roots, false, &incs).unwrap();
+        let expected_roots = vec![
+            Statement::Constant(Property {
+                pname: "DeltaTime".into(),
+                ptype: PropertyType::Scalar(BaseType::Float),
+                pattr: None
+            }),
+            Statement::Constant(Property {
+                pname: "FrameCount".into(),
+                ptype: PropertyType::Scalar(BaseType::Uint),
+                pattr: None
+            }),
+            Statement::Constant(Property {
+                pname: "ModelViewMatrix".into(),
+                ptype: PropertyType::Matrix(VectorType {
+                    item: BaseType::Float,
+                    size: 3
+                }),
+                pattr: None
+            }),
+            Statement::Constant(Property {
+                pname: "ProjectionMatrix".into(),
+                ptype: PropertyType::Matrix(VectorType {
+                    item: BaseType::Float,
+                    size: 3
+                }),
+                pattr: None
+            }),
+            Statement::ConstantBuffer(Struct {
+                name: "PerMaterial".into(),
+                props: vec![
+                    Property {
+                        pname: "BaseColor".into(),
+                        ptype: PropertyType::Vector(VectorType {
+                            item: BaseType::Float,
+                            size: 4
+                        }),
+                        pattr: None
+                    },
+                    Property {
+                        pname: "UvMultiplier".into(),
+                        ptype: PropertyType::Scalar(BaseType::Float),
+                        pattr: None
+                    }
+                ]
+            })
+        ];
+        assert_eq!(ast, expected_roots);
+    }
 }

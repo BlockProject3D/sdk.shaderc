@@ -33,7 +33,7 @@ pub trait VarlistStatement
     fn new(name: String) -> Self;
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BaseType
 {
     Int,
@@ -43,32 +43,49 @@ pub enum BaseType
     Double
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VectorType
+{
+    pub item: BaseType,
+    pub size: u8
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextureType
+{
+    Scalar(BaseType),
+    Vector(VectorType)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PropertyType
 {
     Scalar(BaseType),
-    Vector(BaseType, u8),
-    Matrix(BaseType, u8),
+    Vector(VectorType),
+    Matrix(VectorType),
     Sampler,
-    Texture2D(BaseType, u8),
-    Texture3D(BaseType, u8),
-    Texture2DArray(BaseType, u8),
-    TextureCube(BaseType, u8)
+    Texture2D(TextureType),
+    Texture3D(TextureType),
+    Texture2DArray(TextureType),
+    TextureCube(TextureType)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Property
 {
     pub ptype: PropertyType,
-    pub pname: String
+    pub pname: String,
+    pub pattr: Option<String>
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Struct
 {
     pub name: String,
-    pub properties: Vec<Property>
+    pub props: Vec<Property>
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderMode
 {
     Triangles,
@@ -76,7 +93,7 @@ pub enum RenderMode
     Patches
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CullingMode
 {
     BackFace,
@@ -84,6 +101,7 @@ pub enum CullingMode
     Disabled
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PipelineStatement
 {
     pub name: String,
@@ -111,7 +129,7 @@ impl VarlistStatement for PipelineStatement
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlendFactor
 {
     Zero,
@@ -131,7 +149,7 @@ pub enum BlendFactor
     OneMinusSrc1Alpha
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlendOperator
 {
     Add,
@@ -141,6 +159,7 @@ pub enum BlendOperator
     Max
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlendfuncStatement
 {
     pub name: String,
@@ -168,6 +187,7 @@ impl VarlistStatement for BlendfuncStatement
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement
 {
     Constant(Property),
