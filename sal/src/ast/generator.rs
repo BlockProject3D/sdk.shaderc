@@ -483,4 +483,29 @@ mod tests
         ];
         assert_eq!(ast, expected_roots);
     }
+
+    #[test]
+    fn basic_output()
+    {
+        let source_code = b"
+            output vec4f FragColor;
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let incs = Vec::new();
+        let ast = build_ast(roots, false, &incs).unwrap();
+        let expected_roots = vec![
+            Statement::Output(Property {
+                pname: "FragColor".into(),
+                ptype: PropertyType::Vector(VectorType {
+                    item: BaseType::Float,
+                    size: 4
+                }),
+                pattr: None
+            })
+        ];
+        assert_eq!(ast, expected_roots);
+    }
 }
