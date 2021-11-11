@@ -387,6 +387,71 @@ mod tests
     }
 
     #[test]
+    fn complex_parser()
+    {
+        let source_code = b"
+            const Sampler BaseSampler;
+            const Texture2D:4f BaseTexture : BaseSampler;
+            const Texture2D:1f NoiseTexture : BaseSampler;
+            const struct PerMaterial
+            {
+                vec4f BaseColor;
+                float Specular : Pack;
+                float UvMultiplier : Pack;
+            }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let expected_roots = vec![
+            Root::Constant(Property {
+                pname: "BaseSampler".into(),
+                ptype: "Sampler".into(),
+                pattr: None,
+                ptype_attr: None
+            }),
+            Root::Constant(Property {
+                pname: "BaseTexture".into(),
+                ptype: "Texture2D".into(),
+                pattr: Some("BaseSampler".into()),
+                ptype_attr: Some("4f".into())
+            }),
+            Root::Constant(Property {
+                pname: "NoiseTexture".into(),
+                ptype: "Texture2D".into(),
+                pattr: Some("BaseSampler".into()),
+                ptype_attr: Some("1f".into())
+            }),
+            Root::ConstantBuffer(Struct {
+                name: "PerMaterial".into(),
+                props: vec![
+                    Property {
+                        pname: "BaseColor".into(),
+                        ptype: "vec4f".into(),
+                        pattr: None,
+                        ptype_attr: None
+                    },
+                    Property {
+                        pname: "Specular".into(),
+                        ptype: "float".into(),
+                        pattr: Some("Pack".into()),
+                        ptype_attr: None
+                    },
+                    Property {
+                        pname: "UvMultiplier".into(),
+                        ptype: "float".into(),
+                        pattr: Some("Pack".into()),
+                        ptype_attr: None
+                    }
+                ]
+            })
+        ];
+        assert_eq!(roots, expected_roots);
+        assert!(parser.tokens.is_empty());
+    }
+
+    #[test]
     fn basic_output()
     {
         let source_code = b"
