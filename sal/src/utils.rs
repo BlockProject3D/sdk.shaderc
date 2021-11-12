@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::path::{Path, PathBuf};
-use crate::ast::build_ast;
+use crate::ast::{build_ast, IgnoreUseResolver};
 use crate::ast::tree::Statement;
 use crate::Lexer;
 use crate::Parser;
@@ -37,7 +37,7 @@ pub fn parse(lexer: Lexer, expand_use: bool, module_paths: &Vec<PathBuf>)
 {
     let mut parser = Parser::new(lexer);
     let tree = parser.parse().unwrap(); //TODO: fix
-    let ast = build_ast(tree, expand_use, module_paths).unwrap();  //TODO: fix
+    let ast = build_ast(tree, IgnoreUseResolver {}).unwrap();  //TODO: fix
     Ok(ast)
 }
 

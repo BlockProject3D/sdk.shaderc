@@ -26,10 +26,51 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod error;
-pub mod tree;
-mod generator;
-mod interface;
+use std::fmt::Debug;
+use crate::ast::error::Error;
+use crate::ast::tree::Statement;
+use crate::parser::tree::Use;
 
-pub use interface::*;
-pub use generator::build_ast;
+pub trait IntoError<Ok, Err>
+{
+    fn into_error(self) -> Result<Ok, Err>;
+}
+
+pub trait UseResolver
+{
+    type Error: Debug;
+
+    fn resolve(&mut self, item: Use) -> Result<Statement, Self::Error>;
+}
+
+impl<E: Debug> IntoError<Statement, Error<E>> for Result<Statement, E>
+{
+    fn into_error(self) -> Result<Statement, Error<E>>
+    {
+        self.map_err(|e| Error::UnresolvedUse(e))
+    }
+}
+
+impl<T> UseResolver for &mut T where T: UseResolver
+{
+    type Error = T::Error;
+
+    fn resolve(&mut self, item: Use) -> Result<Statement, Self::Error>
+    {
+        (**self).resolve(item)
+    }
+}
+
+pub struct IgnoreUseResolver
+{
+}
+
+impl UseResolver for IgnoreUseResolver
+{
+    type Error = ();
+
+    fn resolve(&mut self, _: Use) -> Result<Statement, Self::Error>
+    {
+        Ok(Statement::Noop)
+    }
+}

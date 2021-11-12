@@ -26,9 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fmt::{Debug, Display, Formatter};
 use std::num::ParseIntError;
 use crate::parser::tree;
-use crate::ast::tree as ast;
+use crate::ast::{tree as ast, UseResolver};
 
 #[derive(Clone, Debug)]
 pub enum ValueType
@@ -41,18 +42,46 @@ pub enum ValueType
 }
 
 #[derive(Clone, Debug)]
-pub enum Error
+pub enum TypeError
 {
     VectorSize(ParseIntError),
-    UnknownVectorType(String),
-    UnknownTextureType(String),
-    UnknownType(String),
-    BannedType(ast::PropertyType),
+    UnknownVector(String),
+    UnknownTexture(String),
+    Unknown(String),
+    Banned(ast::PropertyType)
+}
+
+#[derive(Clone, Debug)]
+pub enum ValueError
+{
     UnknownEnum(String),
     UnknownVariable(String),
-    UnexpectedType {
+    Unexpected {
         expected: ValueType,
         actual: tree::Value
-    },
-    UseNotFound(tree::Use)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum Error<ResolverError: Debug>
+{
+    Type(TypeError),
+    Value(ValueError),
+    UnresolvedUse(ResolverError)
+}
+
+impl<ResolverError: Debug> From<TypeError> for Error<ResolverError>
+{
+    fn from(e: TypeError) -> Self
+    {
+        Self::Type(e)
+    }
+}
+
+impl<ResolverError: Debug> From<ValueError> for Error<ResolverError>
+{
+    fn from(e: ValueError) -> Self
+    {
+        Self::Value(e)
+    }
 }

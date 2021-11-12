@@ -26,21 +26,19 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::{path::PathBuf, vec::Vec};
+use std::{vec::Vec};
 
 use phf::phf_map;
-use crate::ast::error::{Error, ValueType};
+use crate::ast::error::{Error, TypeError, ValueError, ValueType};
 
-use crate::ast::tree as ast;
-use crate::ast::tree::{TextureType, VectorType};
+use crate::ast::{IntoError, tree as ast, UseResolver};
 use crate::parser::tree as tree;
-use crate::utils::parse_file;
 
-fn parse_vec_base(ptype: &str) -> Result<VectorType, Error>
+fn parse_vec_base(ptype: &str) -> Result<ast::VectorType, TypeError>
 {
     let size = match &ptype[3..ptype.len() - 1].parse::<u8>() {
         Err(e) => {
-            return Err(Error::VectorSize(e.clone()));
+            return Err(TypeError::VectorSize(e.clone()));
         },
         Ok(v) => *v
     };
@@ -51,24 +49,24 @@ fn parse_vec_base(ptype: &str) -> Result<VectorType, Error>
         "i" => ast::BaseType::Int,
         "b" => ast::BaseType::Bool,
         _ => {
-            return Err(Error::UnknownVectorType(ptype[ptype.len() - 1..].into()));
+            return Err(TypeError::UnknownVector(ptype[ptype.len() - 1..].into()));
         },
     };
-    return Ok(VectorType {
+    return Ok(ast::VectorType {
         item,
         size
     });
 }
 
-fn parse_vec(ptype: &str) -> Result<VectorType, Error>
+fn parse_vec(ptype: &str) -> Result<ast::VectorType, TypeError>
 {
     if !ptype.starts_with("vec") {
-        return Err(Error::UnknownType(ptype.into()));
+        return Err(TypeError::Unknown(ptype.into()));
     }
     return parse_vec_base(ptype);
 }
 
-fn try_parse_matrix(ptype: &str) -> Result<Option<ast::PropertyType>, Error>
+fn try_parse_matrix(ptype: &str) -> Result<Option<ast::PropertyType>, TypeError>
 {
     if !ptype.starts_with("mat") {
         return Ok(None);
@@ -77,15 +75,15 @@ fn try_parse_matrix(ptype: &str) -> Result<Option<ast::PropertyType>, Error>
     return Ok(Some(ast::PropertyType::Matrix(vtype)));
 }
 
-fn try_parse_texture(ptype: &str, ptype_attr: Option<&str>) -> Result<Option<ast::PropertyType>, Error>
+fn try_parse_texture(ptype: &str, ptype_attr: Option<&str>) -> Result<Option<ast::PropertyType>, TypeError>
 {
     if let Some(subtype) = ptype_attr {
         return match ptype {
             "Texture2D" | "Texture3D" | "Texture2DArray" | "TextureCube" => {
                 let ttype = match parse_type(subtype, None)? {
-                    ast::PropertyType::Scalar(t) => TextureType::Scalar(t),
-                    ast::PropertyType::Vector(t) => TextureType::Vector(t),
-                    _ => return Err(Error::UnknownTextureType([ptype, subtype].join(":")))
+                    ast::PropertyType::Scalar(t) => ast::TextureType::Scalar(t),
+                    ast::PropertyType::Vector(t) => ast::TextureType::Vector(t),
+                    _ => return Err(TypeError::UnknownTexture([ptype, subtype].join(":")))
                 };
                 unsafe {
                     match ptype {
@@ -103,7 +101,7 @@ fn try_parse_texture(ptype: &str, ptype_attr: Option<&str>) -> Result<Option<ast
     return Ok(None);
 }
 
-fn parse_type(ptype: &str, ptype_attr: Option<&str>) -> Result<ast::PropertyType, Error>
+fn parse_type(ptype: &str, ptype_attr: Option<&str>) -> Result<ast::PropertyType, TypeError>
 {
     return match ptype {
         "Sampler" => Ok(ast::PropertyType::Sampler),
@@ -125,7 +123,7 @@ fn parse_type(ptype: &str, ptype_attr: Option<&str>) -> Result<ast::PropertyType
     }
 }
 
-fn parse_prop(p: tree::Property) -> Result<ast::Property, Error>
+fn parse_prop(p: tree::Property) -> Result<ast::Property, TypeError>
 {
     let ptype = parse_type(&p.ptype, p.ptype_attr.as_deref())?;
     return Ok(ast::Property {
@@ -135,7 +133,7 @@ fn parse_prop(p: tree::Property) -> Result<ast::Property, Error>
     });
 }
 
-fn parse_struct(s: tree::Struct) -> Result<ast::Struct, Error>
+fn parse_struct(s: tree::Struct) -> Result<ast::Struct, TypeError>
 {
     let mut plist = Vec::new();
 
@@ -147,7 +145,7 @@ fn parse_struct(s: tree::Struct) -> Result<ast::Struct, Error>
             | ast::PropertyType::Texture3D(_)
             | ast::PropertyType::Texture2DArray(_)
             | ast::PropertyType::TextureCube(_)
-            => return Err(Error::BannedType(p.ptype)),
+            => return Err(TypeError::Banned(p.ptype)),
             _ => ()
         };
         plist.push(p);
@@ -196,33 +194,33 @@ static CULLINGMODE: phf::Map<&'static str, ast::CullingMode> = phf_map! {
     "Disabled" => ast::CullingMode::Disabled
 };
 
-fn parse_enum<T: Copy>(value: tree::Value, map: &phf::Map<&'static str, T>) -> Result<T, Error>
+fn parse_enum<T: Copy>(value: tree::Value, map: &phf::Map<&'static str, T>) -> Result<T, ValueError>
 {
     if let tree::Value::Identifier(id) = value {
         if let Some(e) = map.get(&*id) {
             return Ok(*e);
         }
-        return Err(Error::UnknownEnum(id));
+        return Err(ValueError::UnknownEnum(id));
     }
-    return Err(Error::UnexpectedType {
+    return Err(ValueError::Unexpected {
         expected: ValueType::Enum,
         actual: value
     });
 }
 
-fn parse_bool(value: tree::Value) -> Result<bool, Error>
+fn parse_bool(value: tree::Value) -> Result<bool, ValueError>
 {
     if let tree::Value::Bool(b) = value {
         Ok(b)
     } else {
-        Err(Error::UnexpectedType {
+        Err(ValueError::Unexpected {
             expected: ValueType::Bool,
             actual: value
         })
     }
 }
 
-type VarParseFunc<T> = fn(obj: &mut T, value: tree::Value) -> Result<(), Error>;
+type VarParseFunc<T> = fn(obj: &mut T, value: tree::Value) -> Result<(), ValueError>;
 
 static VARLIST_BLENDFUNC: phf::Map<&'static str, VarParseFunc<ast::BlendfuncStatement>> = phf_map! {
     "SrcColor" => |obj, val|
@@ -285,7 +283,7 @@ static VARLIST_PIPELINE: phf::Map<&'static str, VarParseFunc<ast::PipelineStatem
     }
 };
 
-fn parse_varlist<T: ast::VarlistStatement>(varlist: tree::VariableList, map: &phf::Map<&'static str, VarParseFunc<T>>) -> Result<T, Error>
+fn parse_varlist<T: ast::VarlistStatement>(varlist: tree::VariableList, map: &phf::Map<&'static str, VarParseFunc<T>>) -> Result<T, ValueError>
 {
     let mut obj = T::new(varlist.name);
 
@@ -293,13 +291,13 @@ fn parse_varlist<T: ast::VarlistStatement>(varlist: tree::VariableList, map: &ph
         if let Some(func) = map.get(&*v.name) {
             func(&mut obj, v.value)?;
         } else {
-            return Err(Error::UnknownVariable(v.name));
+            return Err(ValueError::UnknownVariable(v.name));
         }
     }
     return Ok(obj);
 }
 
-fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> Result<ast::Statement, Error>
+fn gen_item<TResolver: UseResolver>(elem: tree::Root, mut resolver: TResolver) -> Result<ast::Statement, Error<TResolver::Error>>
 {
     match elem {
         tree::Root::Constant(c) => {
@@ -319,7 +317,7 @@ fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> 
                 | ast::PropertyType::Texture2DArray(_)
                 | ast::PropertyType::TextureCube(_)
                 | ast::PropertyType::Matrix(_)
-                => return Err(Error::BannedType(prop.ptype)),
+                => return Err(Error::Type(TypeError::Banned(prop.ptype))),
                 _ => ()
             };
             return Ok(ast::Statement::Output(prop));
@@ -336,40 +334,19 @@ fn gen_item(elem: tree::Root, expand_use: bool, module_paths: &Vec<PathBuf>) -> 
             let vl = parse_varlist(v, &VARLIST_BLENDFUNC)?;
             return Ok(ast::Statement::Blendfunc(vl));
         },
-        tree::Root::Use(mut u) => {
-            if !expand_use {
-                return Ok(ast::Statement::Noop);
-            }
-            for p in module_paths {
-                u.module.push_str(".sal");
-                let file = p.join(&u.module);
-                if file.exists() && file.is_file() {
-                    let statements = parse_file(&file, false, &Vec::new()).unwrap(); //TODO: fix
-                    for stmt in statements {
-                        if let Some(name) = stmt.get_name() {
-                            if name == u.member {
-                                return Ok(stmt);
-                            }
-                        }
-                    }
-                    return Err(Error::UseNotFound(u));
-                }
-            }
+        tree::Root::Use(u) => {
+            let stmt = resolver.resolve(u).into_error()?;
+            return Ok(stmt);
         }
     }
-    return Ok(ast::Statement::Noop);
 }
 
-pub fn build_ast(
-    elems: Vec<tree::Root>,
-    expand_use: bool,
-    module_paths: &Vec<PathBuf>
-) -> Result<Vec<ast::Statement>, Error>
+pub fn build_ast<TResolver: UseResolver>(elems: Vec<tree::Root>, mut resolver: TResolver) -> Result<Vec<ast::Statement>, Error<TResolver::Error>>
 {
     let mut stvec = Vec::new();
 
     for v in elems {
-        let item = gen_item(v, expand_use, module_paths)?;
+        let item = gen_item(v, &mut resolver)?;
         stvec.push(item);
     }
     return Ok(stvec);
@@ -379,7 +356,8 @@ pub fn build_ast(
 mod tests
 {
     use crate::{Lexer, Parser};
-    use crate::ast::tree::{BaseType, BlendFactor, BlendfuncStatement, BlendOperator, CullingMode, PipelineStatement, Property, PropertyType, RenderMode, Statement, Struct};
+    use crate::ast::IgnoreUseResolver;
+    use crate::ast::tree::{BaseType, BlendFactor, BlendfuncStatement, BlendOperator, CullingMode, PipelineStatement, Property, PropertyType, RenderMode, Statement, Struct, TextureType, VectorType};
     use super::*;
 
     #[test]
@@ -400,8 +378,7 @@ mod tests
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let incs = Vec::new();
-        let ast = build_ast(roots, false, &incs).unwrap();
+        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
         let expected_ast = vec![
             Statement::Constant(Property {
                 pname: "DeltaTime".into(),
@@ -469,8 +446,7 @@ mod tests
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let incs = Vec::new();
-        let ast = build_ast(roots, false, &incs).unwrap();
+        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
         let expected_ast = vec![
             Statement::Constant(Property {
                 pname: "BaseSampler".into(),
@@ -527,8 +503,7 @@ mod tests
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let incs = Vec::new();
-        let ast = build_ast(roots, false, &incs).unwrap();
+        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
         let expected_ast = vec![
             Statement::Output(Property {
                 pname: "FragColor".into(),
@@ -555,8 +530,7 @@ mod tests
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let incs = Vec::new();
-        let ast = build_ast(roots, false, &incs).unwrap();
+        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
         let expected_ast = vec![
             Statement::VertexFormat(Struct {
                 name: "Vertex".into(),
@@ -592,8 +566,7 @@ mod tests
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let incs = Vec::new();
-        let ast = build_ast(roots, false, &incs).unwrap();
+        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
         let expected_ast = vec![
             Statement::Pipeline(PipelineStatement {
                 name: "Test".into(),
@@ -627,8 +600,7 @@ mod tests
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let incs = Vec::new();
-        let ast = build_ast(roots, false, &incs).unwrap();
+        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
         let expected_ast = vec![
             Statement::Output(Property {
                 pname: "FragColor".into(),
