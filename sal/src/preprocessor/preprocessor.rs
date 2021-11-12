@@ -28,71 +28,30 @@
 
 use std::{
     fs::File,
-    io,
     io::{BufRead, BufReader},
     path::Path,
-    string::String,
-    vec::Vec
 };
 
-use phf::phf_map;
-
-#[derive(Clone, Copy)]
-pub enum ShaderStage
+pub fn run<Handler: crate::preprocessor::Handler>(file: &Path, mut handler: Handler) -> Result<(), Handler::Error>
 {
-    Vertex,
-    Pixel,
-    Geometry,
-    Hull,
-    Domain,
-    Unspecified
-}
-
-static SHADERSTAGE: phf::Map<&'static str, ShaderStage> = phf_map! {
-    "vertex" => ShaderStage::Vertex,
-    "pixel" => ShaderStage::Pixel,
-    "geometry" => ShaderStage::Geometry,
-    "hull" => ShaderStage::Hull,
-    "domain" => ShaderStage::Domain
-};
-
-pub struct ShaderObject
-{
-    pub stage: ShaderStage,
-    pub sal_code: Vec<String>,
-    pub shader_code: Vec<String>
-}
-
-pub fn run(file: &Path) -> io::Result<ShaderObject>
-{
-    let f = File::open(file)?;
-    let reader = BufReader::new(f);
-    let mut sstage = ShaderStage::Unspecified;
+    let reader = BufReader::new(File::open(file)?);
     let mut sal_block = false;
-    let mut sal_code = Vec::new();
-    let mut shader_code = Vec::new();
 
     for v in reader.lines() {
         let line = v?;
         let trimed = line.trim();
-        if trimed.starts_with("#stage") {
+        if trimed.starts_with('#') {
             if let Some(id) = trimed.find(' ') {
-                let stage = &trimed[id..].trim();
-                if let Some(stage) = SHADERSTAGE.get(*stage) {
-                    sstage = *stage;
-                }
+                let name = trimed[1..id].trim();
+                let value = trimed[id..].trim();
+                handler.directive(name, value)?;
             }
         } else if trimed == "#sal" {
             sal_block = !sal_block;
         } else if sal_block {
-            sal_code.push(line);
-        } else {
-            shader_code.push(line);
+            handler.sal_code(&line)?;
         }
+        handler.code_line(line)?;
     }
-    return Ok(ShaderObject {
-        stage: sstage,
-        sal_code: sal_code,
-        shader_code: shader_code
-    });
+    Ok(())
 }
