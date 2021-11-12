@@ -74,7 +74,7 @@ fn generate_build_info_h(proj: &Path, out_dir: &Path)
     let dir = out_dir.join("glslang");
     let mut file =
         std::fs::read_to_string(proj.join("build_info.h.tmpl")).expect("Failed to read build_info.h template");
-    let version = parse_version(&proj);
+    let version = parse_version(proj);
     let out = dir.join("build_info.h");
 
     std::fs::create_dir_all(dir).expect("Failed to create glslang generated include directory");
@@ -104,8 +104,8 @@ fn build_glslang(proj: &Path, builder: &mut Build, compiler: &Tool)
     } else if os == "unix" {
         builder.file(root.join("OSDependent/Unix/ossource.cpp"));
     }
-    const GENERIC_CODE_GEN: &'static [&'static str] = &["GenericCodeGen/CodeGen.cpp", "GenericCodeGen/Link.cpp"];
-    const MACHINE_INDEPENDENT: &'static [&'static str] = &[
+    const GENERIC_CODE_GEN: &[&str] = &["GenericCodeGen/CodeGen.cpp", "GenericCodeGen/Link.cpp"];
+    const MACHINE_INDEPENDENT: &[&str] = &[
         "MachineIndependent/glslang_tab.cpp",
         "MachineIndependent/attribute.cpp",
         "MachineIndependent/Constant.cpp",
@@ -135,7 +135,7 @@ fn build_glslang(proj: &Path, builder: &mut Build, compiler: &Tool)
         "MachineIndependent/preprocessor/PpTokens.cpp",
         "MachineIndependent/propagateNoContraction.cpp"
     ];
-    const GLSLLANG_SOURCES: &'static [&'static str] = &["CInterface/glslang_c_interface.cpp"];
+    const GLSLLANG_SOURCES: &[&str] = &["CInterface/glslang_c_interface.cpp"];
     append_files(builder, &root, GENERIC_CODE_GEN);
     append_files(builder, &root, MACHINE_INDEPENDENT);
     append_files(builder, &root, GLSLLANG_SOURCES);
@@ -150,7 +150,7 @@ fn build_ogl(proj: &Path, builder: &mut Build)
 fn build_spirv(proj: &Path, builder: &mut Build)
 {
     let root = proj.join("SPIRV");
-    const SOURCES: &'static [&'static str] = &[
+    const SOURCES: &[&str] = &[
         "GlslangToSpv.cpp",
         "InReadableOrder.cpp",
         "Logger.cpp",
@@ -170,7 +170,7 @@ fn main()
     let useless = std::env::var("OUT_DIR").unwrap();
     let out_dir = Path::new(&useless);
     let generated_include_dir = out_dir.join("include");
-    generate_build_info_h(&proj, &generated_include_dir);
+    generate_build_info_h(proj, &generated_include_dir);
     let mut builder = cc::Build::new();
     let compiler = builder.get_compiler();
     builder.cpp(true);
@@ -183,9 +183,9 @@ fn main()
     }
     builder.include(&generated_include_dir);
     builder.include(&proj);
-    build_glslang(&proj, &mut builder, &compiler);
-    build_ogl(&proj, &mut builder);
-    build_spirv(&proj, &mut builder);
+    build_glslang(proj, &mut builder, &compiler);
+    build_ogl(proj, &mut builder);
+    build_spirv(proj, &mut builder);
     //Add part of standalone EXE in order to get DefaultTBuiltinResource
     builder.file(proj.join("StandAlone/ResourceLimits.cpp"));
     // Add glue cpp

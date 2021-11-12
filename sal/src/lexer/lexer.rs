@@ -226,7 +226,6 @@ impl Lexer
             self.cur_column += 1;
             pos2 += 1;
             if pos2 > code.len() {
-                //Should be ">=" but somehow there's a bug in rust
                 break;
             }
             if code[pos2 - 1] == CHR_COMMENT {
@@ -245,8 +244,7 @@ impl Lexer
             if !self.in_comment {
                 if let Some(tok) = check_terminator(code[pos2 - 1]) {
                     self.parse_token(pos1, pos2 - 1, code)?;
-                    pos1 = pos2; //This should be +1 but somehow there's a bug in rust
-                    pos2 = pos1;
+                    pos1 = pos2; //This should be +1 but somehow there's a strange thing here
                     self.tokens.push_back(TokenEntry {
                         token: tok,
                         line: self.cur_line,
