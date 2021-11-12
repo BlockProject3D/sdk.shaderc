@@ -27,10 +27,12 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::fmt::Debug;
-use crate::ast::{build_ast, UseResolver};
-use crate::ast::tree::Statement;
-use crate::Lexer;
-use crate::Parser;
+
+use crate::{
+    ast::{build_ast, tree::Statement, UseResolver},
+    Lexer,
+    Parser
+};
 
 pub enum AutoError<ResolverError: Debug>
 {
@@ -63,14 +65,20 @@ impl<ResolverError: Debug> From<crate::ast::error::Error<ResolverError>> for Aut
     }
 }
 
-pub fn auto_lexer_parser<T: AsRef<[u8]>, Resolver: UseResolver>(buf: T, resolver: Resolver) -> Result<Vec<Statement>, AutoError<Resolver::Error>>
+pub fn auto_lexer_parser<T: AsRef<[u8]>, Resolver: UseResolver>(
+    buf: T,
+    resolver: Resolver
+) -> Result<Vec<Statement>, AutoError<Resolver::Error>>
 {
     let mut lexer = Lexer::new();
     lexer.process(buf.as_ref())?;
     auto_parser(lexer, resolver)
 }
 
-pub fn auto_parser<Resolver: UseResolver>(lexer: Lexer, resolver: Resolver) -> Result<Vec<Statement>, AutoError<Resolver::Error>>
+pub fn auto_parser<Resolver: UseResolver>(
+    lexer: Lexer,
+    resolver: Resolver
+) -> Result<Vec<Statement>, AutoError<Resolver::Error>>
 {
     let mut parser = Parser::new(lexer);
     let roots = parser.parse()?;

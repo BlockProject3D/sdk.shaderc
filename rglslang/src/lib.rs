@@ -26,9 +26,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use glslang_sys::{initialize_process, finalize_process};
-use std::sync::Once;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Once
+};
+
+use glslang_sys::{finalize_process, initialize_process};
 
 static INIT: Once = Once::new();
 static END: Once = Once::new();
@@ -51,9 +54,7 @@ pub fn main<F: FnOnce() -> ()>(f: F)
         FLAG.store(true, Ordering::Relaxed);
     });
     f();
-    END.call_once(|| {
-        unsafe {
-            finalize_process();
-        }
+    END.call_once(|| unsafe {
+        finalize_process();
     });
 }

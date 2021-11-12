@@ -26,10 +26,13 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use clap::clap_app;
-use rglslang::environment::{Stage, Client};
-use rglslang::shader::{Profile, Messages, Part};
 use std::ffi::OsString;
+
+use clap::clap_app;
+use rglslang::{
+    environment::{Client, Stage},
+    shader::{Messages, Part, Profile}
+};
 
 //mod sal;
 
@@ -38,15 +41,28 @@ use std::ffi::OsString;
 fn main()
 {
     rglslang::main(|| {
-        let shader = rglslang::shader::Builder::new(rglslang::environment::Environment::new_opengl(Stage::Vertex, Client::OpenGL, None))
-            .default_profile(Profile::Core)
-            .default_version(330)
-            .force_default_version_and_profile()
-            .entry_point("main")
-            .source_entry_point("main")
-            .messages(Messages::new().debug().ast())
-            .add_part(Part::new_with_name(std::fs::read_to_string("./shaderc/shader_file.glsl").unwrap(), "My shader")).parse();
-        println!("OK {}\n\n Info log\n{}\n\n Debug log\n{}", shader.check(), shader.get_info_log(), shader.get_info_debug_log());
+        let shader = rglslang::shader::Builder::new(rglslang::environment::Environment::new_opengl(
+            Stage::Vertex,
+            Client::OpenGL,
+            None
+        ))
+        .default_profile(Profile::Core)
+        .default_version(330)
+        .force_default_version_and_profile()
+        .entry_point("main")
+        .source_entry_point("main")
+        .messages(Messages::new().debug().ast())
+        .add_part(Part::new_with_name(
+            std::fs::read_to_string("./shaderc/shader_file.glsl").unwrap(),
+            "My shader"
+        ))
+        .parse();
+        println!(
+            "OK {}\n\n Info log\n{}\n\n Debug log\n{}",
+            shader.check(),
+            shader.get_info_log(),
+            shader.get_info_debug_log()
+        );
     });
     let matches = clap_app!(shaderc =>
         (version: "1.0.0")

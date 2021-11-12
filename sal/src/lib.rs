@@ -26,11 +26,11 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+pub mod ast;
 mod lexer;
 mod parser;
-pub mod ast;
-pub mod utils;
 pub mod preprocessor;
+pub mod utils;
 
 pub use lexer::Lexer;
 pub use parser::Parser;

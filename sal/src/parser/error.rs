@@ -33,13 +33,13 @@ pub struct UnexpectedToken
     pub expected: Token
 }*/
 
-use crate::lexer::token::Token;
-use crate::lexer::token::Type as TokenType;
+use crate::lexer::token::{Token, Type as TokenType};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type
 {
-    UnexpectedToken {
+    UnexpectedToken
+    {
         actual: Token,
         expected: TokenType
     },
@@ -59,10 +59,6 @@ impl Error
 {
     pub fn new(line: usize, col: usize, etype: Type) -> Self
     {
-        Self {
-            line,
-            col,
-            etype
-        }
+        Self { line, col, etype }
     }
 }

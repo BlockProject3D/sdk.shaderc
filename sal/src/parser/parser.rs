@@ -27,12 +27,18 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::VecDeque;
-use crate::lexer::{Lexer, TokenEntry};
-use crate::lexer::token::Token;
-use crate::parser::error::{Error, Type};
-use crate::parser::tree;
 
-use crate::lexer::token::Type as TokenType;
+use crate::{
+    lexer::{
+        token::{Token, Type as TokenType},
+        Lexer,
+        TokenEntry
+    },
+    parser::{
+        error::{Error, Type},
+        tree
+    }
+};
 
 pub struct Parser
 {
@@ -57,10 +63,14 @@ impl Parser
     {
         let token = self.pop()?;
         if token.get_type() != ttype {
-            Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
-                expected: ttype,
-                actual: token
-            }))
+            Err(Error::new(
+                self.cur_line,
+                self.cur_column,
+                Type::UnexpectedToken {
+                    expected: ttype,
+                    actual: token
+                }
+            ))
         } else {
             Ok(token)
         }
@@ -87,10 +97,7 @@ impl Parser
             let token = self.pop_expect(TokenType::Identifier)?;
             let member = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
             self.pop_expect(TokenType::Break)?;
-            Ok(Some(tree::Root::Use(tree::Use {
-                module,
-                member
-            })))
+            Ok(Some(tree::Root::Use(tree::Use { module, member })))
         } else {
             Ok(None)
         }
@@ -111,10 +118,16 @@ impl Parser
                 let token = self.pop_expect(TokenType::Identifier)?;
                 pname = token.identifier().unwrap();
             },
-            _ => return Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
-                expected: TokenType::combined([TokenType::Identifier, TokenType::Colon]),
-                actual: token
-            }))
+            _ => {
+                return Err(Error::new(
+                    self.cur_line,
+                    self.cur_column,
+                    Type::UnexpectedToken {
+                        expected: TokenType::combined([TokenType::Identifier, TokenType::Colon]),
+                        actual: token
+                    }
+                ))
+            },
         };
         let token = self.pop()?;
         let pattr = match token {
@@ -124,10 +137,16 @@ impl Parser
                 Some(token.identifier().unwrap()) // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
             },
             Token::Break => None,
-            _ => return Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
-                expected: TokenType::combined([TokenType::Colon, TokenType::Break]),
-                actual: token
-            }))
+            _ => {
+                return Err(Error::new(
+                    self.cur_line,
+                    self.cur_column,
+                    Type::UnexpectedToken {
+                        expected: TokenType::combined([TokenType::Colon, TokenType::Break]),
+                        actual: token
+                    }
+                ))
+            },
         };
         Ok(tree::Property {
             pname,
@@ -148,7 +167,7 @@ impl Parser
 
     fn check_block_end(&mut self) -> Result<bool, Error>
     {
-        if let Some(TokenEntry {token, ..}) = self.tokens.front() {
+        if let Some(TokenEntry { token, .. }) = self.tokens.front() {
             if token == &Token::BlockEnd {
                 self.pop()?;
                 return Ok(true);
@@ -171,16 +190,13 @@ impl Parser
                 break;
             }
         }
-        Ok(tree::Struct {
-            name,
-            props
-        })
+        Ok(tree::Struct { name, props })
     }
 
     fn try_parse_const(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
     {
         if token == &Token::Const {
-            if let Some(TokenEntry {token, ..}) = self.tokens.front() {
+            if let Some(TokenEntry { token, .. }) = self.tokens.front() {
                 if token == &Token::Struct {
                     let st = self.parse_struct()?;
                     return Ok(Some(tree::Root::ConstantBuffer(st)));
@@ -211,10 +227,19 @@ impl Parser
             Token::Int(i) => Ok(tree::Value::Int(i)),
             Token::Bool(b) => Ok(tree::Value::Bool(b)),
             Token::Identifier(s) => Ok(tree::Value::Identifier(s)),
-            _ => Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
-                expected: TokenType::combined([TokenType::Float, TokenType::Int, TokenType::Bool, TokenType::Identifier]),
-                actual: token
-            }))
+            _ => Err(Error::new(
+                self.cur_line,
+                self.cur_column,
+                Type::UnexpectedToken {
+                    expected: TokenType::combined([
+                        TokenType::Float,
+                        TokenType::Int,
+                        TokenType::Bool,
+                        TokenType::Identifier
+                    ]),
+                    actual: token
+                }
+            ))
         }
     }
 
@@ -246,10 +271,14 @@ impl Parser
                     member: Some(member)
                 })
             },
-            _ => Err(Error::new(self.cur_line, self.cur_column, Type::UnexpectedToken {
-                expected: TokenType::combined([TokenType::Eq, TokenType::Colon]),
-                actual: token
-            }))
+            _ => Err(Error::new(
+                self.cur_line,
+                self.cur_column,
+                Type::UnexpectedToken {
+                    expected: TokenType::combined([TokenType::Eq, TokenType::Colon]),
+                    actual: token
+                }
+            ))
         }
     }
 
@@ -266,10 +295,7 @@ impl Parser
                 break;
             }
         }
-        Ok(tree::VariableList {
-            name,
-            vars
-        })
+        Ok(tree::VariableList { name, vars })
     }
 
     fn try_parse_pipeline(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
@@ -318,8 +344,8 @@ impl Parser
 #[cfg(test)]
 mod tests
 {
-    use crate::parser::tree::{Property, Root, Struct, Use, Value, Variable, VariableList};
     use super::*;
+    use crate::parser::tree::{Property, Root, Struct, Use, Value, Variable, VariableList};
 
     #[test]
     fn basic_parser()
@@ -378,9 +404,9 @@ mod tests
                         ptype: "float".into(),
                         pattr: None,
                         ptype_attr: None
-                    }
+                    },
                 ]
-            })
+            }),
         ];
         assert_eq!(roots, expected_roots);
         assert!(parser.tokens.is_empty());
@@ -443,9 +469,9 @@ mod tests
                         ptype: "float".into(),
                         pattr: Some("Pack".into()),
                         ptype_attr: None
-                    }
+                    },
                 ]
-            })
+            }),
         ];
         assert_eq!(roots, expected_roots);
         assert!(parser.tokens.is_empty());
@@ -461,14 +487,12 @@ mod tests
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let expected_roots = vec![
-            Root::Output(Property {
-                pname: "FragColor".into(),
-                ptype: "vec4f".into(),
-                pattr: None,
-                ptype_attr: None
-            })
-        ];
+        let expected_roots = vec![Root::Output(Property {
+            pname: "FragColor".into(),
+            ptype: "vec4f".into(),
+            pattr: None,
+            ptype_attr: None
+        })];
         assert_eq!(roots, expected_roots);
         assert!(parser.tokens.is_empty());
     }
@@ -486,19 +510,15 @@ mod tests
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let expected_roots = vec![
-            Root::VertexFormat(Struct {
-                name: "Vertex".into(),
-                props: vec![
-                    Property {
-                        pname: "Pos".into(),
-                        ptype: "vec3f".into(),
-                        pattr: None,
-                        ptype_attr: None
-                    }
-                ]
-            })
-        ];
+        let expected_roots = vec![Root::VertexFormat(Struct {
+            name: "Vertex".into(),
+            props: vec![Property {
+                pname: "Pos".into(),
+                ptype: "vec3f".into(),
+                pattr: None,
+                ptype_attr: None
+            }]
+        })];
         assert_eq!(roots, expected_roots);
         assert!(parser.tokens.is_empty());
     }
@@ -513,12 +533,10 @@ mod tests
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let expected_roots = vec![
-            Root::Use(Use {
-                member: "test".into(),
-                module: "module".into()
-            })
-        ];
+        let expected_roots = vec![Root::Use(Use {
+            member: "test".into(),
+            module: "module".into()
+        })];
         assert_eq!(roots, expected_roots);
         assert!(parser.tokens.is_empty());
     }
@@ -539,33 +557,31 @@ mod tests
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let expected_roots = vec![
-            Root::Pipeline(VariableList {
-                name: "Test".into(),
-                vars: vec![
-                    Variable {
-                        member: None,
-                        name: "Val1".into(),
-                        value: Value::Float(0.1)
-                    },
-                    Variable {
-                        member: None,
-                        name: "Val2".into(),
-                        value: Value::Int(12)
-                    },
-                    Variable {
-                        member: None,
-                        name: "Val3".into(),
-                        value: Value::Bool(true)
-                    },
-                    Variable {
-                        member: None,
-                        name: "Val4".into(),
-                        value: Value::Identifier("AnIdent".into())
-                    }
-                ]
-            })
-        ];
+        let expected_roots = vec![Root::Pipeline(VariableList {
+            name: "Test".into(),
+            vars: vec![
+                Variable {
+                    member: None,
+                    name: "Val1".into(),
+                    value: Value::Float(0.1)
+                },
+                Variable {
+                    member: None,
+                    name: "Val2".into(),
+                    value: Value::Int(12)
+                },
+                Variable {
+                    member: None,
+                    name: "Val3".into(),
+                    value: Value::Bool(true)
+                },
+                Variable {
+                    member: None,
+                    name: "Val4".into(),
+                    value: Value::Identifier("AnIdent".into())
+                },
+            ]
+        })];
         assert_eq!(roots, expected_roots);
         assert!(parser.tokens.is_empty());
     }
@@ -585,28 +601,26 @@ mod tests
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let expected_roots = vec![
-            Root::Pipeline(VariableList {
-                name: "Test".into(),
-                vars: vec![
-                    Variable {
-                        member: Some("member1".into()),
-                        name: "Val1".into(),
-                        value: Value::Float(0.1)
-                    },
-                    Variable {
-                        member: Some("member2".into()),
-                        name: "Val1".into(),
-                        value: Value::Float(0.5)
-                    },
-                    Variable {
-                        member: None,
-                        name: "Val2".into(),
-                        value: Value::Int(12)
-                    }
-                ]
-            })
-        ];
+        let expected_roots = vec![Root::Pipeline(VariableList {
+            name: "Test".into(),
+            vars: vec![
+                Variable {
+                    member: Some("member1".into()),
+                    name: "Val1".into(),
+                    value: Value::Float(0.1)
+                },
+                Variable {
+                    member: Some("member2".into()),
+                    name: "Val1".into(),
+                    value: Value::Float(0.5)
+                },
+                Variable {
+                    member: None,
+                    name: "Val2".into(),
+                    value: Value::Int(12)
+                },
+            ]
+        })];
         assert_eq!(roots, expected_roots);
         assert!(parser.tokens.is_empty());
     }

@@ -27,9 +27,9 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod error;
-pub mod tree;
 mod generator;
 mod interface;
+pub mod tree;
 
-pub use interface::*;
 pub use generator::build_ast;
+pub use interface::*;

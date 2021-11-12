@@ -26,27 +26,32 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::{collections::VecDeque};
+use std::{collections::VecDeque, str::from_utf8_unchecked};
 
 use regex::bytes::Regex;
-use crate::lexer::token::{CHR_COMMENT, STR_FALSE, STR_TRUE, Token};
-use crate::lexer::token::{
-    STR_CONST,
-    STR_STRUCT,
-    STR_PIPELINE,
-    STR_VFORMAT,
-    STR_BLENDFUNC,
-    STR_USE,
-    CHR_EQ,
-    CHR_BLOCK_START,
-    CHR_BLOCK_END,
-    STR_OUTPUT,
-    CHR_BREAK,
-    CHR_COLON,
-    CHR_NL
+
+use crate::lexer::{
+    error::Error,
+    token::{
+        Token,
+        CHR_BLOCK_END,
+        CHR_BLOCK_START,
+        CHR_BREAK,
+        CHR_COLON,
+        CHR_COMMENT,
+        CHR_EQ,
+        CHR_NL,
+        STR_BLENDFUNC,
+        STR_CONST,
+        STR_FALSE,
+        STR_OUTPUT,
+        STR_PIPELINE,
+        STR_STRUCT,
+        STR_TRUE,
+        STR_USE,
+        STR_VFORMAT
+    }
 };
-use std::str::from_utf8_unchecked;
-use crate::lexer::error::Error;
 
 pub struct TokenEntry
 {
@@ -203,7 +208,11 @@ impl Lexer
                     col: self.cur_column
                 });
             } else {
-                return Err(Error::unidentified_token(self.cur_line, self.cur_column, &code[np1..np2]));
+                return Err(Error::unidentified_token(
+                    self.cur_line,
+                    self.cur_column,
+                    &code[np1..np2]
+                ));
             }
         }
         return Ok(());
@@ -260,12 +269,13 @@ impl Lexer
 
     pub fn eliminate_whitespace(&mut self)
     {
-        self.tokens.retain(|TokenEntry {token, .. }| token != &Token::Whitespace);
+        self.tokens
+            .retain(|TokenEntry { token, .. }| token != &Token::Whitespace);
     }
 
     pub fn eliminate_breaks(&mut self)
     {
-        self.tokens.retain(|TokenEntry {token, ..}| token != &Token::Break);
+        self.tokens.retain(|TokenEntry { token, .. }| token != &Token::Break);
     }
 
     pub fn into_tokens(self) -> VecDeque<TokenEntry>
@@ -327,7 +337,11 @@ mod test
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
         basic_assert(toks);
     }
 
@@ -352,7 +366,11 @@ mod test
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
         basic_assert(toks);
     }
 
@@ -408,7 +426,11 @@ mod test
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
         assert_typical(toks);
     }
 
@@ -434,7 +456,11 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
         assert_typical(toks);
     }
 
@@ -457,7 +483,11 @@ const mat4f ModelView;
         lexer.process(b"const mat4f ModelView;").unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
         assert_typical(toks);
     }
 
@@ -469,7 +499,11 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
         assert_eq!(
             toks,
             vec![
@@ -488,7 +522,11 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
         assert_eq!(
             toks,
             vec![
@@ -507,7 +545,11 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
         assert_eq!(
             toks,
             vec![
@@ -526,7 +568,11 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
         assert_eq!(
             toks,
             vec![
@@ -549,7 +595,11 @@ const mat4f ModelView;
         lexer.process(source_code).unwrap();
         lexer.eliminate_whitespace();
         lexer.eliminate_breaks();
-        let toks: Vec<Token> = lexer.into_tokens().iter().map(|TokenEntry {token, ..}| token.clone()).collect();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
         assert_eq!(
             toks,
             vec![

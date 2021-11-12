@@ -26,7 +26,35 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use glslang_sys::{EShTargetClientVersion, EShTargetVulkan_1_0, EShTargetVulkan_1_1, EShTargetVulkan_1_2, EShTargetOpenGL_450, EShClientVulkan, EShClientOpenGL, EShClient, EShLangVertex, EShLangFragment, EShLangGeometry, EShLangTessControl, EShLangTessEvaluation, EShLanguage, EShClientNone, EShTargetNone, EShTargetVersionNone, EShTargetLanguage, EShTargetLanguageVersion, EShTargetSpv_1_0, EShTargetSpv_1_1, EShTargetSpv_1_2, EShTargetSpv_1_3, EShTargetSpv_1_4, EShTargetSpv_1_5, EShTargetSpv, EShTargetLangNone};
+use glslang_sys::{
+    EShClient,
+    EShClientNone,
+    EShClientOpenGL,
+    EShClientVulkan,
+    EShLangFragment,
+    EShLangGeometry,
+    EShLangTessControl,
+    EShLangTessEvaluation,
+    EShLangVertex,
+    EShLanguage,
+    EShTargetClientVersion,
+    EShTargetLangNone,
+    EShTargetLanguage,
+    EShTargetLanguageVersion,
+    EShTargetNone,
+    EShTargetOpenGL_450,
+    EShTargetSpv,
+    EShTargetSpv_1_0,
+    EShTargetSpv_1_1,
+    EShTargetSpv_1_2,
+    EShTargetSpv_1_3,
+    EShTargetSpv_1_4,
+    EShTargetSpv_1_5,
+    EShTargetVersionNone,
+    EShTargetVulkan_1_0,
+    EShTargetVulkan_1_1,
+    EShTargetVulkan_1_2
+};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Stage
@@ -88,7 +116,7 @@ impl Into<EShTargetClientVersion> for ClientVersion
             ClientVersion::Vulkan11 => EShTargetVulkan_1_1,
             ClientVersion::Vulkan12 => EShTargetVulkan_1_2,
             ClientVersion::OpenGL450 => EShTargetOpenGL_450
-        }
+        };
     }
 }
 
@@ -114,7 +142,7 @@ impl Into<EShTargetLanguageVersion> for TargetVersion
             TargetVersion::Spv13 => EShTargetSpv_1_3,
             TargetVersion::Spv14 => EShTargetSpv_1_4,
             TargetVersion::Spv15 => EShTargetSpv_1_5
-        }
+        };
     }
 }
 
@@ -140,10 +168,16 @@ impl Environment
             client: None,
             client_version: None,
             spirv: None
-        }
+        };
     }
 
-    pub fn new_vulkan(stage: Stage, dialect: Client, dialect_version: Option<i32>, client_version: ClientVersion, spirv: TargetVersion) -> Environment
+    pub fn new_vulkan(
+        stage: Stage,
+        dialect: Client,
+        dialect_version: Option<i32>,
+        client_version: ClientVersion,
+        spirv: TargetVersion
+    ) -> Environment
     {
         let dv = match dialect_version {
             Some(c) => c,
@@ -159,7 +193,8 @@ impl Environment
         };
     }
 
-    pub fn new_opengl(stage: Stage, dialect: Client, dialect_version: Option<i32>) -> Environment {
+    pub fn new_opengl(stage: Stage, dialect: Client, dialect_version: Option<i32>) -> Environment
+    {
         let dv = match dialect_version {
             Some(c) => c,
             None => 300

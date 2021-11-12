@@ -29,7 +29,7 @@
 use std::{
     fs::File,
     io::{BufRead, BufReader},
-    path::Path,
+    path::Path
 };
 
 pub fn run<Handler: crate::preprocessor::Handler>(file: &Path, mut handler: Handler) -> Result<(), Handler::Error>

@@ -26,10 +26,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::Debug;
-use std::num::ParseIntError;
-use crate::parser::tree;
-use crate::ast::{tree as ast};
+use std::{fmt::Debug, num::ParseIntError};
+
+use crate::{ast::tree as ast, parser::tree};
 
 #[derive(Clone, Debug)]
 pub enum ValueType
@@ -56,7 +55,8 @@ pub enum ValueError
 {
     UnknownEnum(String),
     UnknownVariable(String),
-    Unexpected {
+    Unexpected
+    {
         expected: ValueType,
         actual: tree::Value
     }

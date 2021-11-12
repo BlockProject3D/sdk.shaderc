@@ -27,9 +27,11 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::fmt::Debug;
-use crate::ast::error::Error;
-use crate::ast::tree::Statement;
-use crate::parser::tree::Use;
+
+use crate::{
+    ast::{error::Error, tree::Statement},
+    parser::tree::Use
+};
 
 pub trait IntoError<Ok, Err>
 {
@@ -51,7 +53,9 @@ impl<E: Debug> IntoError<Statement, Error<E>> for Result<Statement, E>
     }
 }
 
-impl<T> UseResolver for &mut T where T: UseResolver
+impl<T> UseResolver for &mut T
+where
+    T: UseResolver
 {
     type Error = T::Error;
 
@@ -61,9 +65,7 @@ impl<T> UseResolver for &mut T where T: UseResolver
     }
 }
 
-pub struct IgnoreUseResolver
-{
-}
+pub struct IgnoreUseResolver {}
 
 impl UseResolver for IgnoreUseResolver
 {

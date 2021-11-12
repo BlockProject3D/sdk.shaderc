@@ -26,13 +26,19 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::{vec::Vec};
+use std::vec::Vec;
 
 use phf::phf_map;
-use crate::ast::error::{Error, TypeError, ValueError, ValueType};
 
-use crate::ast::{IntoError, tree as ast, UseResolver};
-use crate::parser::tree as tree;
+use crate::{
+    ast::{
+        error::{Error, TypeError, ValueError, ValueType},
+        tree as ast,
+        IntoError,
+        UseResolver
+    },
+    parser::tree
+};
 
 fn parse_vec_base(ptype: &str) -> Result<ast::VectorType, TypeError>
 {
@@ -50,12 +56,9 @@ fn parse_vec_base(ptype: &str) -> Result<ast::VectorType, TypeError>
         "b" => ast::BaseType::Bool,
         _ => {
             return Err(TypeError::UnknownVector(ptype[ptype.len() - 1..].into()));
-        },
+        }
     };
-    return Ok(ast::VectorType {
-        item,
-        size
-    });
+    return Ok(ast::VectorType { item, size });
 }
 
 fn parse_vec(ptype: &str) -> Result<ast::VectorType, TypeError>
@@ -120,7 +123,7 @@ fn parse_type(ptype: &str, ptype_attr: Option<&str>) -> Result<ast::PropertyType
             let vtype = parse_vec(ptype)?;
             Ok(ast::PropertyType::Vector(vtype))
         }
-    }
+    };
 }
 
 fn parse_prop(p: tree::Property) -> Result<ast::Property, TypeError>
@@ -144,8 +147,7 @@ fn parse_struct(s: tree::Struct) -> Result<ast::Struct, TypeError>
             | ast::PropertyType::Texture2D(_)
             | ast::PropertyType::Texture3D(_)
             | ast::PropertyType::Texture2DArray(_)
-            | ast::PropertyType::TextureCube(_)
-            => return Err(TypeError::Banned(p.ptype)),
+            | ast::PropertyType::TextureCube(_) => return Err(TypeError::Banned(p.ptype)),
             _ => ()
         };
         plist.push(p);
@@ -283,7 +285,10 @@ static VARLIST_PIPELINE: phf::Map<&'static str, VarParseFunc<ast::PipelineStatem
     }
 };
 
-fn parse_varlist<T: ast::VarlistStatement>(varlist: tree::VariableList, map: &phf::Map<&'static str, VarParseFunc<T>>) -> Result<T, ValueError>
+fn parse_varlist<T: ast::VarlistStatement>(
+    varlist: tree::VariableList,
+    map: &phf::Map<&'static str, VarParseFunc<T>>
+) -> Result<T, ValueError>
 {
     let mut obj = T::new(varlist.name);
 
@@ -297,7 +302,10 @@ fn parse_varlist<T: ast::VarlistStatement>(varlist: tree::VariableList, map: &ph
     return Ok(obj);
 }
 
-fn gen_item<Resolver: UseResolver>(elem: tree::Root, mut resolver: Resolver) -> Result<ast::Statement, Error<Resolver::Error>>
+fn gen_item<Resolver: UseResolver>(
+    elem: tree::Root,
+    mut resolver: Resolver
+) -> Result<ast::Statement, Error<Resolver::Error>>
 {
     match elem {
         tree::Root::Constant(c) => {
@@ -316,8 +324,7 @@ fn gen_item<Resolver: UseResolver>(elem: tree::Root, mut resolver: Resolver) -> 
                 | ast::PropertyType::Texture3D(_)
                 | ast::PropertyType::Texture2DArray(_)
                 | ast::PropertyType::TextureCube(_)
-                | ast::PropertyType::Matrix(_)
-                => return Err(Error::Type(TypeError::Banned(prop.ptype))),
+                | ast::PropertyType::Matrix(_) => return Err(Error::Type(TypeError::Banned(prop.ptype))),
                 _ => ()
             };
             return Ok(ast::Statement::Output(prop));
@@ -341,7 +348,10 @@ fn gen_item<Resolver: UseResolver>(elem: tree::Root, mut resolver: Resolver) -> 
     }
 }
 
-pub fn build_ast<Resolver: UseResolver>(elems: Vec<tree::Root>, mut resolver: Resolver) -> Result<Vec<ast::Statement>, Error<Resolver::Error>>
+pub fn build_ast<Resolver: UseResolver>(
+    elems: Vec<tree::Root>,
+    mut resolver: Resolver
+) -> Result<Vec<ast::Statement>, Error<Resolver::Error>>
 {
     let mut stvec = Vec::new();
 
@@ -355,10 +365,29 @@ pub fn build_ast<Resolver: UseResolver>(elems: Vec<tree::Root>, mut resolver: Re
 #[cfg(test)]
 mod tests
 {
-    use crate::{Lexer, Parser};
-    use crate::ast::IgnoreUseResolver;
-    use crate::ast::tree::{BaseType, BlendFactor, BlendfuncStatement, BlendOperator, CullingMode, PipelineStatement, Property, PropertyType, RenderMode, Statement, Struct, TextureType, VectorType};
     use super::*;
+    use crate::{
+        ast::{
+            tree::{
+                BaseType,
+                BlendFactor,
+                BlendOperator,
+                BlendfuncStatement,
+                CullingMode,
+                PipelineStatement,
+                Property,
+                PropertyType,
+                RenderMode,
+                Statement,
+                Struct,
+                TextureType,
+                VectorType
+            },
+            IgnoreUseResolver
+        },
+        Lexer,
+        Parser
+    };
 
     #[test]
     fn basic_ast()
@@ -421,9 +450,9 @@ mod tests
                         pname: "UvMultiplier".into(),
                         ptype: PropertyType::Scalar(BaseType::Float),
                         pattr: None
-                    }
+                    },
                 ]
-            })
+            }),
         ];
         assert_eq!(ast, expected_ast);
     }
@@ -486,9 +515,9 @@ mod tests
                         pname: "UvMultiplier".into(),
                         ptype: PropertyType::Scalar(BaseType::Float),
                         pattr: Some("Pack".into())
-                    }
+                    },
                 ]
-            })
+            }),
         ];
         assert_eq!(ast, expected_ast);
     }
@@ -504,16 +533,14 @@ mod tests
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
         let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
-        let expected_ast = vec![
-            Statement::Output(Property {
-                pname: "FragColor".into(),
-                ptype: PropertyType::Vector(VectorType {
-                    item: BaseType::Float,
-                    size: 4
-                }),
-                pattr: None
-            })
-        ];
+        let expected_ast = vec![Statement::Output(Property {
+            pname: "FragColor".into(),
+            ptype: PropertyType::Vector(VectorType {
+                item: BaseType::Float,
+                size: 4
+            }),
+            pattr: None
+        })];
         assert_eq!(ast, expected_ast);
     }
 
@@ -531,21 +558,17 @@ mod tests
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
         let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
-        let expected_ast = vec![
-            Statement::VertexFormat(Struct {
-                name: "Vertex".into(),
-                props: vec![
-                    Property {
-                        pname: "Pos".into(),
-                        ptype: PropertyType::Vector(VectorType {
-                            item: BaseType::Float,
-                            size: 3
-                        }),
-                        pattr: None
-                    }
-                ]
-            })
-        ];
+        let expected_ast = vec![Statement::VertexFormat(Struct {
+            name: "Vertex".into(),
+            props: vec![Property {
+                pname: "Pos".into(),
+                ptype: PropertyType::Vector(VectorType {
+                    item: BaseType::Float,
+                    size: 3
+                }),
+                pattr: None
+            }]
+        })];
         assert_eq!(ast, expected_ast);
     }
 
@@ -567,16 +590,14 @@ mod tests
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
         let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
-        let expected_ast = vec![
-            Statement::Pipeline(PipelineStatement {
-                name: "Test".into(),
-                depth_enable: true,
-                depth_write_enable: true,
-                scissor_enable: false,
-                render_mode: RenderMode::Triangles,
-                culling_mode: CullingMode::BackFace
-            })
-        ];
+        let expected_ast = vec![Statement::Pipeline(PipelineStatement {
+            name: "Test".into(),
+            depth_enable: true,
+            depth_write_enable: true,
+            scissor_enable: false,
+            render_mode: RenderMode::Triangles,
+            culling_mode: CullingMode::BackFace
+        })];
         assert_eq!(ast, expected_ast);
     }
 
@@ -618,7 +639,7 @@ mod tests
                 dst_alpha: BlendFactor::OneMinusSrcAlpha,
                 color_op: BlendOperator::Add,
                 alpha_op: BlendOperator::Add
-            })
+            }),
         ];
         assert_eq!(ast, expected_ast);
     }

@@ -29,10 +29,10 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
 
-pub mod versions;
 pub mod limits;
+pub mod versions;
 
-use std::os::raw::{c_int, c_ulonglong, c_uint, c_char, c_void};
+use std::os::raw::{c_char, c_int, c_uint, c_ulonglong, c_void};
 
 /// typedef enum EShLanguage
 #[repr(transparent)]
@@ -149,7 +149,8 @@ pub const EShOptFull: EShOptimizationLevel = EShOptimizationLevel(3);
 pub struct EShTextureSamplerTransformMode(c_int);
 
 pub const EShTexSampTransKeep: EShTextureSamplerTransformMode = EShTextureSamplerTransformMode(0);
-pub const EShTexSampTransUpgradeTextureRemoveSampler: EShTextureSamplerTransformMode = EShTextureSamplerTransformMode(1);
+pub const EShTexSampTransUpgradeTextureRemoveSampler: EShTextureSamplerTransformMode =
+    EShTextureSamplerTransformMode(1);
 
 /// typedef enum EShMessages (bitflags)
 pub type EShMessages = c_uint;
@@ -224,8 +225,7 @@ pub struct TShader(c_void);
 #[repr(transparent)]
 pub struct TProgram(c_void);
 
-extern "C"
-{
+extern "C" {
     pub fn get_version() -> Version;
     pub fn get_essl_version_string() -> *const c_char;
     pub fn get_khronos_tool_id() -> c_int;
@@ -237,7 +237,13 @@ extern "C"
     pub fn TShader_destroy(this: *const TShader);
     pub fn TShader_setStrings(this: *const TShader, s: *const *const c_char, n: c_int);
     pub fn TShader_setStringsWithLengths(this: *const TShader, s: *const *const c_char, l: *const c_int, n: c_int);
-    pub fn TShader_setStringsWithLengthsAndNames(this: *const TShader, s: *const *const c_char, l: *const c_int, names: *const *const c_char, n: c_int);
+    pub fn TShader_setStringsWithLengthsAndNames(
+        this: *const TShader,
+        s: *const *const c_char,
+        l: *const c_int,
+        names: *const *const c_char,
+        n: c_int
+    );
     pub fn TShader_setPreamble(this: *const TShader, s: *const c_char);
     pub fn TShader_setEntryPoint(this: *const TShader, entryPoint: *const c_char);
     pub fn TShader_setSourceEntryPoint(this: *const TShader, sourceEntryPointName: *const c_char);
@@ -259,15 +265,35 @@ extern "C"
     pub fn TShader_setGlobalUniformBinding(this: *const TShader, binding: c_uint);
     pub fn TShader_setAtomicCounterBlockSet(this: *const TShader, set: c_uint);
     pub fn TShader_setAtomicCounterBlockBinding(this: *const TShader, binding: c_uint);
-    pub fn TShader_setEnvInput(this: *const TShader, lang: EShSource, stage: EShLanguage, client: EShClient, version: c_int);
+    pub fn TShader_setEnvInput(
+        this: *const TShader,
+        lang: EShSource,
+        stage: EShLanguage,
+        client: EShClient,
+        version: c_int
+    );
     pub fn TShader_setEnvClient(this: *const TShader, client: EShClient, version: EShTargetClientVersion);
     pub fn TShader_setEnvTarget(this: *const TShader, lang: EShTargetLanguage, version: EShTargetLanguageVersion);
     pub fn TShader_getStrings(this: *const TShader, s: *mut *const *const c_char, n: *mut c_int);
     pub fn TShader_setEnvInputVulkanRulesRelaxed(this: *const TShader);
     pub fn TShader_getEnvTargetHlslFunctionality1(this: *const TShader) -> bool;
     pub fn TShader_getEnvInputVulkanRulesRelaxed(this: *const TShader) -> bool;
-    pub fn TShader_parse(this: *const TShader, res: *const limits::TBuiltInResource, defaultVersion: c_int, defaultProfile: versions::EProfile, forceDefaultVersionAndProfile: bool, forwardCompatible: bool, messages: EShMessages) -> bool;
-    pub fn TShader_parse1(this: *const TShader, res: *const limits::TBuiltInResource, defaultVersion: c_int, forwardCompatible: bool, messages: EShMessages) -> bool;
+    pub fn TShader_parse(
+        this: *const TShader,
+        res: *const limits::TBuiltInResource,
+        defaultVersion: c_int,
+        defaultProfile: versions::EProfile,
+        forceDefaultVersionAndProfile: bool,
+        forwardCompatible: bool,
+        messages: EShMessages
+    ) -> bool;
+    pub fn TShader_parse1(
+        this: *const TShader,
+        res: *const limits::TBuiltInResource,
+        defaultVersion: c_int,
+        forwardCompatible: bool,
+        messages: EShMessages
+    ) -> bool;
     pub fn TShader_getInfoLog(this: *const TShader) -> *const c_char;
     pub fn TShader_getInfoDebugLog(this: *const TShader) -> *const c_char;
     pub fn TShader_getStage(this: *const TShader) -> EShLanguage;
