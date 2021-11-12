@@ -26,28 +26,54 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::path::{Path, PathBuf};
-use crate::ast::{build_ast, IgnoreUseResolver};
+use std::fmt::Debug;
+use crate::ast::{build_ast, UseResolver};
 use crate::ast::tree::Statement;
 use crate::Lexer;
 use crate::Parser;
 
-pub fn parse(lexer: Lexer, expand_use: bool, module_paths: &Vec<PathBuf>)
-             -> Result<Vec<Statement>, String>
+pub enum AutoError<ResolverError: Debug>
 {
-    let mut parser = Parser::new(lexer);
-    let tree = parser.parse().unwrap(); //TODO: fix
-    let ast = build_ast(tree, IgnoreUseResolver {}).unwrap();  //TODO: fix
-    Ok(ast)
+    Lexer(crate::lexer::error::Error),
+    Parser(crate::parser::error::Error),
+    Ast(crate::ast::error::Error<ResolverError>)
 }
 
-pub fn parse_file(file: &Path, expand_use: bool, module_paths: &Vec<PathBuf>) -> Result<Vec<Statement>, String>
+impl<ResolverError: Debug> From<crate::lexer::error::Error> for AutoError<ResolverError>
 {
-    let str = match std::fs::read_to_string(file) {
-        Err(e) => return Err(format!("Error loading SAL script file: {}", e)),
-        Ok(v) => v
-    };
+    fn from(e: crate::lexer::error::Error) -> Self
+    {
+        Self::Lexer(e)
+    }
+}
+
+impl<ResolverError: Debug> From<crate::parser::error::Error> for AutoError<ResolverError>
+{
+    fn from(e: crate::parser::error::Error) -> Self
+    {
+        Self::Parser(e)
+    }
+}
+
+impl<ResolverError: Debug> From<crate::ast::error::Error<ResolverError>> for AutoError<ResolverError>
+{
+    fn from(e: crate::ast::error::Error<ResolverError>) -> Self
+    {
+        Self::Ast(e)
+    }
+}
+
+pub fn auto_lexer_parser<T: AsRef<[u8]>, Resolver: UseResolver>(buf: T, resolver: Resolver) -> Result<Vec<Statement>, AutoError<Resolver::Error>>
+{
     let mut lexer = Lexer::new();
-    lexer.process(str.as_bytes()).unwrap(); //TODO: fix
-    return parse(lexer, expand_use, module_paths);
+    lexer.process(buf.as_ref())?;
+    auto_parser(lexer, resolver)
+}
+
+pub fn auto_parser<Resolver: UseResolver>(lexer: Lexer, resolver: Resolver) -> Result<Vec<Statement>, AutoError<Resolver::Error>>
+{
+    let mut parser = Parser::new(lexer);
+    let roots = parser.parse()?;
+    let ast = build_ast(roots, resolver)?;
+    Ok(ast)
 }

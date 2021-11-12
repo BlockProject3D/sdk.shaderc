@@ -297,7 +297,7 @@ fn parse_varlist<T: ast::VarlistStatement>(varlist: tree::VariableList, map: &ph
     return Ok(obj);
 }
 
-fn gen_item<TResolver: UseResolver>(elem: tree::Root, mut resolver: TResolver) -> Result<ast::Statement, Error<TResolver::Error>>
+fn gen_item<Resolver: UseResolver>(elem: tree::Root, mut resolver: Resolver) -> Result<ast::Statement, Error<Resolver::Error>>
 {
     match elem {
         tree::Root::Constant(c) => {
@@ -341,7 +341,7 @@ fn gen_item<TResolver: UseResolver>(elem: tree::Root, mut resolver: TResolver) -
     }
 }
 
-pub fn build_ast<TResolver: UseResolver>(elems: Vec<tree::Root>, mut resolver: TResolver) -> Result<Vec<ast::Statement>, Error<TResolver::Error>>
+pub fn build_ast<Resolver: UseResolver>(elems: Vec<tree::Root>, mut resolver: Resolver) -> Result<Vec<ast::Statement>, Error<Resolver::Error>>
 {
     let mut stvec = Vec::new();
 

@@ -26,10 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use std::num::ParseIntError;
 use crate::parser::tree;
-use crate::ast::{tree as ast, UseResolver};
+use crate::ast::{tree as ast};
 
 #[derive(Clone, Debug)]
 pub enum ValueType
