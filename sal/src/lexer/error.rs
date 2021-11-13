@@ -40,7 +40,7 @@ impl Debug for Type
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
     {
         match self {
-            Type::UnidentifiedToken(v) => write!(f, "UnidentifiedToken({})", String::from_utf8_lossy(&v).as_ref()),
+            Type::UnidentifiedToken(v) => write!(f, "UnidentifiedToken({})", String::from_utf8_lossy(v).as_ref()),
             Type::Eof => f.write_str("Eof")
         }
     }

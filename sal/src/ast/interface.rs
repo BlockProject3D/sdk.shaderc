@@ -29,28 +29,15 @@
 use std::fmt::Debug;
 
 use crate::{
-    ast::{error::Error, tree::Statement},
+    ast::tree::Statement,
     parser::tree::Use
 };
-
-pub trait IntoError<Ok, Err>
-{
-    fn into_error(self) -> Result<Ok, Err>;
-}
 
 pub trait UseResolver
 {
     type Error: Debug;
 
     fn resolve(&mut self, item: Use) -> Result<Statement, Self::Error>;
-}
-
-impl<E: Debug> IntoError<Statement, Error<E>> for Result<Statement, E>
-{
-    fn into_error(self) -> Result<Statement, Error<E>>
-    {
-        self.map_err(|e| Error::UnresolvedUse(e))
-    }
 }
 
 impl<T> UseResolver for &mut T

@@ -41,7 +41,7 @@ static FLAG: AtomicBool = AtomicBool::new(false);
 pub mod environment;
 pub mod shader;
 
-pub fn main<F: FnOnce() -> ()>(f: F)
+pub fn main<F: FnOnce()>(f: F)
 {
     let flag = FLAG.load(Ordering::Relaxed);
     if flag {

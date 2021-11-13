@@ -179,10 +179,7 @@ impl Environment
         spirv: TargetVersion
     ) -> Environment
     {
-        let dv = match dialect_version {
-            Some(c) => c,
-            None => 300
-        };
+        let dv = dialect_version.unwrap_or(300);
         return Environment {
             stage,
             dialect: Some(dialect),
@@ -195,10 +192,7 @@ impl Environment
 
     pub fn new_opengl(stage: Stage, dialect: Client, dialect_version: Option<i32>) -> Environment
     {
-        let dv = match dialect_version {
-            Some(c) => c,
-            None => 300
-        };
+        let dv = dialect_version.unwrap_or(300);
         return Environment {
             stage,
             dialect: Some(dialect),
@@ -245,7 +239,7 @@ impl Environment
 
     pub fn get_target_language(&self) -> EShTargetLanguage
     {
-        if let Some(_) = self.spirv {
+        if self.spirv.is_some() {
             return EShTargetSpv;
         }
         return EShTargetNone;

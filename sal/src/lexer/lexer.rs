@@ -140,13 +140,7 @@ fn check_terminator(chr: u8) -> Option<Token>
 
 fn is_whitespace(chr: u8) -> bool
 {
-    match chr {
-        b'\t' => true,
-        b' ' => true,
-        b'\r' => true,
-        CHR_NL => true,
-        _ => false
-    }
+    matches!(chr, b'\t' | b' ' | b'\r' | CHR_NL)
 }
 
 fn trim_token(code: &[u8], token: (usize, usize)) -> (usize, usize)

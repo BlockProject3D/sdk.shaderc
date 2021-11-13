@@ -34,7 +34,6 @@ use crate::{
     ast::{
         error::{Error, TypeError, ValueError, ValueType},
         tree as ast,
-        IntoError,
         UseResolver
     },
     parser::tree
@@ -342,7 +341,7 @@ fn gen_item<Resolver: UseResolver>(
             return Ok(ast::Statement::Blendfunc(vl));
         },
         tree::Root::Use(u) => {
-            let stmt = resolver.resolve(u).into_error()?;
+            let stmt = resolver.resolve(u).map_err(Error::UnresolvedUse)?;
             return Ok(stmt);
         }
     }

@@ -28,15 +28,15 @@
 
 use std::fmt::{Display, Formatter};
 
-pub const STR_CONST: &'static [u8] = b"const";
-pub const STR_STRUCT: &'static [u8] = b"struct";
-pub const STR_PIPELINE: &'static [u8] = b"pipeline";
-pub const STR_BLENDFUNC: &'static [u8] = b"blendfunc";
-pub const STR_VFORMAT: &'static [u8] = b"vformat";
-pub const STR_USE: &'static [u8] = b"use";
-pub const STR_OUTPUT: &'static [u8] = b"output";
-pub const STR_TRUE: &'static [u8] = b"true";
-pub const STR_FALSE: &'static [u8] = b"false";
+pub const STR_CONST: &[u8] = b"const";
+pub const STR_STRUCT: &[u8] = b"struct";
+pub const STR_PIPELINE: &[u8] = b"pipeline";
+pub const STR_BLENDFUNC: &[u8] = b"blendfunc";
+pub const STR_VFORMAT: &[u8] = b"vformat";
+pub const STR_USE: &[u8] = b"use";
+pub const STR_OUTPUT: &[u8] = b"output";
+pub const STR_TRUE: &[u8] = b"true";
+pub const STR_FALSE: &[u8] = b"false";
 
 pub const CHR_BREAK: u8 = b';';
 pub const CHR_EQ: u8 = b'=';
