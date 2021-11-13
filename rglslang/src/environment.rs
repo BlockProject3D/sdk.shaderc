@@ -66,9 +66,9 @@ pub enum Stage
     Domain
 }
 
-impl Into<EShLanguage> for Stage
+impl Stage
 {
-    fn into(self) -> EShLanguage
+    pub fn into(self) -> EShLanguage
     {
         match self {
             Stage::Vertex => EShLangVertex,
@@ -87,9 +87,9 @@ pub enum Client
     Vulkan
 }
 
-impl Into<EShClient> for Client
+impl Client
 {
-    fn into(self) -> EShClient
+    pub fn into(self) -> EShClient
     {
         return match self {
             Client::OpenGL => EShClientOpenGL,
@@ -107,9 +107,9 @@ pub enum ClientVersion
     OpenGL450
 }
 
-impl Into<EShTargetClientVersion> for ClientVersion
+impl ClientVersion
 {
-    fn into(self) -> EShTargetClientVersion
+    pub fn into(self) -> EShTargetClientVersion
     {
         return match self {
             ClientVersion::Vulkan10 => EShTargetVulkan_1_0,
@@ -131,9 +131,9 @@ pub enum TargetVersion
     Spv15
 }
 
-impl Into<EShTargetLanguageVersion> for TargetVersion
+impl TargetVersion
 {
-    fn into(self) -> EShTargetLanguageVersion
+    pub fn into(self) -> EShTargetLanguageVersion
     {
         return match self {
             TargetVersion::Spv10 => EShTargetSpv_1_0,

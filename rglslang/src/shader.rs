@@ -91,9 +91,9 @@ pub enum Profile
     Es
 }
 
-impl Into<EProfile> for Profile
+impl Profile
 {
-    fn into(self) -> EProfile
+    pub fn into(self) -> EProfile
     {
         return match self {
             Profile::None => ENoProfile,
@@ -114,9 +114,9 @@ pub enum BlockStorageClass
     Count
 }
 
-impl Into<TBlockStorageClass> for BlockStorageClass
+impl BlockStorageClass
 {
-    fn into(self) -> TBlockStorageClass
+    pub fn into(self) -> TBlockStorageClass
     {
         return match self {
             BlockStorageClass::Uniform => EbsUniform,
