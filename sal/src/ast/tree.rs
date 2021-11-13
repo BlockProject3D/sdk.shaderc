@@ -114,14 +114,14 @@ impl VarlistStatement for PipelineStatement
 {
     fn new(name: String) -> Self
     {
-        return PipelineStatement {
+        PipelineStatement {
             name,
             depth_enable: true,
             depth_write_enable: true,
             scissor_enable: false,
             render_mode: RenderMode::Triangles,
             culling_mode: CullingMode::BackFace
-        };
+        }
     }
 }
 
@@ -171,7 +171,7 @@ impl VarlistStatement for BlendfuncStatement
 {
     fn new(name: String) -> Self
     {
-        return BlendfuncStatement {
+        BlendfuncStatement {
             name,
             src_color: BlendFactor::One,
             dst_color: BlendFactor::Zero,
@@ -179,7 +179,7 @@ impl VarlistStatement for BlendfuncStatement
             dst_alpha: BlendFactor::Zero,
             color_op: BlendOperator::Add,
             alpha_op: BlendOperator::Add
-        };
+        }
     }
 }
 
@@ -199,7 +199,7 @@ impl Statement
 {
     pub fn get_name(&self) -> Option<&str>
     {
-        return match self {
+        match self {
             Statement::Constant(v) => Some(&v.pname),
             Statement::ConstantBuffer(v) => Some(&v.name),
             Statement::Output(v) => Some(&v.pname),
@@ -207,6 +207,6 @@ impl Statement
             Statement::Pipeline(v) => Some(&v.name),
             Statement::Blendfunc(v) => Some(&v.name),
             Statement::Noop => None
-        };
+        }
     }
 }

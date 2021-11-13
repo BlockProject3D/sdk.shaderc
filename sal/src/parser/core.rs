@@ -52,11 +52,11 @@ impl Parser
     pub fn new(mut lexer: Lexer) -> Parser
     {
         lexer.eliminate_whitespace();
-        return Parser {
+        Parser {
             tokens: lexer.into_tokens(),
             cur_line: 0,
             cur_column: 0
-        };
+        }
     }
 
     fn pop_expect(&mut self, ttype: TokenType) -> Result<Token, Error>
@@ -162,7 +162,7 @@ impl Parser
             let prop = self.parse_property()?;
             return Ok(Some(tree::Root::Output(prop)));
         }
-        return Ok(None);
+        Ok(None)
     }
 
     fn check_block_end(&mut self) -> Result<bool, Error>
@@ -173,7 +173,7 @@ impl Parser
                 return Ok(true);
             }
         }
-        return Ok(false);
+        Ok(false)
     }
 
     fn parse_struct(&mut self) -> Result<tree::Struct, Error>
@@ -207,7 +207,7 @@ impl Parser
             }
             return Err(Error::new(self.cur_line, self.cur_column, Type::Eof));
         }
-        return Ok(None);
+        Ok(None)
     }
 
     fn try_parse_vformat(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
@@ -216,7 +216,7 @@ impl Parser
             let st = self.parse_struct()?;
             return Ok(Some(tree::Root::VertexFormat(st)));
         }
-        return Ok(None);
+        Ok(None)
     }
 
     fn parse_pipeline_val(&mut self) -> Result<tree::Value, Error>
@@ -304,7 +304,7 @@ impl Parser
             let varlist = self.parse_varlist()?;
             return Ok(Some(tree::Root::Pipeline(varlist)));
         }
-        return Ok(None);
+        Ok(None)
     }
 
     fn try_parse_blendfunc(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
@@ -313,7 +313,7 @@ impl Parser
             let varlist = self.parse_varlist()?;
             return Ok(Some(tree::Root::Blendfunc(varlist)));
         }
-        return Ok(None);
+        Ok(None)
     }
 
     pub fn parse(&mut self) -> Result<Vec<tree::Root>, Error>
@@ -337,7 +337,7 @@ impl Parser
                 return Err(Error::new(v.line, v.col, Type::UnknownToken(v.token)));
             }
         }
-        return Ok(dfj);
+        Ok(dfj)
     }
 }
 

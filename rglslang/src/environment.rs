@@ -91,10 +91,10 @@ impl Client
 {
     pub fn into(self) -> EShClient
     {
-        return match self {
+        match self {
             Client::OpenGL => EShClientOpenGL,
             Client::Vulkan => EShClientVulkan
-        };
+        }
     }
 }
 
@@ -111,12 +111,12 @@ impl ClientVersion
 {
     pub fn into(self) -> EShTargetClientVersion
     {
-        return match self {
+        match self {
             ClientVersion::Vulkan10 => EShTargetVulkan_1_0,
             ClientVersion::Vulkan11 => EShTargetVulkan_1_1,
             ClientVersion::Vulkan12 => EShTargetVulkan_1_2,
             ClientVersion::OpenGL450 => EShTargetOpenGL_450
-        };
+        }
     }
 }
 
@@ -135,14 +135,14 @@ impl TargetVersion
 {
     pub fn into(self) -> EShTargetLanguageVersion
     {
-        return match self {
+        match self {
             TargetVersion::Spv10 => EShTargetSpv_1_0,
             TargetVersion::Spv11 => EShTargetSpv_1_1,
             TargetVersion::Spv12 => EShTargetSpv_1_2,
             TargetVersion::Spv13 => EShTargetSpv_1_3,
             TargetVersion::Spv14 => EShTargetSpv_1_4,
             TargetVersion::Spv15 => EShTargetSpv_1_5
-        };
+        }
     }
 }
 
@@ -161,14 +161,14 @@ impl Environment
 {
     pub fn new_validation(stage: Stage) -> Environment
     {
-        return Environment {
+        Environment {
             stage,
             dialect: None,
             dialect_version: 0,
             client: None,
             client_version: None,
             spirv: None
-        };
+        }
     }
 
     pub fn new_vulkan(
@@ -180,32 +180,32 @@ impl Environment
     ) -> Environment
     {
         let dv = dialect_version.unwrap_or(300);
-        return Environment {
+        Environment {
             stage,
             dialect: Some(dialect),
             dialect_version: dv,
             client: Some(Client::Vulkan),
             client_version: Some(client_version),
             spirv: Some(spirv)
-        };
+        }
     }
 
     pub fn new_opengl(stage: Stage, dialect: Client, dialect_version: Option<i32>) -> Environment
     {
         let dv = dialect_version.unwrap_or(300);
-        return Environment {
+        Environment {
             stage,
             dialect: Some(dialect),
             dialect_version: dv,
             client: Some(Client::OpenGL),
             client_version: Some(ClientVersion::OpenGL450),
             spirv: None
-        };
+        }
     }
 
     pub fn get_stage(&self) -> EShLanguage
     {
-        return self.stage.into();
+        self.stage.into()
     }
 
     pub fn get_dialect(&self) -> EShClient
@@ -213,7 +213,7 @@ impl Environment
         if let Some(c) = self.dialect {
             return c.into();
         }
-        return EShClientNone;
+        EShClientNone
     }
 
     pub fn get_client(&self) -> EShClient
@@ -221,12 +221,12 @@ impl Environment
         if let Some(c) = self.client {
             return c.into();
         }
-        return EShClientNone;
+        EShClientNone
     }
 
     pub fn get_dialect_version(&self) -> i32
     {
-        return self.dialect_version;
+        self.dialect_version
     }
 
     pub fn get_client_version(&self) -> EShTargetClientVersion
@@ -234,7 +234,7 @@ impl Environment
         if let Some(c) = self.client_version {
             return c.into();
         }
-        return EShTargetVersionNone;
+        EShTargetVersionNone
     }
 
     pub fn get_target_language(&self) -> EShTargetLanguage
@@ -242,7 +242,7 @@ impl Environment
         if self.spirv.is_some() {
             return EShTargetSpv;
         }
-        return EShTargetNone;
+        EShTargetNone
     }
 
     pub fn get_target_language_version(&self) -> EShTargetLanguageVersion
@@ -250,6 +250,6 @@ impl Environment
         if let Some(c) = self.spirv {
             return c.into();
         }
-        return EShTargetLangNone;
+        EShTargetLangNone
     }
 }

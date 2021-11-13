@@ -122,7 +122,7 @@ fn check_identifier(substr: &[u8]) -> Option<Token>
             return Some(Token::Identifier(from_utf8_unchecked(substr).into()));
         }
     }
-    return None;
+    None
 }
 
 fn check_terminator(chr: u8) -> Option<Token>
@@ -152,7 +152,7 @@ fn trim_token(code: &[u8], token: (usize, usize)) -> (usize, usize)
     while pos2 > pos1 && is_whitespace(code[pos2 - 1]) {
         pos2 -= 1;
     }
-    return (pos1, pos2);
+    (pos1, pos2)
 }
 
 pub struct Lexer
@@ -176,13 +176,13 @@ impl Lexer
 {
     pub fn new() -> Lexer
     {
-        return Lexer {
+        Lexer {
             tokens: VecDeque::new(),
             cur_token: (0, 0),
             cur_column: 0,
             cur_line: 1,
             in_comment: false
-        };
+        }
     }
 
     fn parse_token(&mut self, pos1: usize, pos2: usize, code: &[u8]) -> Result<(), Error>
@@ -217,7 +217,7 @@ impl Lexer
                 ));
             }
         }
-        return Ok(());
+        Ok(())
     }
 
     pub fn process(&mut self, code: &[u8]) -> Result<(), Error>
@@ -264,7 +264,7 @@ impl Lexer
         if pos2 - pos1 > 0 {
             self.parse_token(pos1, pos2, code)?;
         }
-        return Ok(());
+        Ok(())
     }
 
     pub fn eliminate_whitespace(&mut self)
@@ -280,7 +280,7 @@ impl Lexer
 
     pub fn into_tokens(self) -> VecDeque<TokenEntry>
     {
-        return self.tokens;
+        self.tokens
     }
 }
 

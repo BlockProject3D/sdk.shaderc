@@ -57,7 +57,7 @@ fn parse_vec_base(ptype: &str) -> Result<ast::VectorType, TypeError>
             return Err(TypeError::UnknownVector(ptype[ptype.len() - 1..].into()));
         }
     };
-    return Ok(ast::VectorType { item, size });
+    Ok(ast::VectorType { item, size })
 }
 
 fn parse_vec(ptype: &str) -> Result<ast::VectorType, TypeError>
@@ -65,7 +65,7 @@ fn parse_vec(ptype: &str) -> Result<ast::VectorType, TypeError>
     if !ptype.starts_with("vec") {
         return Err(TypeError::Unknown(ptype.into()));
     }
-    return parse_vec_base(ptype);
+    parse_vec_base(ptype)
 }
 
 fn try_parse_matrix(ptype: &str) -> Result<Option<ast::PropertyType>, TypeError>
@@ -74,7 +74,7 @@ fn try_parse_matrix(ptype: &str) -> Result<Option<ast::PropertyType>, TypeError>
         return Ok(None);
     }
     let vtype = parse_vec_base(ptype)?;
-    return Ok(Some(ast::PropertyType::Matrix(vtype)));
+    Ok(Some(ast::PropertyType::Matrix(vtype)))
 }
 
 fn try_parse_texture(ptype: &str, ptype_attr: Option<&str>) -> Result<Option<ast::PropertyType>, TypeError>
@@ -100,12 +100,12 @@ fn try_parse_texture(ptype: &str, ptype_attr: Option<&str>) -> Result<Option<ast
             _ => Ok(None)
         };
     }
-    return Ok(None);
+    Ok(None)
 }
 
 fn parse_type(ptype: &str, ptype_attr: Option<&str>) -> Result<ast::PropertyType, TypeError>
 {
-    return match ptype {
+    match ptype {
         "Sampler" => Ok(ast::PropertyType::Sampler),
         "float" => Ok(ast::PropertyType::Scalar(ast::BaseType::Float)),
         "double" => Ok(ast::PropertyType::Scalar(ast::BaseType::Double)),
@@ -122,17 +122,17 @@ fn parse_type(ptype: &str, ptype_attr: Option<&str>) -> Result<ast::PropertyType
             let vtype = parse_vec(ptype)?;
             Ok(ast::PropertyType::Vector(vtype))
         }
-    };
+    }
 }
 
 fn parse_prop(p: tree::Property) -> Result<ast::Property, TypeError>
 {
     let ptype = parse_type(&p.ptype, p.ptype_attr.as_deref())?;
-    return Ok(ast::Property {
+    Ok(ast::Property {
         ptype,
         pname: p.pname,
         pattr: p.pattr
-    });
+    })
 }
 
 fn parse_struct(s: tree::Struct) -> Result<ast::Struct, TypeError>
@@ -151,10 +151,10 @@ fn parse_struct(s: tree::Struct) -> Result<ast::Struct, TypeError>
         };
         plist.push(p);
     }
-    return Ok(ast::Struct {
+    Ok(ast::Struct {
         name: s.name,
         props: plist
-    });
+    })
 }
 
 static BLENDFACTOR: phf::Map<&'static str, ast::BlendFactor> = phf_map! {
@@ -203,10 +203,10 @@ fn parse_enum<T: Copy>(value: tree::Value, map: &phf::Map<&'static str, T>) -> R
         }
         return Err(ValueError::UnknownEnum(id));
     }
-    return Err(ValueError::Unexpected {
+    Err(ValueError::Unexpected {
         expected: ValueType::Enum,
         actual: value
-    });
+    })
 }
 
 fn parse_bool(value: tree::Value) -> Result<bool, ValueError>
@@ -298,7 +298,7 @@ fn parse_varlist<T: ast::VarlistStatement>(
             return Err(ValueError::UnknownVariable(v.name));
         }
     }
-    return Ok(obj);
+    Ok(obj)
 }
 
 fn gen_item<Resolver: UseResolver>(
@@ -309,11 +309,11 @@ fn gen_item<Resolver: UseResolver>(
     match elem {
         tree::Root::Constant(c) => {
             let prop = parse_prop(c)?;
-            return Ok(ast::Statement::Constant(prop));
+            Ok(ast::Statement::Constant(prop))
         },
         tree::Root::ConstantBuffer(s) => {
             let st = parse_struct(s)?;
-            return Ok(ast::Statement::ConstantBuffer(st));
+            Ok(ast::Statement::ConstantBuffer(st))
         },
         tree::Root::Output(c) => {
             let prop = parse_prop(c)?;
@@ -326,23 +326,23 @@ fn gen_item<Resolver: UseResolver>(
                 | ast::PropertyType::Matrix(_) => return Err(Error::Type(TypeError::Banned(prop.ptype))),
                 _ => ()
             };
-            return Ok(ast::Statement::Output(prop));
+            Ok(ast::Statement::Output(prop))
         },
         tree::Root::VertexFormat(s) => {
             let st = parse_struct(s)?;
-            return Ok(ast::Statement::VertexFormat(st));
+            Ok(ast::Statement::VertexFormat(st))
         },
         tree::Root::Pipeline(v) => {
             let vl = parse_varlist(v, &VARLIST_PIPELINE)?;
-            return Ok(ast::Statement::Pipeline(vl));
+            Ok(ast::Statement::Pipeline(vl))
         },
         tree::Root::Blendfunc(v) => {
             let vl = parse_varlist(v, &VARLIST_BLENDFUNC)?;
-            return Ok(ast::Statement::Blendfunc(vl));
+            Ok(ast::Statement::Blendfunc(vl))
         },
         tree::Root::Use(u) => {
             let stmt = resolver.resolve(u).map_err(Error::UnresolvedUse)?;
-            return Ok(stmt);
+            Ok(stmt)
         }
     }
 }
@@ -358,7 +358,7 @@ pub fn build_ast<Resolver: UseResolver>(
         let item = gen_item(v, &mut resolver)?;
         stvec.push(item);
     }
-    return Ok(stvec);
+    Ok(stvec)
 }
 
 #[cfg(test)]

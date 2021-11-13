@@ -95,12 +95,12 @@ impl Profile
 {
     pub fn into(self) -> EProfile
     {
-        return match self {
+        match self {
             Profile::None => ENoProfile,
             Profile::Core => ECoreProfile,
             Profile::Compatibility => ECompatibilityProfile,
             Profile::Es => EEsProfile
-        };
+        }
     }
 }
 
@@ -118,13 +118,13 @@ impl BlockStorageClass
 {
     pub fn into(self) -> TBlockStorageClass
     {
-        return match self {
+        match self {
             BlockStorageClass::Uniform => EbsUniform,
             BlockStorageClass::StorageBuffer => EbsStorageBuffer,
             BlockStorageClass::PushConstant => EbsPushConstant,
             BlockStorageClass::None => EbsNone,
             BlockStorageClass::Count => EbsCount
-        };
+        }
     }
 }
 
@@ -203,33 +203,33 @@ impl Messages
 {
     pub fn new() -> Messages
     {
-        return Messages {
+        Messages {
             messages: EShMsgDefault
-        };
+        }
     }
 
     pub fn suppress_warnings(mut self) -> Self
     {
         self.messages |= EShMsgSuppressWarnings;
-        return self;
+        self
     }
 
     pub fn debug(mut self) -> Self
     {
         self.messages |= EShMsgDebugInfo;
-        return self;
+        self
     }
 
     pub fn relaxed_errors(mut self) -> Self
     {
         self.messages |= EShMsgRelaxedErrors;
-        return self;
+        self
     }
 
     pub fn ast(mut self) -> Self
     {
         self.messages |= EShMsgAST;
-        return self;
+        self
     }
 }
 
@@ -250,7 +250,7 @@ impl Builder
     pub fn new(env: Environment) -> Builder
     {
         unsafe {
-            return Builder {
+            Builder {
                 storage: ShaderStorage::default(),
                 low_level: TShader_create(env.get_stage()),
                 env,
@@ -259,7 +259,7 @@ impl Builder
                 forward_compatible: true,
                 force_default_version_and_profile: false,
                 messages: EShMsgDefault
-            };
+            }
         }
     }
 
@@ -269,7 +269,7 @@ impl Builder
         unsafe {
             TShader_setPreamble(self.low_level, self.storage.preamble.as_ref().unwrap().as_ptr());
         }
-        return self;
+        self
     }
 
     pub fn entry_point<T: AsRef<str>>(mut self, name: T) -> Self
@@ -278,7 +278,7 @@ impl Builder
         unsafe {
             TShader_setEntryPoint(self.low_level, self.storage.entry_point.as_ref().unwrap().as_ptr());
         }
-        return self;
+        self
     }
 
     pub fn source_entry_point<T: AsRef<str>>(mut self, name: T) -> Self
@@ -290,7 +290,7 @@ impl Builder
                 self.storage.source_entry_point_name.as_ref().unwrap().as_ptr()
             );
         }
-        return self;
+        self
     }
 
     pub fn global_uniform_block_name<T: AsRef<str>>(mut self, name: T) -> Self
@@ -302,7 +302,7 @@ impl Builder
                 self.storage.global_uniform_block_name.as_ref().unwrap().as_ptr()
             );
         }
-        return self;
+        self
     }
 
     pub fn atomic_counter_block_name<T: AsRef<str>>(mut self, name: T) -> Self
@@ -314,7 +314,7 @@ impl Builder
                 self.storage.atomic_counter_block_name.as_ref().unwrap().as_ptr()
             );
         }
-        return self;
+        self
     }
 
     pub fn add_block_storage_override<T: AsRef<str>>(mut self, name: T, backing: BlockStorageClass) -> Self
@@ -326,7 +326,7 @@ impl Builder
         unsafe {
             TShader_addBlockStorageOverride(self.low_level, name.as_ptr(), backing.into());
         }
-        return self;
+        self
     }
 
     pub fn add_uniform_location_override<T: AsRef<str>>(mut self, name: T, loc: i32) -> Self
@@ -338,13 +338,13 @@ impl Builder
         unsafe {
             TShader_addUniformLocationOverride(self.low_level, name.as_ptr(), loc);
         }
-        return self;
+        self
     }
 
     pub fn add_part(mut self, p: Part) -> Self
     {
         self.storage.parts.push(p);
-        return self;
+        self
     }
 
     pub fn unique_id(self, id: u64) -> Self
@@ -352,7 +352,7 @@ impl Builder
         unsafe {
             TShader_setUniqueId(self.low_level, id);
         }
-        return self;
+        self
     }
 
     pub fn auto_map_bindings(self) -> Self
@@ -360,7 +360,7 @@ impl Builder
         unsafe {
             TShader_setAutoMapBindings(self.low_level, true);
         }
-        return self;
+        self
     }
 
     pub fn auto_map_locations(self) -> Self
@@ -368,7 +368,7 @@ impl Builder
         unsafe {
             TShader_setAutoMapLocations(self.low_level, true);
         }
-        return self;
+        self
     }
 
     pub fn uniform_location_base(self, base: i32) -> Self
@@ -376,7 +376,7 @@ impl Builder
         unsafe {
             TShader_setUniformLocationBase(self.low_level, base);
         }
-        return self;
+        self
     }
 
     pub fn invert_y(self) -> Self
@@ -384,7 +384,7 @@ impl Builder
         unsafe {
             TShader_setInvertY(self.low_level, true);
         }
-        return self;
+        self
     }
 
     pub fn no_storage_format(self) -> Self
@@ -392,7 +392,7 @@ impl Builder
         unsafe {
             TShader_setNoStorageFormat(self.low_level, true);
         }
-        return self;
+        self
     }
 
     pub fn nan_min_max_clamp(self) -> Self
@@ -400,7 +400,7 @@ impl Builder
         unsafe {
             TShader_setNanMinMaxClamp(self.low_level, true);
         }
-        return self;
+        self
     }
 
     pub fn use_combined_texture_sampler(self) -> Self
@@ -408,7 +408,7 @@ impl Builder
         unsafe {
             TShader_setTextureSamplerTransformMode(self.low_level, EShTexSampTransUpgradeTextureRemoveSampler);
         }
-        return self;
+        self
     }
 
     pub fn global_uniform_set(self, set: u32) -> Self
@@ -416,7 +416,7 @@ impl Builder
         unsafe {
             TShader_setGlobalUniformSet(self.low_level, set);
         }
-        return self;
+        self
     }
 
     pub fn global_uniform_binding(self, binding: u32) -> Self
@@ -424,7 +424,7 @@ impl Builder
         unsafe {
             TShader_setGlobalUniformBinding(self.low_level, binding);
         }
-        return self;
+        self
     }
 
     pub fn atomic_counter_block_set(self, set: u32) -> Self
@@ -432,7 +432,7 @@ impl Builder
         unsafe {
             TShader_setAtomicCounterBlockSet(self.low_level, set);
         }
-        return self;
+        self
     }
 
     pub fn atomic_counter_block_binding(self, binding: u32) -> Self
@@ -440,7 +440,7 @@ impl Builder
         unsafe {
             TShader_setAtomicCounterBlockBinding(self.low_level, binding);
         }
-        return self;
+        self
     }
 
     pub fn vulkan_rules_relaxed(self) -> Self
@@ -448,37 +448,37 @@ impl Builder
         unsafe {
             TShader_setEnvInputVulkanRulesRelaxed(self.low_level);
         }
-        return self;
+        self
     }
 
     pub fn default_version(mut self, version: i32) -> Self
     {
         self.default_version = version;
-        return self;
+        self
     }
 
     pub fn default_profile(mut self, profile: Profile) -> Self
     {
         self.default_profile = profile;
-        return self;
+        self
     }
 
     pub fn forward_incompatible(mut self) -> Self
     {
         self.forward_compatible = false;
-        return self;
+        self
     }
 
     pub fn force_default_version_and_profile(mut self) -> Self
     {
         self.force_default_version_and_profile = true;
-        return self;
+        self
     }
 
     pub fn messages(mut self, msgs: Messages) -> Self
     {
         self.messages = msgs.messages;
-        return self;
+        self
     }
 
     pub fn parse(mut self) -> Shader
@@ -514,11 +514,11 @@ impl Builder
                 self.forward_compatible,
                 self.messages
             );
-            return Shader {
+            Shader {
                 valid: flag,
                 _storage: self.storage,
                 low_level: self.low_level
-            };
+            }
         }
     }
 }
@@ -550,7 +550,7 @@ impl Shader
 
     pub fn check(&self) -> bool
     {
-        return self.valid;
+        self.valid
     }
 }
 
