@@ -64,7 +64,7 @@ fn main()
             shader.get_info_debug_log()
         );
     });
-    let matches = clap_app!(shaderc =>
+    let _matches = clap_app!(shaderc =>
         (version: "1.0.0")
         (author: "BlockProject 3D")
         (about: "BlockProject 3D SDK - shader compiler")

@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 mod interface;
-mod preprocessor;
+mod core;
 
 pub use interface::Handler;
-pub use preprocessor::run;
+pub use self::core::run;

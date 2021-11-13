@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod error;
-mod lexer;
+mod core;
 pub mod token;
 
-pub use lexer::{Lexer, TokenEntry};
+pub use self::core::{Lexer, TokenEntry};

@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod error;
-mod parser;
+mod core;
 pub mod tree;
 
-pub use parser::Parser;
+pub use self::core::Parser;
