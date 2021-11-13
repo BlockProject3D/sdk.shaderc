@@ -164,6 +164,14 @@ pub struct Lexer
     in_comment: bool
 }
 
+impl Default for Lexer
+{
+    fn default() -> Self
+    {
+        Self::new()
+    }
+}
+
 impl Lexer
 {
     pub fn new() -> Lexer

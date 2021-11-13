@@ -191,6 +191,14 @@ pub struct Messages
     messages: EShMessages
 }
 
+impl Default for Messages
+{
+    fn default() -> Self
+    {
+        Self::new()
+    }
+}
+
 impl Messages
 {
     pub fn new() -> Messages
