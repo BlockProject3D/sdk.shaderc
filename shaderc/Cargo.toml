@@ -10,3 +10,4 @@ edition = "2018"
 clap = "2.33.3"
 regex = "1.4.5"
 rglslang = { path = "../rglslang" }
+crossbeam-channel = "0.5.1"
