@@ -28,8 +28,40 @@
 
 #include "../glslang/glslang/Public/ShaderLang.h"
 #include "../glslang/StandAlone/ResourceLimits.h"
+#include "../glslang/SPIRV/GlslangToSpv.h"
+#include "../glslang/SPIRV/Logger.h"
 
 using namespace glslang;
+
+class SpvContext
+{
+private:
+    std::vector<unsigned int> data;
+    std::string log;
+
+public:
+    size_t getSize()
+    {
+        return this->data.size();
+    }
+
+    const char *getLog()
+    {
+        return this->log.c_str();
+    }
+
+    const unsigned int *getData()
+    {
+        return this->data.data();
+    }
+
+    void fromGlslang(const TIntermediate &intermediate, SpvOptions &options)
+    {
+        spv::SpvBuildLogger logger;
+        GlslangToSpv(intermediate, this->data, &logger, &options);
+        this->log = logger.getAllMessages();
+    }
+};
 
 extern "C"
 {
@@ -461,6 +493,59 @@ void TProgram_destroy(void *self)
 const TBuiltInResource *TBuiltInResource_default()
 {
     return &DefaultTBuiltInResource;
+}
+
+struct SpvOptions1
+{
+    bool generateDebugInfo;
+    bool stripDebugInfo;
+    bool disableOptimizer;
+    bool optimizeSize;
+    bool disassemble;
+    bool validate;
+};
+
+void *SpvContext_create()
+{
+    return new SpvContext();
+}
+
+void SpvContext_fromGlslang(const void *self, const void *intermediate, const SpvOptions1 *options)
+{
+    auto *ctx = (SpvContext *)self;
+    SpvOptions opts;
+    opts.generateDebugInfo = options->generateDebugInfo;
+    opts.stripDebugInfo = options->stripDebugInfo;
+    opts.disableOptimizer = options->disableOptimizer;
+    opts.optimizeSize = options->optimizeSize;
+    opts.disassemble = options->disassemble;
+    opts.validate = options->validate;
+    auto *inter = (TIntermediate *)intermediate;
+    ctx->fromGlslang(*inter, opts);
+}
+
+void SpvContext_destroy(const void *self)
+{
+    auto *ctx = (SpvContext *)self;
+    delete ctx;
+}
+
+const char *SpvContext_getLog(const void *self)
+{
+    auto *ctx = (SpvContext *)self;
+    return ctx->getLog();
+}
+
+const unsigned int *SpvContext_getData(const void *self)
+{
+    auto *ctx = (SpvContext *)self;
+    return ctx->getData();
+}
+
+size_t SpvContext_getSize(const void *self)
+{
+    auto *ctx = (SpvContext *)self;
+    return ctx->getSize();
 }
 
 }

@@ -225,6 +225,21 @@ pub struct TShader(c_void);
 #[repr(transparent)]
 pub struct TProgram(c_void);
 
+/// special struct intended to bridge GlslangToSpv
+#[repr(transparent)]
+pub struct SpvContext(c_void);
+
+#[repr(C)]
+pub struct SpvOptions
+{
+    generateDebugInfo: bool,
+    stripDebugInfo: bool,
+    disableOptimizer: bool,
+    optimizeSize: bool,
+    disassemble: bool,
+    validate: bool
+}
+
 extern "C" {
     pub fn get_version() -> Version;
     pub fn get_essl_version_string() -> *const c_char;
@@ -326,4 +341,12 @@ extern "C" {
     pub fn TProgram_getUniformName(this: *const TProgram, index: c_int) -> *const c_char;
     pub fn TProgram_getUniformBlockName(this: *const TProgram, index: c_int) -> *const c_char;
     pub fn TProgram_dumpReflection(this: *const TProgram);
+
+    pub fn SpvContext_create() -> *const SpvContext;
+    pub fn SpvContext_fromGlslang(this: *const SpvContext, intermediate: *const c_void, options: *const SpvOptions);
+    pub fn SpvContext_getLog(this: *const SpvContext) -> *const c_char;
+    pub fn SpvContext_getData(this: *const SpvContext) -> *const c_uint;
+    //TODO: update to c_size_t when https://github.com/rust-lang/rust/issues/88345 is stable
+    pub fn SpvContext_getSize(this: *const SpvContext) -> usize;
+    pub fn SpvContext_destroy(this: *const SpvContext);
 }
