@@ -40,6 +40,7 @@ static FLAG: AtomicBool = AtomicBool::new(false);
 
 pub mod environment;
 pub mod shader;
+pub mod program;
 
 pub fn main<F: FnOnce()>(f: F)
 {

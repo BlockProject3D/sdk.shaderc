@@ -30,6 +30,7 @@ use std::{
     ffi::{CStr, CString},
     os::raw::c_char
 };
+use std::borrow::Cow;
 
 use glslang_sys::{
     limits::TBuiltInResource_default,
@@ -532,19 +533,19 @@ pub struct Shader
 
 impl Shader
 {
-    pub fn get_info_log(&self) -> &str
+    pub fn get_info_log(&self) -> Cow<str>
     {
         unsafe {
             let str = CStr::from_ptr(TShader_getInfoLog(self.low_level));
-            return str.to_str().unwrap();
+            str.to_string_lossy()
         }
     }
 
-    pub fn get_info_debug_log(&self) -> &str
+    pub fn get_info_debug_log(&self) -> Cow<str>
     {
         unsafe {
             let str = CStr::from_ptr(TShader_getInfoDebugLog(self.low_level));
-            return str.to_str().unwrap();
+            str.to_string_lossy()
         }
     }
 
@@ -562,4 +563,20 @@ impl Drop for Shader
             TShader_destroy(self.low_level);
         }
     }
+}
+
+// TODO: Make sure this is REALLY safe
+// SAFETY: This is a wild guess considering the use of locks for the globals in the source code of glslang
+unsafe impl Send for Shader {}
+
+pub(crate) fn unwrap_shader(s: Shader) -> *const TShader
+{
+    let ptr = s.low_level;
+    std::mem::forget(s);
+    ptr
+}
+
+pub(crate) fn unwrap_messages(m: Messages) -> EShMessages
+{
+    m.messages
 }
