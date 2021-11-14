@@ -67,11 +67,17 @@ fn main()
     let _matches = clap_app!(shaderc =>
         (version: "1.0.0")
         (author: "BlockProject 3D")
-        (about: "BlockProject 3D SDK - shader compiler")
-        (@arg input: -i --input +takes_value +required "Input shader file name")
-        (@arg target: -t --target +takes_value +required "Shader target (GLSL, HLSL or VGLSL)")
-        (@arg output: -o --output +takes_value "Output file name")
-        (@arg includes: -I --include +takes_value +multiple "Path to a directory to use as includes for SAL or shader code")
+        (about: "BlockProject 3D SDK - Shader Compiler")
+        (@arg target: -t --target +takes_value +required "Specify the shader package target")
+        (@arg print_targets: --targets "Print all available shader package targets")
+        (@arg output: -o --output +takes_value "Output shader package file name")
+        (@arg libs: -l --lib +takes_value +multiple "Specify one or more shader libs to use")
+        (@arg injections: -i --inject +takes_value +multiple "Inject a shader contained in one of the linked libs such that it will always be included in the compilation")
+        (@arg threads: -n --threads +takes_value "Specify the maximum number of threads to use when processing shaders")
+        (@arg minify: -m --minify "Allows minification of source code in targets that do not support actual compilation (ex: GL targets)")
+        (@arg debug: -d --debug "For supported targets, builds shaders with debug info")
+        (@arg debug: -o --optimize "For supported targets, builds shaders with optimizations")
+        (@arg shaders: ... "List of shader files to process")
     ).get_matches();
     let args: Vec<OsString> = std::env::args_os().collect();
     println!("Hello, world! {:?}", args);
