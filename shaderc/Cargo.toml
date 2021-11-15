@@ -2,7 +2,7 @@
 name = "shaderc"
 version = "0.1.0"
 authors = ["Yuri Edward <yuri6037@outlook.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -11,3 +11,6 @@ clap = "2.33.3"
 regex = "1.4.5"
 rglslang = { path = "../rglslang" }
 crossbeam-channel = "0.5.1"
+sal = { path = "../sal" }
+phf = { version = "0.8", features = ["macros"] }
+bpx = { version = "3.2.0", path = "../../bpx-rs", features = ["package", "shader"] }

@@ -27,6 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 mod thread_pool;
+mod targets;
 
 use std::ffi::OsString;
 
