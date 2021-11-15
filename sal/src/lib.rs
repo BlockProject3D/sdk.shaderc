@@ -27,10 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod ast;
-mod lexer;
-mod parser;
+pub mod lexer;
+pub mod parser;
 pub mod preprocessor;
 pub mod utils;
-
-pub use lexer::Lexer;
-pub use parser::Parser;
