@@ -40,16 +40,19 @@ pub fn run<Handler: crate::preprocessor::Handler>(file: &Path, mut handler: Hand
     for v in reader.lines() {
         let line = v?;
         let trimed = line.trim();
-        if trimed.starts_with('#') {
+        if sal_block {
+            handler.sal_code(&line)?;
+        } else if trimed.starts_with('#') {
             if let Some(id) = trimed.find(' ') {
                 let name = trimed[1..id].trim();
                 let value = trimed[id..].trim();
-                handler.directive(name, value)?;
+                handler.directive(name, Some(value))?;
+            } else {
+                if trimed == "#sal" {
+                    sal_block = !sal_block;
+                }
+                handler.directive(trimed, None)?;
             }
-        } else if trimed == "#sal" {
-            sal_block = !sal_block;
-        } else if sal_block {
-            handler.sal_code(&line)?;
         }
         handler.code_line(line)?;
     }

@@ -32,7 +32,7 @@ pub trait Handler
 {
     type Error: Debug + From<std::io::Error>;
 
-    fn directive(&mut self, name: &str, value: &str) -> Result<(), Self::Error>;
+    fn directive(&mut self, name: &str, value: Option<&str>) -> Result<(), Self::Error>;
     fn sal_code(&mut self, content: &str) -> Result<(), Self::Error>;
     fn code_line(&mut self, line: String) -> Result<(), Self::Error>;
 }
@@ -41,7 +41,7 @@ impl<T: Handler> Handler for &mut T
 {
     type Error = T::Error;
 
-    fn directive(&mut self, name: &str, value: &str) -> Result<(), Self::Error>
+    fn directive(&mut self, name: &str, value: Option<&str>) -> Result<(), Self::Error>
     {
         (**self).directive(name, value)
     }
