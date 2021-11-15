@@ -28,3 +28,4 @@
 
 pub mod preprocessor;
 pub mod shaderlib;
+pub mod useresolver;

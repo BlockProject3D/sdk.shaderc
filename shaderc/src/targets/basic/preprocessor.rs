@@ -36,6 +36,7 @@ use sal::preprocessor::Handler;
 use bpx::macros::impl_err_conversion;
 use bpx::package::utils::unpack_memory;
 use bpx::utils::OptionExtension;
+use log::{debug, info, warn};
 use crate::targets::basic::shaderlib::ShaderLib;
 
 #[derive(Debug)]
@@ -44,7 +45,8 @@ pub enum Error
     Io(std::io::Error),
     UnknownStage(String),
     ShaderLib(crate::targets::basic::shaderlib::Error),
-    NullInclude
+    NullInclude,
+    IncludeNotFound(String)
 }
 
 impl_err_conversion!(
@@ -99,10 +101,16 @@ impl<TBackend: IoBackend> Handler for BasicPreprocessor<TBackend>
             },
             "include" => {
                 let value = value.ok_or_else(|| Error::NullInclude)?;
+                let mut flag = false;
                 for v in &mut self.shader_libs {
                     if let Some(obj) = v.try_load(value)? {
                         self.includes.push(obj.into_boxed_slice());
+                        flag = true;
+                        debug!("Successfully resolved include {}", value);
                     }
+                }
+                if !flag {
+                    return Err(Error::IncludeNotFound(value.into()));
                 }
             },
             _ => return Ok(())

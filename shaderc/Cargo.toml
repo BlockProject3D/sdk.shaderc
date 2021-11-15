@@ -14,3 +14,5 @@ crossbeam-channel = "0.5.1"
 sal = { path = "../sal" }
 phf = { version = "0.8", features = ["macros"] }
 bpx = { version = "3.2.0", path = "../../bpx-rs", features = ["package", "shader"] }
+log = "0.4.14"
+simple_logger = "1.13.0"

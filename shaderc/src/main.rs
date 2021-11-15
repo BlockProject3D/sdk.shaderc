@@ -32,6 +32,7 @@ mod targets;
 use std::ffi::OsString;
 
 use clap::clap_app;
+use log::{info, LevelFilter};
 use rglslang::{
     environment::{Client, Stage},
     shader::{Messages, Part, Profile}
@@ -43,6 +44,9 @@ use rglslang::{
 
 fn main()
 {
+    //Log everything
+    log::set_max_level(LevelFilter::Trace);
+    info!("Initializing BlockProject 3D Shader Compiler...");
     rglslang::main(|| {
         let shader = rglslang::shader::Builder::new(rglslang::environment::Environment::new_opengl(
             Stage::Vertex,
