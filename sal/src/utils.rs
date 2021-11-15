@@ -34,6 +34,7 @@ use crate::{
     parser::Parser
 };
 
+#[derive(Debug)]
 pub enum AutoError<ResolverError: Debug>
 {
     Lexer(crate::lexer::error::Error),
