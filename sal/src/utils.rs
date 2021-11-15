@@ -30,8 +30,8 @@ use std::fmt::Debug;
 
 use crate::{
     ast::{build_ast, tree::Statement, UseResolver},
-    Lexer,
-    Parser
+    lexer::Lexer,
+    parser::Parser
 };
 
 pub enum AutoError<ResolverError: Debug>
