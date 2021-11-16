@@ -30,10 +30,9 @@ mod targets;
 mod options;
 
 use std::borrow::Cow;
-use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use clap::{App, Arg, OsValues};
+use clap::{App, Arg};
 use log::{debug, info, LevelFilter};
 use crate::options::{Args, ShaderUnit, TargetFunc};
 use phf::phf_map;

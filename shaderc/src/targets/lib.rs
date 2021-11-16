@@ -26,10 +26,47 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fs::File;
+use std::io::BufWriter;
+use bpx::package::{Architecture, PackageBuilder, Platform};
+use bpx::package::utils::pack_file_vname;
+use log::warn;
 use crate::Args;
-use crate::options::Error;
+use crate::options::{Error, ShaderUnit};
+use crate::targets::basic::shaderlib::ShaderLib;
 
 pub fn build(args: Args) -> Result<(), Error>
 {
+    let mut libs: Vec<ShaderLib> = args.libs.iter().map(|v| ShaderLib::new(*v)).collect();
+    let mut bpxp = PackageBuilder::new()
+        .with_type(*b"SL") //SL for ShaderLib
+        .with_architecture(Architecture::Any)
+        .with_platform(Platform::Any)
+        .build(BufWriter::new(File::create(args.output)?))?;
+    for unit in args.units {
+        match unit {
+            ShaderUnit::Path(path) => {
+                if let Some(name) = path.file_name() {
+                    if let Some(vname) = name.to_str() {
+                        pack_file_vname(&mut bpxp, vname, path)?;
+                    } else {
+                        warn!("Path '{}' does not contain a valid file name, skipping...", path.display());
+                        continue;
+                    }
+                } else {
+                    warn!("Path '{}' does not contain a valid file name, skipping...", path.display());
+                    continue;
+                }
+            },
+            ShaderUnit::Injected(vname) => {
+                for v in &mut libs {
+                    if let Some(data) = v.try_load(vname)? {
+                        bpxp.pack_object(vname, data.as_slice())?;
+                    }
+                }
+            }
+        }
+    }
+    bpxp.save()?;
     Ok(())
 }

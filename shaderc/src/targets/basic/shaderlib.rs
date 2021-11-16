@@ -26,6 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -50,6 +51,18 @@ impl_err_conversion!(
         bpx::strings::ReadError => Strings
     }
 );
+
+impl Display for Error
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        match self {
+            Error::Io(e) => write!(f, "io error: {}", e),
+            Error::Bpx(e) => write!(f, "bpx error: {}", e),
+            Error::Strings(e) => write!(f, "strings error: {}", e),
+        }
+    }
+}
 
 struct ShaderLibDecoder
 {
