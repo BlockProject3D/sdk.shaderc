@@ -10,10 +10,11 @@ edition = "2021"
 clap = "3.0.0-beta.5"
 regex = "1.4.5"
 rglslang = { path = "../rglslang" }
-crossbeam-channel = "0.5.1"
 sal = { path = "../sal" }
 phf = { version = "0.8", features = ["macros"] }
 bpx = { version = "3.2.0", path = "../../bpx-rs", features = ["package", "shader"] }
 log = "0.4.14"
 simple_logger = "1.13.0"
 crossbeam = "0.8.1"
+bp3d-threads = "1.0.0"
+

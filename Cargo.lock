@@ -35,6 +35,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
+name = "bp3d-threads"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76438778bdda9e721a8cc3b098bfe52a8bfa4b3d665ec35f656edac46fef93c7"
+dependencies = [
+ "crossbeam",
+ "crossbeam-channel",
+]
+
+[[package]]
 name = "bpx"
 version = "3.2.0"
 dependencies = [
@@ -614,10 +624,10 @@ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 name = "shaderc"
 version = "0.1.0"
 dependencies = [
+ "bp3d-threads",
  "bpx",
  "clap",
  "crossbeam",
- "crossbeam-channel",
  "log",
  "phf",
  "regex",
