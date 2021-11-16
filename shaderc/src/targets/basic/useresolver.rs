@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashMap;
-use bpx::decoder::IoBackend;
+use std::path::Path;
 use sal::ast::tree::Statement;
 use sal::ast::{IgnoreUseResolver, UseResolver};
 use sal::utils::{auto_lexer_parser, AutoError};
@@ -50,13 +50,24 @@ impl_err_conversion!(
     }
 );
 
-pub struct BasicUseResolver<TBackend: IoBackend>
+pub struct BasicUseResolver<'a>
 {
     modules: HashMap<String, Vec<Statement>>,
-    shader_libs: Vec<ShaderLib<TBackend>>
+    shader_libs: Vec<ShaderLib<'a>>
 }
 
-impl<TBackend: IoBackend> UseResolver for BasicUseResolver<TBackend>
+impl<'a> BasicUseResolver<'a>
+{
+    pub fn new(libs: Vec<&'a Path>) -> Self
+    {
+        Self {
+            modules: HashMap::new(),
+            shader_libs: libs.into_iter().map(|l| ShaderLib::new(l)).collect()
+        }
+    }
+}
+
+impl<'a> UseResolver for BasicUseResolver<'a>
 {
     type Error = Error;
 

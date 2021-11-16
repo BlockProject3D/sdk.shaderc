@@ -27,16 +27,11 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::io::Write;
-use bpx::decoder::IoBackend;
-use bpx::package::object::ObjectHeader;
-use bpx::package::PackageDecoder;
+use std::path::Path;
 use bpx::shader::Stage;
-use bpx::table::{ItemTable, NameTable};
 use sal::preprocessor::Handler;
 use bpx::macros::impl_err_conversion;
-use bpx::package::utils::unpack_memory;
-use bpx::utils::OptionExtension;
-use log::{debug, info, warn};
+use log::debug;
 use crate::targets::basic::shaderlib::ShaderLib;
 
 #[derive(Debug)]
@@ -56,19 +51,19 @@ impl_err_conversion!(
     }
 );
 
-pub struct BasicPreprocessor<TBackend: IoBackend>
+pub struct BasicPreprocessor<'a>
 {
     sal_code: Vec<u8>,
     includes: Vec<Box<[u8]>>,
     src_code: Vec<String>,
-    shader_libs: Vec<ShaderLib<TBackend>>,
+    shader_libs: Vec<ShaderLib<'a>>,
     stage: Option<Stage>,
     line_is_directive: bool
 }
 
-impl<TBackend: IoBackend> BasicPreprocessor<TBackend>
+impl<'a> BasicPreprocessor<'a>
 {
-    pub fn new(libs: Vec<PackageDecoder<TBackend>>) -> Self
+    pub fn new(libs: Vec<&'a Path>) -> Self
     {
         Self {
             sal_code: Vec::new(),
@@ -81,7 +76,7 @@ impl<TBackend: IoBackend> BasicPreprocessor<TBackend>
     }
 }
 
-impl<TBackend: IoBackend> Handler for BasicPreprocessor<TBackend>
+impl<'a> Handler for BasicPreprocessor<'a>
 {
     type Error = Error;
 

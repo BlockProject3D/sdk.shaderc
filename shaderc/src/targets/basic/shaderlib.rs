@@ -26,64 +26,77 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use bpx::decoder::IoBackend;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
 use bpx::macros::impl_err_conversion;
 use bpx::package::object::ObjectHeader;
 use bpx::package::PackageDecoder;
 use bpx::package::utils::unpack_memory;
-use bpx::table::{ItemTable, NameTable};
-use bpx::utils::OptionExtension;
+use bpx::table::ItemTable;
 
 #[derive(Debug)]
 pub enum Error
 {
+    Io(std::io::Error),
     Bpx(bpx::package::error::ReadError),
     Strings(bpx::strings::ReadError)
 }
 
 impl_err_conversion!(
     Error {
+        std::io::Error => Io,
         bpx::package::error::ReadError => Bpx,
         bpx::strings::ReadError => Strings
     }
 );
 
-pub struct ShaderLib<TBackend: IoBackend>
+struct ShaderLibDecoder
 {
-    decoder: PackageDecoder<TBackend>,
-    table: Option<(ItemTable<ObjectHeader>, NameTable<ObjectHeader>)>
+    decoder: PackageDecoder<BufReader<File>>,
+    items: ItemTable<ObjectHeader>
 }
 
-impl<TBackend: IoBackend> ShaderLib<TBackend>
+impl ShaderLibDecoder
 {
-    pub fn new(decoder: PackageDecoder<TBackend>) -> Self
-    {
-        Self {
-            decoder,
-            table: None
-        }
-    }
-
-    pub fn new_with_table(decoder: PackageDecoder<TBackend>, table: (ItemTable<ObjectHeader>, NameTable<ObjectHeader>)) -> Self
-    {
-        Self {
-            decoder,
-            table: Some(table)
-        }
-    }
-
     pub fn try_load(&mut self, name: &str) -> Result<Option<Vec<u8>>, Error>
     {
-        let flag = self.table.is_none();
-        let (items, names) = self.table.get_or_insert_with_err(|| self.decoder.read_object_table())?;
-        if flag {
-            items.build_lookup_table(names)?;
-        }
-        if let Some(obj) = items.lookup(name) {
+        if let Some(obj) = self.items.lookup(name) {
             let data = unpack_memory(&mut self.decoder, obj)?;
             Ok(Some(data))
         } else {
             Ok(None)
         }
+    }
+}
+
+pub struct ShaderLib<'a>
+{
+    path: &'a Path,
+    decoder: Option<ShaderLibDecoder>
+}
+
+impl<'a> ShaderLib<'a>
+{
+    pub fn new(path: &'a Path) -> Self
+    {
+        Self {
+            path,
+            decoder: None
+        }
+    }
+
+    pub fn try_load(&mut self, name: &str) -> Result<Option<Vec<u8>>, Error>
+    {
+        if self.decoder.is_none() {
+            let mut decoder = PackageDecoder::new(BufReader::new(File::open(self.path)?))?;
+            let (mut items, mut names) = decoder.read_object_table()?;
+            items.build_lookup_table(&mut names)?;
+            self.decoder = Some(ShaderLibDecoder {
+                decoder,
+                items
+            });
+        }
+        self.decoder.as_mut().unwrap().try_load(name)
     }
 }
