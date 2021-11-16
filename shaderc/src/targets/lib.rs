@@ -26,5 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod basic;
-pub mod lib;
+use crate::Args;
+use crate::options::Error;
+
+pub fn build(args: Args) -> Result<(), Error>
+{
+    Ok(())
+}

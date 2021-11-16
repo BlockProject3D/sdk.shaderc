@@ -35,12 +35,13 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
 use clap::{App, Arg, OsValues};
-use log::{info, LevelFilter};
-use crate::options::{Args, ShaderUnit};
+use log::{debug, info, LevelFilter};
+use crate::options::{Args, ShaderUnit, TargetFunc};
+use phf::phf_map;
 
-//mod sal;
-
-//pub use sal::Lexer;
+static TARGETS: phf::Map<&'static str, TargetFunc> = phf_map! {
+    "LIB" => targets::lib::build
+};
 
 fn transform_output(path: &Path) -> Cow<Path>
 {
@@ -66,7 +67,7 @@ fn main()
         .about("BlockProject 3D SDK - Shader Compiler")
         .version("1.0.0")
         .args([
-            Arg::new("target").short('t').long("--target").takes_value(true).required(true)
+            Arg::new("target").short('t').long("--target").takes_value(true).required_unless_present("print_targets")
                 .about("Specify the shader package target"),
             Arg::new("print_targets").long("--targets")
                 .about("Print all available shader package targets"),
@@ -85,43 +86,47 @@ fn main()
             Arg::new("optimize").short('O').long("optimize")
                 .about("For supported targets, builds shaders with optimizations"),
             Arg::new("shader").multiple_values(true).about("List of shader files to process")
-        ])
-        .get_matches();
-    /*let matches = clap_app!(shaderc =>
-        (version: "1.0.0")
-        (author: "BlockProject 3D")
-        (about: "BlockProject 3D SDK - Shader Compiler")
-        (@arg target: -t --target +takes_value +required "Specify the shader package target")
-        (@arg print_targets: --targets "Print all available shader package targets")
-        (@arg output: -o --output +takes_value "Output shader package file name")
-        (@arg libs: -l --lib +takes_value +multiple "Specify one or more shader libs to use")
-        (@arg injections: -i --inject +takes_value +multiple "Inject a shader contained in one of the linked libs such that it will always be included in the compilation")
-        (@arg threads: -n --threads +takes_value "Specify the maximum number of threads to use when processing shaders")
-        (@arg minify: -m --minify "Allows minification of source code in targets that do not support actual compilation (ex: GL targets)")
-        (@arg debug: -d --debug "For supported targets, builds shaders with debug info")
-        (@arg optimize: -O --optimize "For supported targets, builds shaders with optimizations")
-        (@arg shaders: ... "List of shader files to process")
-    ).get_matches();*/
-    let mut units: Vec<ShaderUnit> = matches.values_of_os("shader").unwrap_or_default().map(|v| ShaderUnit::Path(Path::new(v))).collect();
-    let libs: Vec<&Path> = matches.values_of_os("lib").unwrap_or_default().map(|v| Path::new(v)).collect();
-    let n_threads: usize = matches.value_of_t("threads").unwrap_or(1);
-    let minify = matches.is_present("minify");
-    let optimize = matches.is_present("optimize");
-    let debug = matches.is_present("debug");
-    let output = transform_output(matches.value_of_os("output").map(|v| Path::new(v)).unwrap_or(Path::new("a.out.bpx")));
-    for v in matches.values_of("injection").unwrap_or_default() {
-        units.push(ShaderUnit::Injected(v));
+        ]).get_matches();
+    if matches.is_present("print_targets") {
+        print!("Available targets: ");
+        for (i, name) in TARGETS.keys().enumerate() {
+            if i == TARGETS.len() - 1 {
+                print!("{}", name)
+            } else {
+                print!("{}, ", name)
+            }
+        }
+        println!();
+    } else {
+        let mut units: Vec<ShaderUnit> = matches.values_of_os("shader").unwrap_or_default().map(|v| ShaderUnit::Path(Path::new(v))).collect();
+        let libs: Vec<&Path> = matches.values_of_os("lib").unwrap_or_default().map(|v| Path::new(v)).collect();
+        let n_threads: usize = matches.value_of_t("threads").unwrap_or(1);
+        let minify = matches.is_present("minify");
+        let optimize = matches.is_present("optimize");
+        let debug = matches.is_present("debug");
+        let output = transform_output(matches.value_of_os("output").map(|v| Path::new(v)).unwrap_or(Path::new("a.out.bpx")));
+        for v in matches.values_of("injection").unwrap_or_default() {
+            units.push(ShaderUnit::Injected(v));
+        }
+        let args = Args {
+            units,
+            libs,
+            n_threads,
+            minify,
+            optimize,
+            debug,
+            output: output.as_ref()
+        };
+        let target = matches.value_of("target").unwrap();
+        debug!("Target chosen: {}", target);
+        if let Some(func) = TARGETS.get(target) {
+            if let Err(e) = func(args) {
+                eprintln!("{}", e.into_inner());
+                std::process::exit(1);
+            }
+        } else {
+            eprintln!("Target not found: {}", target);
+            std::process::exit(3);
+        }
     }
-    let args = Args {
-        units,
-        libs,
-        n_threads,
-        minify,
-        optimize,
-        debug,
-        output: output.as_ref()
-    };
-    let target = matches.value_of("target").unwrap();
-    let args: Vec<OsString> = std::env::args_os().collect();
-    println!("Hello, world! {:?}", args);
 }
