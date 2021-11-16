@@ -30,5 +30,6 @@ mod core;
 mod scoped;
 mod unscoped;
 
-pub use scoped::*;
-pub use unscoped::*;
+pub use self::core::*;
+pub use scoped::ScopedThreadManager;
+pub use unscoped::UnscopedThreadManager;

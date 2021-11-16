@@ -33,7 +33,7 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 use crossbeam_channel::{bounded, Receiver, Sender, unbounded};
 
-pub struct Task<'env, T: Send + 'static>
+struct Task<'env, T: Send + 'static>
 {
     func: Box<dyn FnOnce(usize) -> T + Send + 'env>,
     id: usize
