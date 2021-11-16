@@ -27,7 +27,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crossbeam::thread::{Scope, ScopedJoinHandle};
-use crate::thread_pool::core::ThreadPool;
 use super::core::ThreadManager;
 
 pub struct ScopedThreadManager<'env, 'scope>(&'env Scope<'scope>);
@@ -53,9 +52,7 @@ impl<'env, 'scope> ScopedThreadManager<'env, 'scope>
 #[cfg(test)]
 mod tests
 {
-    use std::ops::Deref;
-    use super::ScopedThreadManager;
-    use super::ThreadPool;
+    use crate::thread_pool::{ScopedThreadManager, ThreadPool};
 
     fn fibonacci_recursive(n: usize) -> usize
     {

@@ -54,8 +54,7 @@ impl ThreadManager<'static> for UnscopedThreadManager
 #[cfg(test)]
 mod tests
 {
-    use crate::thread_pool::core::ThreadPool;
-    use crate::thread_pool::UnscopedThreadManager;
+    use crate::thread_pool::{UnscopedThreadManager, ThreadPool};
 
     fn fibonacci_recursive(n: usize) -> usize
     {
