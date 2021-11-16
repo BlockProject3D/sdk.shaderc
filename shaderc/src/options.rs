@@ -26,6 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::borrow::Cow;
+use std::fmt::Display;
 use std::path::Path;
 
 pub enum ShaderUnit<'a>
@@ -44,3 +46,36 @@ pub struct Args<'a>
     pub optimize: bool,
     pub debug: bool
 }
+
+#[derive(Debug, Clone)]
+pub struct Error
+{
+    msg: Cow<'static, str>
+}
+
+impl Error
+{
+    pub fn new(msg: &'static str) -> Self
+    {
+        Self {
+            msg: msg.into()
+        }
+    }
+
+    pub fn into_inner(self) -> Cow<'static, str>
+    {
+        self.msg
+    }
+}
+
+impl<T: Display> From<T> for Error
+{
+    fn from(v: T) -> Self
+    {
+        Self {
+            msg: format!("{}", v).into()
+        }
+    }
+}
+
+pub type TargetFunc = fn (Args) -> Result<(), Error>;
