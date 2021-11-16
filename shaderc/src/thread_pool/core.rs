@@ -33,9 +33,9 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 use crossbeam_channel::{bounded, Receiver, Sender, unbounded};
 
-pub struct Task<T: Send + 'static>
+pub struct Task<'env, T: Send + 'static>
 {
-    func: Box<dyn FnOnce(usize) -> T + Send>,
+    func: Box<dyn FnOnce(usize) -> T + Send + 'env>,
     id: usize
 }
 
@@ -56,21 +56,28 @@ fn thread_pool_worker<T: Send>(tasks: Receiver<Task<T>>, out: Sender<T>)
     }
 }
 
-pub struct ThreadPool<T: Send + 'static>
+pub trait ThreadManager<'env>
+{
+    type Handle;
+
+    fn spawn_thread<F: FnOnce() + Send + 'env>(&self, func: F) -> Self::Handle;
+}
+
+pub struct ThreadPool<'env, T: Send + 'static, Manager: ThreadManager<'env>>
 {
     end_channel_out: Receiver<T>,
     end_channel_in: Sender<T>,
-    task_channel_out: Receiver<Task<T>>,
-    task_channel_in: Sender<Task<T>>,
+    task_channel_out: Receiver<Task<'env, T>>,
+    task_channel_in: Sender<Task<'env, T>>,
     term_channel_out: Receiver<usize>,
     term_channel_in: Sender<usize>,
     n_threads: usize,
-    threads: Box<[Option<JoinHandle<()>>]>,
+    threads: Box<[Option<Manager::Handle>]>,
     running_threads: usize,
-    task_id: usize
+    task_id: usize,
 }
 
-impl<T: Send> ThreadPool<T>
+impl<'env, T: Send, Manager: ThreadManager<'env>> ThreadPool<'env, T, Manager>
 {
     pub fn new(n_threads: usize) -> Self
     {
@@ -86,12 +93,12 @@ impl<T: Send> ThreadPool<T>
             term_channel_in,
             n_threads,
             running_threads: 0,
-            threads: repeat_with(|| None).take(n_threads).collect::<Vec<Option<JoinHandle<()>>>>().into_boxed_slice(),
+            threads: repeat_with(|| None).take(n_threads).collect::<Vec<Option<Manager::Handle>>>().into_boxed_slice(),
             task_id: 0
         }
     }
 
-    fn rearm_one_thread_if_possible(&mut self)
+    fn rearm_one_thread_if_possible(&mut self, manager: &Manager)
     {
         if self.running_threads < self.n_threads {
             for (i, handle) in self.threads.iter_mut().enumerate() {
@@ -99,7 +106,7 @@ impl<T: Send> ThreadPool<T>
                     let tasks = self.task_channel_out.clone();
                     let out = self.end_channel_in.clone();
                     let term = self.term_channel_in.clone();
-                    *handle = Some(std::thread::spawn(move || {
+                    *handle = Some(manager.spawn_thread(move || {
                         thread_pool_worker(tasks, out);
                         term.send(i);
                     }));
@@ -110,7 +117,7 @@ impl<T: Send> ThreadPool<T>
         }
     }
 
-    pub fn dispatch<F: FnOnce(usize) -> T + Send + 'static>(&mut self, f: F) -> bool
+    pub fn dispatch<F: FnOnce(usize) -> T + Send + 'env>(&mut self, manager: &Manager, f: F) -> bool
     {
         let task = Task {
             func: Box::new(f),
@@ -120,7 +127,7 @@ impl<T: Send> ThreadPool<T>
             return false;
         }
         self.task_id += 1;
-        self.rearm_one_thread_if_possible();
+        self.rearm_one_thread_if_possible(manager);
         true
     }
 
@@ -139,40 +146,5 @@ impl<T: Send> ThreadPool<T>
             Ok(v) => Some(v),
             Err(_) => None
         }
-    }
-}
-
-#[cfg(test)]
-mod tests
-{
-    use crate::thread_pool::ThreadPool;
-
-    fn fibonacci_recursive(n: usize) -> usize
-    {
-        if n == 0 {
-            0
-        } else if n == 1 {
-            1
-        } else {
-            fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
-        }
-    }
-
-    #[test]
-    fn basic()
-    {
-        const N: usize = 50;
-        let mut pool: ThreadPool<usize> = ThreadPool::new(4);
-        for _ in 0..N {
-            pool.dispatch(|_| fibonacci_recursive(20));
-        }
-        let mut tasks = 0;
-        while !pool.is_empty() {
-            if let Some(event) = pool.poll() {
-                assert_eq!(event, 6765);
-                tasks += 1;
-            }
-        }
-        assert_eq!(tasks, N);
     }
 }
