@@ -63,7 +63,7 @@ pub struct BasicPreprocessor<'a>
 
 impl<'a> BasicPreprocessor<'a>
 {
-    pub fn new(libs: Vec<&'a Path>) -> Self
+    pub fn new(libs: &Vec<&'a Path>) -> Self
     {
         Self {
             sal_code: Vec::new(),

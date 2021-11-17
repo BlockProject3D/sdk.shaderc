@@ -61,7 +61,7 @@ pub struct BasicUseResolver<'a>
 
 impl<'a> BasicUseResolver<'a>
 {
-    pub fn new(libs: Vec<&'a Path>) -> Self
+    pub fn new(libs: &Vec<&'a Path>) -> Self
     {
         Self {
             modules: HashMap::new(),
