@@ -29,3 +29,6 @@
 pub mod preprocessor;
 pub mod shaderlib;
 pub mod useresolver;
+mod shader_to_sal;
+
+pub use shader_to_sal::*;

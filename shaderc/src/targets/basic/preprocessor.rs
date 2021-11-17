@@ -69,7 +69,7 @@ impl Display for Error
 pub struct BasicPreprocessor<'a>
 {
     pub sal_code: Vec<u8>,
-    pub includes: Vec<Box<[u8]>>,
+    pub includes: Vec<(String, Box<[u8]>)>,
     pub src_code: Vec<String>,
     shader_libs: Vec<ShaderLib<'a>>,
     pub stage: Option<Stage>,
@@ -114,7 +114,7 @@ impl<'a> Handler for BasicPreprocessor<'a>
                 let mut flag = false;
                 for v in &mut self.shader_libs {
                     if let Some(obj) = v.try_load(value)? {
-                        self.includes.push(obj.into_boxed_slice());
+                        self.includes.push((value.into(), obj.into_boxed_slice()));
                         flag = true;
                         debug!("Successfully resolved include {}", value);
                     }
