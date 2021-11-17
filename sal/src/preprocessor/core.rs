@@ -27,14 +27,12 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::{
-    fs::File,
     io::{BufRead, BufReader},
     path::Path
 };
 
-pub fn run<Handler: crate::preprocessor::Handler>(file: &Path, mut handler: Handler) -> Result<(), Handler::Error>
+pub fn run<T: BufRead, Handler: crate::preprocessor::Handler>(reader: T, mut handler: Handler) -> Result<(), Handler::Error>
 {
-    let reader = BufReader::new(File::open(file)?);
     let mut sal_block = false;
 
     for v in reader.lines() {
