@@ -26,7 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Type
@@ -72,5 +72,13 @@ impl Error
             col,
             etype: Type::Eof
         }
+    }
+}
+
+impl Display for Error
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        write!(f, "{}:{}: {:?}", self.line, self.col, self.etype)
     }
 }
