@@ -26,7 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter, write};
 
 use crate::{
     ast::{build_ast, tree::Statement, UseResolver},
@@ -40,6 +40,18 @@ pub enum AutoError<ResolverError: Debug>
     Lexer(crate::lexer::error::Error),
     Parser(crate::parser::error::Error),
     Ast(crate::ast::error::Error<ResolverError>)
+}
+
+impl<ResolverError: Debug> Display for AutoError<ResolverError>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        match self {
+            AutoError::Lexer(e) => write!(f, "lexer error: {}", e),
+            AutoError::Parser(e) => write!(f, "parser error: {}", e),
+            AutoError::Ast(e) => write!(f, "ast generation error: {}", e)
+        }
+    }
 }
 
 impl<ResolverError: Debug> From<crate::lexer::error::Error> for AutoError<ResolverError>

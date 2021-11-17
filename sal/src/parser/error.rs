@@ -33,6 +33,7 @@ pub struct UnexpectedToken
     pub expected: Token
 }*/
 
+use std::fmt::{Display, Formatter, write};
 use crate::lexer::token::{Token, Type as TokenType};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -45,6 +46,18 @@ pub enum Type
     },
     UnknownToken(Token),
     Eof
+}
+
+impl Display for Type
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        match self {
+            Type::UnexpectedToken { actual, expected } => write!(f, "unexpected token (expected {}, got {}", expected, actual),
+            Type::UnknownToken(token) => write!(f, "unknown token ({})", token),
+            Type::Eof => f.write_str("unexpected EOF")
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -60,5 +73,13 @@ impl Error
     pub fn new(line: usize, col: usize, etype: Type) -> Self
     {
         Self { line, col, etype }
+    }
+}
+
+impl Display for Error
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        write!(f, "{}:{} {}", self.line, self.col, self.etype)
     }
 }

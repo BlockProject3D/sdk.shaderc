@@ -27,6 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::{fmt::Debug, num::ParseIntError};
+use std::fmt::{Display, Formatter, write};
 
 use crate::{ast::tree as ast, parser::tree};
 
@@ -40,6 +41,20 @@ pub enum ValueType
     Identifier
 }
 
+impl Display for ValueType
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        match self {
+            ValueType::Bool => f.write_str("bool"),
+            ValueType::Float => f.write_str("float"),
+            ValueType::Int => f.write_str("int"),
+            ValueType::Enum => f.write_str("enum"),
+            ValueType::Identifier => f.write_str("identifier")
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum TypeError
 {
@@ -48,6 +63,20 @@ pub enum TypeError
     UnknownTexture(String),
     Unknown(String),
     Banned(ast::PropertyType)
+}
+
+impl Display for TypeError
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        match self {
+            TypeError::VectorSize(e) => write!(f, "failed to parse vector size ({})", e),
+            TypeError::UnknownVector(s) => write!(f, "unknown vector type ({})", s),
+            TypeError::UnknownTexture(s) => write!(f, "unknown texture type ({})", s),
+            TypeError::Unknown(s) => write!(f, "unknown type ({})", s),
+            TypeError::Banned(t) => write!(f, "forbidden property type ({})", t)
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -59,6 +88,18 @@ pub enum ValueError
     {
         expected: ValueType,
         actual: tree::Value
+    }
+}
+
+impl Display for ValueError
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        match self {
+            ValueError::UnknownEnum(e) => write!(f, "unknown enum ({})", e),
+            ValueError::UnknownVariable(v) => write!(f, "unknown variable ({})", v),
+            ValueError::Unexpected { expected, actual } => write!(f, "unexpected value (expected {}, got {:?})", expected, actual),
+        }
     }
 }
 
@@ -83,5 +124,17 @@ impl<ResolverError: Debug> From<ValueError> for Error<ResolverError>
     fn from(e: ValueError) -> Self
     {
         Self::Value(e)
+    }
+}
+
+impl<ResolverError: Debug> Display for Error<ResolverError>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        match self {
+            Error::Type(e) => write!(f, "type error: {}", e),
+            Error::Value(e) => write!(f, "value error: {}", e),
+            Error::UnresolvedUse(e) => write!(f, "resolver error: {:?}", e),
+        }
     }
 }

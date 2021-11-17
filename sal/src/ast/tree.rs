@@ -26,6 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fmt::{Display, Formatter, write};
+
 pub trait VarlistStatement
 {
     fn new(name: String) -> Self;
@@ -39,6 +41,31 @@ pub enum BaseType
     Uint,
     Bool,
     Double
+}
+
+impl BaseType
+{
+    pub fn get_name(&self) -> &'static str
+    {
+        match self {
+            BaseType::Int => "int",
+            BaseType::Float => "float",
+            BaseType::Uint => "uint",
+            BaseType::Bool => "bool",
+            BaseType::Double => "double"
+        }
+    }
+
+    pub fn get_char(&self) -> char
+    {
+        match self {
+            BaseType::Int => 'i',
+            BaseType::Float => 'f',
+            BaseType::Uint => 'u',
+            BaseType::Bool => 'b',
+            BaseType::Double => 'd'
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,6 +93,29 @@ pub enum PropertyType
     Texture3D(TextureType),
     Texture2DArray(TextureType),
     TextureCube(TextureType)
+}
+
+impl Display for PropertyType
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        let mut fmt_texture_type = |name: &'static str, t: &TextureType| {
+            match t {
+                TextureType::Scalar(s) => write!(f, "{}<{}>", name, s.get_name()),
+                TextureType::Vector(v) => write!(f, "{}<vec{}{}>", name, v.size, v.item.get_char())
+            }
+        };
+        match self {
+            PropertyType::Scalar(s) => write!(f, "{}", s.get_name()),
+            PropertyType::Vector(v) => write!(f, "vec{}{}", v.size, v.item.get_char()),
+            PropertyType::Matrix(m) => write!(f, "mat{}{}", m.size, m.item.get_char()),
+            PropertyType::Sampler => f.write_str("Sampler"),
+            PropertyType::Texture2D(t) => fmt_texture_type("Texture2D", t),
+            PropertyType::Texture3D(t) => fmt_texture_type("Texture3D", t),
+            PropertyType::Texture2DArray(t) => fmt_texture_type("Texture2DArray", t),
+            PropertyType::TextureCube(t) => fmt_texture_type("TextureCube", t),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
