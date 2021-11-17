@@ -28,10 +28,7 @@
 
 use std::fmt::Debug;
 
-use crate::{
-    ast::tree::Statement,
-    parser::tree::Use
-};
+use crate::{ast::tree::Statement, parser::tree::Use};
 
 pub trait UseResolver
 {

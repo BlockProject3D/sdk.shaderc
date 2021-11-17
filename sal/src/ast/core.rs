@@ -384,9 +384,9 @@ mod tests
             },
             IgnoreUseResolver
         },
+        lexer::Lexer,
+        parser::Parser
     };
-    use crate::lexer::Lexer;
-    use crate::parser::Parser;
 
     #[test]
     fn basic_ast()

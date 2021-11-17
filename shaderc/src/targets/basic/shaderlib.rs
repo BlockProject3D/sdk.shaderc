@@ -26,15 +26,18 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::{Display, Formatter};
-use std::fs::File;
-use std::io::BufReader;
-use std::path::Path;
-use bpx::macros::impl_err_conversion;
-use bpx::package::object::ObjectHeader;
-use bpx::package::PackageDecoder;
-use bpx::package::utils::unpack_memory;
-use bpx::table::ItemTable;
+use std::{
+    fmt::{Display, Formatter},
+    fs::File,
+    io::BufReader,
+    path::Path
+};
+
+use bpx::{
+    macros::impl_err_conversion,
+    package::{object::ObjectHeader, utils::unpack_memory, PackageDecoder},
+    table::ItemTable
+};
 
 #[derive(Debug)]
 pub enum Error
@@ -59,7 +62,7 @@ impl Display for Error
         match self {
             Error::Io(e) => write!(f, "io error: {}", e),
             Error::Bpx(e) => write!(f, "bpx error: {}", e),
-            Error::Strings(e) => write!(f, "strings error: {}", e),
+            Error::Strings(e) => write!(f, "strings error: {}", e)
         }
     }
 }
@@ -93,10 +96,7 @@ impl<'a> ShaderLib<'a>
 {
     pub fn new(path: &'a Path) -> Self
     {
-        Self {
-            path,
-            decoder: None
-        }
+        Self { path, decoder: None }
     }
 
     pub fn try_load(&mut self, name: &str) -> Result<Option<Vec<u8>>, Error>
@@ -105,10 +105,7 @@ impl<'a> ShaderLib<'a>
             let mut decoder = PackageDecoder::new(BufReader::new(File::open(self.path)?))?;
             let (mut items, mut names) = decoder.read_object_table()?;
             items.build_lookup_table(&mut names)?;
-            self.decoder = Some(ShaderLibDecoder {
-                decoder,
-                items
-            });
+            self.decoder = Some(ShaderLibDecoder { decoder, items });
         }
         self.decoder.as_mut().unwrap().try_load(name)
     }

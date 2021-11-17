@@ -26,10 +26,11 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod error;
 mod core;
+pub mod error;
 mod interface;
 pub mod tree;
 
-pub use self::core::build_ast;
 pub use interface::*;
+
+pub use self::core::build_ast;

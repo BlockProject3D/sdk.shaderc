@@ -26,52 +26,6 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::{borrow::Cow, fmt::Display, path::Path};
+use crate::options::{Args, Error};
 
-pub enum ShaderUnit<'a>
-{
-    Path(&'a Path),
-    Injected(&'a str)
-}
-
-pub struct Args<'a>
-{
-    pub units: Vec<ShaderUnit<'a>>,
-    pub libs: Vec<&'a Path>,
-    pub output: &'a Path,
-    pub n_threads: usize,
-    pub minify: bool,
-    pub optimize: bool,
-    pub debug: bool
-}
-
-#[derive(Debug, Clone)]
-pub struct Error
-{
-    msg: Cow<'static, str>
-}
-
-impl Error
-{
-    pub fn new(msg: &'static str) -> Self
-    {
-        Self { msg: msg.into() }
-    }
-
-    pub fn into_inner(self) -> Cow<'static, str>
-    {
-        self.msg
-    }
-}
-
-impl<T: Display> From<T> for Error
-{
-    fn from(v: T) -> Self
-    {
-        Self {
-            msg: format!("{}", v).into()
-        }
-    }
-}
-
-pub type TargetFunc = fn(Args) -> Result<(), Error>;
+pub fn build(args: Args) -> Result<(), Error> {}

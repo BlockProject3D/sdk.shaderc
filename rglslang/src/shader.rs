@@ -27,10 +27,10 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::{
+    borrow::Cow,
     ffi::{CStr, CString},
     os::raw::c_char
 };
-use std::borrow::Cow;
 
 use glslang_sys::{
     limits::TBuiltInResource_default,

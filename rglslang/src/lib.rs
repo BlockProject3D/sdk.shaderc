@@ -39,8 +39,8 @@ static END: Once = Once::new();
 static FLAG: AtomicBool = AtomicBool::new(false);
 
 pub mod environment;
-pub mod shader;
 pub mod program;
+pub mod shader;
 
 pub fn main<F: FnOnce()>(f: F)
 {

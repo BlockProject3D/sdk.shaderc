@@ -26,18 +26,16 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod targets;
 mod options;
+mod targets;
 
-use std::borrow::Cow;
-use std::path::Path;
+use std::{borrow::Cow, path::Path};
 
 use clap::{App, Arg};
 use log::{debug, info, LevelFilter};
-use crate::options::{Args, ShaderUnit, TargetFunc};
 use phf::phf_map;
 
-static TARGETS: phf::Map<&'static str, TargetFunc> = phf_map! {
+static TARGETS: phf::Map<&'static str, options::TargetFunc> = phf_map! {
     "LIB" => targets::lib::build
 };
 
@@ -96,17 +94,30 @@ fn main()
         }
         println!();
     } else {
-        let mut units: Vec<ShaderUnit> = matches.values_of_os("shader").unwrap_or_default().map(|v| ShaderUnit::Path(Path::new(v))).collect();
-        let libs: Vec<&Path> = matches.values_of_os("lib").unwrap_or_default().map(|v| Path::new(v)).collect();
+        let mut units: Vec<options::ShaderUnit> = matches
+            .values_of_os("shader")
+            .unwrap_or_default()
+            .map(|v| options::ShaderUnit::Path(Path::new(v)))
+            .collect();
+        let libs: Vec<&Path> = matches
+            .values_of_os("lib")
+            .unwrap_or_default()
+            .map(|v| Path::new(v))
+            .collect();
         let n_threads: usize = matches.value_of_t("threads").unwrap_or(1);
         let minify = matches.is_present("minify");
         let optimize = matches.is_present("optimize");
         let debug = matches.is_present("debug");
-        let output = transform_output(matches.value_of_os("output").map(|v| Path::new(v)).unwrap_or(Path::new("a.out.bpx")));
+        let output = transform_output(
+            matches
+                .value_of_os("output")
+                .map(|v| Path::new(v))
+                .unwrap_or(Path::new("a.out.bpx"))
+        );
         for v in matches.values_of("injection").unwrap_or_default() {
-            units.push(ShaderUnit::Injected(v));
+            units.push(options::ShaderUnit::Injected(v));
         }
-        let args = Args {
+        let args = options::Args {
             units,
             libs,
             n_threads,

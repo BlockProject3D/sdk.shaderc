@@ -26,14 +26,16 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fs::File;
-use std::io::BufWriter;
-use bpx::package::{Architecture, PackageBuilder, Platform};
-use bpx::package::utils::pack_file_vname;
+use std::{fs::File, io::BufWriter};
+
+use bpx::package::{utils::pack_file_vname, Architecture, PackageBuilder, Platform};
 use log::warn;
-use crate::Args;
-use crate::options::{Error, ShaderUnit};
-use crate::targets::basic::shaderlib::ShaderLib;
+
+use crate::{
+    options::{Error, ShaderUnit},
+    targets::basic::shaderlib::ShaderLib,
+    Args
+};
 
 pub fn build(args: Args) -> Result<(), Error>
 {
@@ -50,11 +52,17 @@ pub fn build(args: Args) -> Result<(), Error>
                     if let Some(vname) = name.to_str() {
                         pack_file_vname(&mut bpxp, vname, path)?;
                     } else {
-                        warn!("Path '{}' does not contain a valid file name, skipping...", path.display());
+                        warn!(
+                            "Path '{}' does not contain a valid file name, skipping...",
+                            path.display()
+                        );
                         continue;
                     }
                 } else {
-                    warn!("Path '{}' does not contain a valid file name, skipping...", path.display());
+                    warn!(
+                        "Path '{}' does not contain a valid file name, skipping...",
+                        path.display()
+                    );
                     continue;
                 }
             },
@@ -64,7 +72,7 @@ pub fn build(args: Args) -> Result<(), Error>
                         bpxp.pack_object(vname, data.as_slice())?;
                     }
                 }
-            }
+            },
         }
     }
     bpxp.save()?;

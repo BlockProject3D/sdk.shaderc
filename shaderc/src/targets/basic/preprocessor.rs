@@ -26,12 +26,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::io::Write;
-use std::path::Path;
-use bpx::shader::Stage;
-use sal::preprocessor::Handler;
-use bpx::macros::impl_err_conversion;
+use std::{io::Write, path::Path};
+
+use bpx::{macros::impl_err_conversion, shader::Stage};
 use log::debug;
+use sal::preprocessor::Handler;
+
 use crate::targets::basic::shaderlib::ShaderLib;
 
 #[derive(Debug)]
@@ -86,7 +86,7 @@ impl<'a> Handler for BasicPreprocessor<'a>
             "stage" => {
                 let value = value.unwrap_or("");
                 self.stage = Some(match value {
-                    "vertex" =>  Stage::Vertex,
+                    "vertex" => Stage::Vertex,
                     "hull" => Stage::Hull,
                     "domain" => Stage::Domain,
                     "geometry" => Stage::Geometry,

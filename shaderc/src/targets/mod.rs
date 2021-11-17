@@ -27,4 +27,5 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 mod basic;
+pub mod gl40;
 pub mod lib;

@@ -26,10 +26,35 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::borrow::Cow;
-use std::ffi::CStr;
-use glslang_sys::{EShMessages, EShMsgDefault, EShReflectionAllBlockVariables, EShReflectionAllIOVariables, EShReflectionBasicArraySuffix, EShReflectionDefault, EShReflectionIntermediateIO, EShReflectionOptions, EShReflectionSeparateBuffers, EShReflectionSharedStd140SSBO, EShReflectionSharedStd140UBO, EShReflectionStrictArraySuffix, EShReflectionUnwrapIOBlocks, TProgram, TProgram_addShader, TProgram_buildReflection, TProgram_create, TProgram_destroy, TProgram_getInfoDebugLog, TProgram_getInfoLog, TProgram_link, TShader, TShader_destroy};
-use crate::shader::{Messages, Shader, unwrap_messages, unwrap_shader};
+use std::{borrow::Cow, ffi::CStr};
+
+use glslang_sys::{
+    EShMessages,
+    EShMsgDefault,
+    EShReflectionAllBlockVariables,
+    EShReflectionAllIOVariables,
+    EShReflectionBasicArraySuffix,
+    EShReflectionDefault,
+    EShReflectionIntermediateIO,
+    EShReflectionOptions,
+    EShReflectionSeparateBuffers,
+    EShReflectionSharedStd140SSBO,
+    EShReflectionSharedStd140UBO,
+    EShReflectionStrictArraySuffix,
+    EShReflectionUnwrapIOBlocks,
+    TProgram,
+    TProgram_addShader,
+    TProgram_buildReflection,
+    TProgram_create,
+    TProgram_destroy,
+    TProgram_getInfoDebugLog,
+    TProgram_getInfoLog,
+    TProgram_link,
+    TShader,
+    TShader_destroy
+};
+
+use crate::shader::{unwrap_messages, unwrap_shader, Messages, Shader};
 
 pub struct ReflectionOptions
 {

@@ -26,17 +26,20 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashMap;
-use std::path::Path;
-use sal::ast::tree::Statement;
-use sal::ast::{IgnoreUseResolver, UseResolver};
-use sal::utils::{auto_lexer_parser, AutoError};
-use crate::targets::basic::shaderlib::ShaderLib;
+use std::{collections::HashMap, path::Path};
+
 use bpx::macros::impl_err_conversion;
 use log::debug;
+use sal::{
+    ast::{tree::Statement, IgnoreUseResolver, UseResolver},
+    utils::{auto_lexer_parser, AutoError}
+};
+
+use crate::targets::basic::shaderlib::ShaderLib;
 
 #[derive(Debug)]
-pub enum Error {
+pub enum Error
+{
     ShaderLib(crate::targets::basic::shaderlib::Error),
     Sal(AutoError<()>),
     ModuleNotFound(String),
