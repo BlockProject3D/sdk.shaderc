@@ -27,6 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::{io::Write, path::Path};
+use std::fmt::{Display, Formatter, write};
 
 use bpx::{macros::impl_err_conversion, shader::Stage};
 use log::debug;
@@ -50,6 +51,20 @@ impl_err_conversion!(
         crate::targets::basic::shaderlib::Error => ShaderLib
     }
 );
+
+impl Display for Error
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        match self {
+            Error::Io(e) => write!(f, "io error: {}", e),
+            Error::UnknownStage(s) => write!(f, "unknown shader stage '{}'", s),
+            Error::ShaderLib(e) => write!(f, "error in shader lib: {}", e),
+            Error::NullInclude => f.write_str("include does not have a value"),
+            Error::IncludeNotFound(i) => write!(f, "include '{}' not found", i)
+        }
+    }
+}
 
 pub struct BasicPreprocessor<'a>
 {
