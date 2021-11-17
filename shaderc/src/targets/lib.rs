@@ -33,9 +33,9 @@ use log::warn;
 
 use crate::{
     options::{Error, ShaderUnit},
-    targets::basic::shaderlib::ShaderLib,
-    Args
+    targets::basic::shaderlib::ShaderLib
 };
+use crate::options::Args;
 
 pub fn build(args: Args) -> Result<(), Error>
 {
