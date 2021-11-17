@@ -68,11 +68,11 @@ impl Display for Error
 
 pub struct BasicPreprocessor<'a>
 {
-    sal_code: Vec<u8>,
-    includes: Vec<Box<[u8]>>,
-    src_code: Vec<String>,
+    pub sal_code: Vec<u8>,
+    pub includes: Vec<Box<[u8]>>,
+    pub src_code: Vec<String>,
     shader_libs: Vec<ShaderLib<'a>>,
-    stage: Option<Stage>,
+    pub stage: Option<Stage>,
     line_is_directive: bool
 }
 
