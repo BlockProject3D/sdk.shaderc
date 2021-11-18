@@ -38,7 +38,10 @@ pub fn run<T: BufRead, Handler: crate::preprocessor::Handler>(reader: T, mut han
     for v in reader.lines() {
         let line = v?;
         let trimed = line.trim();
-        if sal_block {
+        if trimed == "#sal" {
+            sal_block = !sal_block;
+            handler.directive(trimed[1..].trim(), None)?;
+        } else if sal_block {
             handler.sal_code(&line)?;
         } else if trimed.starts_with('#') {
             if let Some(id) = trimed.find(' ') {
@@ -47,9 +50,6 @@ pub fn run<T: BufRead, Handler: crate::preprocessor::Handler>(reader: T, mut han
                 handler.directive(name, Some(value))?;
             } else {
                 let trimed = trimed[1..].trim();
-                if trimed == "#sal" {
-                    sal_block = !sal_block;
-                }
                 handler.directive(trimed, None)?;
             }
         }
