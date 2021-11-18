@@ -125,18 +125,30 @@ fn translate_sal_to_glsl(sal: &StmtDecomposition) -> Result<String, Error>
 
 pub fn build(args: Args) -> Result<(), Error>
 {
+    let mut root = Vec::new();
     crossbeam::scope(|scope| {
         let manager = ScopedThreadManager::new(scope);
         let mut pool: ThreadPool<ScopedThreadManager, Result<(), Error>> = ThreadPool::new(args.n_threads);
+        debug!("Initialized thread pool with {} max thread(s)", args.n_threads);
         for unit in &args.units {
             pool.dispatch(&manager, |_| {
+                debug!("Loading SAL for shader unit {:?}...", *unit);
                 let res = load_shader_to_sal(unit, &args)?;
+                debug!("Decomposing SAL AST for shader unit {:?}...", *unit);
                 let sal = decompose_statements(&res.statements)?;
+                debug!("Translating SAL AST for shader unit {:?} to GLSL for OpenGL 4.0...", *unit);
                 let glsl = translate_sal_to_glsl(&sal)?;
                 Ok(())
             });
+            debug!("Dispatch shader unit {:?}", unit);
         }
         pool.join().unwrap();
+        while let Some(res) = pool.poll() {
+            root.push(res);
+        }
     }).unwrap();
+    for v in root {
+        v?;
+    }
     todo!()
 }
