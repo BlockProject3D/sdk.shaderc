@@ -374,6 +374,59 @@ mod test
         basic_assert(toks);
     }
 
+    #[test]
+    fn lexer_comments_no_space_simple()
+    {
+        let source_code = b"
+#this is a single line comment
+const float DeltaTime; # delta time
+const uint FrameCount; # frame count
+const mat3f ModelViewMatrix; # vew * model (2D only)
+const mat3f ProjectionMatrix; # projection (2D only)
+
+const struct PerMaterial { vec4f BaseColor; float UvMultiplier; }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
+        basic_assert(toks);
+    }
+
+    #[test]
+    fn lexer_comments_no_space_complex()
+    {
+        let source_code = b"
+#this is a single line comment
+const float DeltaTime; # delta time
+const uint FrameCount; # frame count
+const mat3f ModelViewMatrix; # vew * model (2D only)
+const mat3f ProjectionMatrix; # projection (2D only)
+
+# Material
+const struct PerMaterial #another comment
+{ #another comment
+vec4f BaseColor; #another comment
+float UvMultiplier; #another comment
+} #another comment
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
+        basic_assert(toks);
+    }
+
     fn assert_typical(toks: Vec<Token>)
     {
         assert_eq!(
