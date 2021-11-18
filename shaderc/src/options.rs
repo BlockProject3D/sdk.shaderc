@@ -28,6 +28,7 @@
 
 use std::{borrow::Cow, fmt::Display, path::Path};
 
+#[derive(Debug)]
 pub enum ShaderUnit<'a>
 {
     Path(&'a Path),
