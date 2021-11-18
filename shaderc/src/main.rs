@@ -34,6 +34,7 @@ use std::{borrow::Cow, path::Path};
 use clap::{App, Arg};
 use log::{debug, info, LevelFilter};
 use phf::phf_map;
+use simple_logger::SimpleLogger;
 
 static TARGETS: phf::Map<&'static str, options::TargetFunc> = phf_map! {
     "LIB" => targets::lib::build,
@@ -57,6 +58,7 @@ fn transform_output(path: &Path) -> Cow<Path>
 fn main()
 {
     //Log everything
+    SimpleLogger::new().init().unwrap();
     log::set_max_level(LevelFilter::Trace);
     info!("Initializing BlockProject 3D Shader Compiler...");
     let matches = App::new("shaderc")
