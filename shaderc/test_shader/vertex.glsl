@@ -9,7 +9,7 @@ const struct Viewport
 const mat4f ModelView : ORDER_0;
 const vec3f CamPos : ORDER_1;
 
-const vformat Vertex
+vformat struct Vertex
 {
     vec3f Position;
     vec3f Normal;
