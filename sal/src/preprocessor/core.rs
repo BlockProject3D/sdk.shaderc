@@ -46,6 +46,7 @@ pub fn run<T: BufRead, Handler: crate::preprocessor::Handler>(reader: T, mut han
                 let value = trimed[id..].trim();
                 handler.directive(name, Some(value))?;
             } else {
+                let trimed = trimed[1..].trim();
                 if trimed == "#sal" {
                     sal_block = !sal_block;
                 }
