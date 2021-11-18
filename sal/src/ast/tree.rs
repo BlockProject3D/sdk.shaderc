@@ -147,16 +147,6 @@ pub struct Property
     pub pattr: Option<Attribute>
 }
 
-impl PartialOrd<Self> for Property
-{
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering>
-    {
-        let val = self.pattr.as_ref()?.get_order();
-        let val1 = other.pattr.as_ref()?.get_order();
-        val.partial_cmp(&val1)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Struct
 {
