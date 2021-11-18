@@ -53,7 +53,7 @@ impl Display for Type
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
     {
         match self {
-            Type::UnexpectedToken { actual, expected } => write!(f, "unexpected token (expected {}, got {}", expected, actual),
+            Type::UnexpectedToken { actual, expected } => write!(f, "unexpected token (expected {}, got {})", expected, actual),
             Type::UnknownToken(token) => write!(f, "unknown token ({})", token),
             Type::Eof => f.write_str("unexpected EOF")
         }
