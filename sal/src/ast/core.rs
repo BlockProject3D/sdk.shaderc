@@ -526,12 +526,12 @@ mod tests
                     Property {
                         pname: "Specular".into(),
                         ptype: PropertyType::Scalar(BaseType::Float),
-                        pattr: Some(Attribute::Identifier("Pack".into()))
+                        pattr: Some(Attribute::Pack)
                     },
                     Property {
                         pname: "UvMultiplier".into(),
                         ptype: PropertyType::Scalar(BaseType::Float),
-                        pattr: Some(Attribute::Identifier("Pack".into()))
+                        pattr: Some(Attribute::Pack)
                     },
                 ]
             }),
