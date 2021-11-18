@@ -112,14 +112,25 @@ fn translate_sal_to_glsl(sal: &StmtDecomposition) -> Result<String, Error>
     let outputs = translate_outputs(&sal.outputs)?;
     let cbuffers: Vec<String> = sal.cbuffers.iter().enumerate().map(|(i, s)| translate_cbuffer(i + 1, s)).collect();
     let cbuffers = cbuffers.join("\n");
-    let objects: Vec<String> = sal.objects.iter().enumerate().map(|(i, p)| format!("layout (binding = {}) uniform {}", i, translate_property(p))).collect();
+    let objects: Vec<String> = sal.objects.iter().enumerate().filter_map(|(i, p)| {
+        let p = translate_property(p);
+        if !p.is_empty() {
+            Some(format!("layout (binding = {}) uniform {}", i, p))
+        } else {
+            None
+        }
+    }).collect();
     let objects = objects.join("\n");
     debug!("translated vertex format: {}", vformat);
     debug!("translated root constants: {}", constants);
     debug!("translated outputs: {}", outputs);
     debug!("translated constant buffers: {}", cbuffers);
     debug!("translated objects: {}", objects);
-    let output = [vformat, constants, outputs, cbuffers, objects].join("\n");
+    let output = [&*vformat, &*constants, &*outputs, &*cbuffers, &*objects].iter()
+        .map(|s| *s)
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<&str>>()
+        .join("\n");
     Ok(output)
 }
 
@@ -138,6 +149,7 @@ pub fn build(args: Args) -> Result<(), Error>
                 let sal = decompose_statements(&res.statements)?;
                 debug!("Translating SAL AST for shader unit {:?} to GLSL for OpenGL 4.0...", *unit);
                 let glsl = translate_sal_to_glsl(&sal)?;
+                info!("Translated GLSL: \n{}", glsl);
                 Ok(())
             });
             debug!("Dispatch shader unit {:?}", unit);
