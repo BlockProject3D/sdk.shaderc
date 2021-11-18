@@ -58,6 +58,7 @@ impl Display for ValueType
 #[derive(Clone, Debug)]
 pub enum TypeError
 {
+    AttributeOrder(ParseIntError),
     VectorSize(ParseIntError),
     UnknownVector(String),
     UnknownTexture(String),
@@ -70,6 +71,7 @@ impl Display for TypeError
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
     {
         match self {
+            TypeError::AttributeOrder(e) => write!(f, "failed to parse order attribute ({})", e),
             TypeError::VectorSize(e) => write!(f, "failed to parse vector size ({})", e),
             TypeError::UnknownVector(s) => write!(f, "unknown vector type ({})", s),
             TypeError::UnknownTexture(s) => write!(f, "unknown texture type ({})", s),

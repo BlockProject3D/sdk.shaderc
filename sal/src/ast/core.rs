@@ -125,13 +125,30 @@ fn parse_type(ptype: &str, ptype_attr: Option<&str>) -> Result<ast::PropertyType
     }
 }
 
+fn parse_attribute(pattr: Option<String>) -> Result<Option<ast::Attribute>, TypeError>
+{
+    if pattr.is_none() {
+        return Ok(None);
+    }
+    let val = pattr.unwrap();
+    if val == "Pack" {
+        return Ok(Some(ast::Attribute::Pack));
+    }
+    if val.starts_with("ORDER_") {
+        let order = &val[6..].parse::<u32>().map_err(|e| TypeError::AttributeOrder(e))?;
+        Ok(Some(ast::Attribute::Order(*order)))
+    } else {
+        Ok(Some(ast::Attribute::Identifier(val)))
+    }
+}
+
 fn parse_prop(p: tree::Property) -> Result<ast::Property, TypeError>
 {
     let ptype = parse_type(&p.ptype, p.ptype_attr.as_deref())?;
     Ok(ast::Property {
         ptype,
         pname: p.pname,
-        pattr: p.pattr
+        pattr: parse_attribute(p.pattr)?
     })
 }
 
@@ -387,6 +404,7 @@ mod tests
         lexer::Lexer,
         parser::Parser
     };
+    use crate::ast::tree::Attribute;
 
     #[test]
     fn basic_ast()
@@ -487,12 +505,12 @@ mod tests
                     item: BaseType::Float,
                     size: 4
                 })),
-                pattr: Some("BaseSampler".into())
+                pattr: Some(Attribute::Identifier("BaseSampler".into()))
             }),
             Statement::Constant(Property {
                 pname: "NoiseTexture".into(),
                 ptype: PropertyType::Texture2D(TextureType::Scalar(BaseType::Float)),
-                pattr: Some("BaseSampler".into())
+                pattr: Some(Attribute::Identifier("BaseSampler".into()))
             }),
             Statement::ConstantBuffer(Struct {
                 name: "PerMaterial".into(),
@@ -508,12 +526,12 @@ mod tests
                     Property {
                         pname: "Specular".into(),
                         ptype: PropertyType::Scalar(BaseType::Float),
-                        pattr: Some("Pack".into())
+                        pattr: Some(Attribute::Identifier("Pack".into()))
                     },
                     Property {
                         pname: "UvMultiplier".into(),
                         ptype: PropertyType::Scalar(BaseType::Float),
-                        pattr: Some("Pack".into())
+                        pattr: Some(Attribute::Identifier("Pack".into()))
                     },
                 ]
             }),

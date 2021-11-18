@@ -119,11 +119,19 @@ impl Display for PropertyType
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Attribute
+{
+    Identifier(String),
+    Order(u32),
+    Pack
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Property
 {
     pub ptype: PropertyType,
     pub pname: String,
-    pub pattr: Option<String>
+    pub pattr: Option<Attribute>
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
