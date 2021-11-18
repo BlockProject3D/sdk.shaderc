@@ -94,6 +94,15 @@ pub struct OrderedProp<'a>
     index: u64
 }
 
+impl<'a> OrderedProp<'a>
+{
+    pub fn get_native_order(&self) -> u32
+    {
+        let order = self.inner.pattr.as_ref().map(|s| s.get_order()).unwrap_or_default().unwrap_or(0);
+        order
+    }
+}
+
 impl<'a> PartialEq<Self> for OrderedProp<'a>
 {
     fn eq(&self, other: &Self) -> bool
@@ -132,13 +141,13 @@ impl<'a> Ord for OrderedProp<'a>
 
 pub struct StmtDecomposition<'a>
 {
-    root_constants: BTreeSet<OrderedProp<'a>>, //Root constants/push constants, emulated by global uniform buffer in GL targets
-    outputs: BTreeSet<OrderedProp<'a>>, //Fragment shader outputs/render target outputs
-    objects: Vec<&'a Property>, //Samplers and textures
-    cbuffers: Vec<&'a Struct>,
-    vformat: Option<&'a Struct>,
-    pipeline: Option<&'a PipelineStatement>,
-    blendfuncs: Vec<&'a BlendfuncStatement>
+    pub root_constants: BTreeSet<OrderedProp<'a>>, //Root constants/push constants, emulated by global uniform buffer in GL targets
+    pub outputs: BTreeSet<OrderedProp<'a>>, //Fragment shader outputs/render target outputs
+    pub objects: Vec<&'a Property>, //Samplers and textures
+    pub cbuffers: Vec<&'a Struct>,
+    pub vformat: Option<&'a Struct>,
+    pub pipeline: Option<&'a PipelineStatement>,
+    pub blendfuncs: Vec<&'a BlendfuncStatement>
 }
 
 pub fn decompose_statements<'a>(stmts: &'a Vec<Statement>) -> Result<StmtDecomposition<'a>, Error>
