@@ -26,6 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::cmp::Ordering;
 use std::fmt::{Display, Formatter, write};
 
 pub trait VarlistStatement
@@ -126,12 +127,34 @@ pub enum Attribute
     Pack
 }
 
+impl Attribute
+{
+    pub fn get_order(&self) -> Option<u32>
+    {
+        match self {
+            Attribute::Identifier(_) => None,
+            Attribute::Order(o) => Some(*o),
+            Attribute::Pack => None
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Property
 {
     pub ptype: PropertyType,
     pub pname: String,
     pub pattr: Option<Attribute>
+}
+
+impl PartialOrd<Self> for Property
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering>
+    {
+        let val = self.pattr.as_ref()?.get_order();
+        let val1 = other.pattr.as_ref()?.get_order();
+        val.partial_cmp(&val1)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
