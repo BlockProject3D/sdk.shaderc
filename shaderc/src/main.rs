@@ -32,7 +32,7 @@ mod targets;
 use std::{borrow::Cow, path::Path};
 
 use clap::{App, Arg};
-use log::{debug, info, LevelFilter};
+use log::{debug, error, info, LevelFilter};
 use phf::phf_map;
 use simple_logger::SimpleLogger;
 
@@ -59,13 +59,13 @@ fn main()
 {
     //Log everything
     SimpleLogger::new().init().unwrap();
-    log::set_max_level(LevelFilter::Trace);
-    info!("Initializing BlockProject 3D Shader Compiler...");
     let matches = App::new("shaderc")
         .author("BlockProject 3D")
         .about("BlockProject 3D SDK - Shader Compiler")
         .version("1.0.0")
         .args([
+            Arg::new("verbose").short('v').long("verbose").multiple_occurrences(true)
+                .about("Enable verbose output"),
             Arg::new("target").short('t').long("--target").takes_value(true).required_unless_present("print_targets")
                 .about("Specify the shader package target"),
             Arg::new("print_targets").long("--targets")
@@ -86,6 +86,15 @@ fn main()
                 .about("For supported targets, builds shaders with optimizations"),
             Arg::new("shader").multiple_values(true).about("List of shader files to process")
         ]).get_matches();
+    let verbosity = matches.occurrences_of("verbose");
+    match verbosity {
+        0 => log::set_max_level(LevelFilter::Error),
+        1 => log::set_max_level(LevelFilter::Warn),
+        2 => log::set_max_level(LevelFilter::Info),
+        3 => log::set_max_level(LevelFilter::Debug),
+        _ => log::set_max_level(LevelFilter::Trace),
+    };
+    info!("Initializing BlockProject 3D Shader Compiler...");
     if matches.is_present("print_targets") {
         print!("Available targets: ");
         for (i, name) in TARGETS.keys().enumerate() {
@@ -133,11 +142,11 @@ fn main()
         debug!("Target chosen: {}", target);
         if let Some(func) = TARGETS.get(target) {
             if let Err(e) = func(args) {
-                eprintln!("{}", e.into_inner());
+                error!("{}", e.into_inner());
                 std::process::exit(1);
             }
         } else {
-            eprintln!("Target not found: {}", target);
+            error!("Target not found: {}", target);
             std::process::exit(3);
         }
     }
