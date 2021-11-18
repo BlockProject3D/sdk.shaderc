@@ -30,7 +30,7 @@ use std::borrow::Cow;
 use std::collections::{BTreeSet, HashSet};
 use std::ops::Deref;
 use bp3d_threads::{ScopedThreadManager, ThreadPool};
-use log::debug;
+use log::{debug, info};
 use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
 use crate::options::{Args, Error};
 use crate::targets::basic::{decompose_statements, load_shader_to_sal, OrderedProp, StmtDecomposition};
@@ -129,7 +129,7 @@ pub fn build(args: Args) -> Result<(), Error>
     crossbeam::scope(|scope| {
         let manager = ScopedThreadManager::new(scope);
         let mut pool: ThreadPool<ScopedThreadManager, Result<(), Error>> = ThreadPool::new(args.n_threads);
-        debug!("Initialized thread pool with {} max thread(s)", args.n_threads);
+        info!("Initialized thread pool with {} max thread(s)", args.n_threads);
         for unit in &args.units {
             pool.dispatch(&manager, |_| {
                 debug!("Loading SAL for shader unit {:?}...", *unit);
