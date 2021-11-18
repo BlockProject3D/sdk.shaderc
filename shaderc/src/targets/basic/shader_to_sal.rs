@@ -31,7 +31,7 @@ use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use bpx::shader::Stage;
 use log::warn;
-use sal::ast::tree::Statement;
+use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
 use sal::utils::auto_lexer_parser;
 use crate::options::{Args, Error, ShaderUnit};
 use crate::targets::basic::preprocessor::BasicPreprocessor;
@@ -84,4 +84,98 @@ pub fn load_shader_to_sal(unit: &ShaderUnit, args: &Args) -> Result<ShaderToSal,
             Err(Error::from(format!("unable to locate injected shader '{}'", vname)))
         }
     }
+}
+
+pub struct StmtDecomposition<'a>
+{
+    root_constants: Vec<&'a Property>, //Root constants/push constants, emulated by global uniform buffer in GL targets
+    outputs: Vec<&'a Property>, //Fragment shader outputs/render target outputs
+    objects: Vec<&'a Property>, //Samplers and textures
+    cbuffers: Vec<&'a Struct>,
+    vformat: Option<&'a Struct>,
+    pipeline: Option<&'a PipelineStatement>,
+    blendfuncs: Vec<&'a BlendfuncStatement>
+}
+
+pub fn decompose_statements<'a>(stmts: &'a Vec<Statement>) -> Result<StmtDecomposition<'a>, Error>
+{
+    let (root_constants, objects): (Vec<&Property>, Vec<&Property>) = stmts.iter().filter_map(|s| {
+        if let Statement::Constant(p) = s {
+            Some(p)
+        } else {
+            None
+        }
+    }).partition(|p| {
+        match p.ptype {
+            PropertyType::Scalar(_) => true,
+            PropertyType::Vector(_) => true,
+            PropertyType::Matrix(_) => true,
+            _ => false
+        }
+    });
+    let (outputs, stmts): (Vec<&Statement>, Vec<&Statement>) = stmts.iter().filter(|s| {
+        if let Statement::Constant(_) = s {
+            false
+        } else {
+            true
+        }
+    }).partition(|s| {
+        if let Statement::Output(_) = s {
+            true
+        } else {
+            false
+        }
+    });
+    let outputs: Vec<&Property> = outputs.iter().filter_map(|s| {
+        if let Statement::Output(p) = s {
+            Some(p)
+        } else {
+            None
+        }
+    }).collect();
+    let vformats: Vec<&Struct> = stmts.iter().filter_map(|s| {
+        if let Statement::VertexFormat(s) = s {
+            Some(s)
+        } else {
+            None
+        }
+    }).collect();
+    if vformats.len() > 1 {
+        return Err(Error::new("only 1 vertex format is allowed per shader"));
+    }
+    let vformat = vformats.get(0).map(|v| *v);
+    let cbuffers: Vec<&'a Struct> = stmts.iter().filter_map(|s| {
+        if let Statement::ConstantBuffer(s) = s {
+            Some(s)
+        } else {
+            None
+        }
+    }).collect();
+    let pipelines: Vec<&PipelineStatement> = stmts.iter().filter_map(|s| {
+        if let Statement::Pipeline(s) = s {
+            Some(s)
+        } else {
+            None
+        }
+    }).collect();
+    if pipelines.len() > 1 {
+        return Err(Error::new("only 1 pipeline is allowed per shader"));
+    }
+    let pipeline = pipelines.get(0).map(|v| *v);
+    let blendfuncs: Vec<&BlendfuncStatement> = stmts.iter().filter_map(|s| {
+        if let Statement::Blendfunc(s) = s {
+            Some(s)
+        } else {
+            None
+        }
+    }).collect();
+    Ok(StmtDecomposition {
+        root_constants,
+        objects,
+        outputs,
+        cbuffers,
+        vformat,
+        pipeline,
+        blendfuncs
+    })
 }
