@@ -30,7 +30,7 @@ use std::{io::Write, path::Path};
 use std::fmt::{Display, Formatter, write};
 
 use bpx::{macros::impl_err_conversion, shader::Stage};
-use log::debug;
+use log::{debug, trace};
 use sal::preprocessor::Handler;
 
 use crate::targets::basic::shaderlib::ShaderLib;
@@ -73,7 +73,8 @@ pub struct BasicPreprocessor<'a>
     pub src_code: Vec<String>,
     shader_libs: Vec<ShaderLib<'a>>,
     pub stage: Option<Stage>,
-    line_is_directive: bool
+    line_is_directive: bool,
+    using_sal: bool
 }
 
 impl<'a> BasicPreprocessor<'a>
@@ -86,7 +87,8 @@ impl<'a> BasicPreprocessor<'a>
             src_code: Vec::new(),
             shader_libs: libs.into_iter().map(|l| ShaderLib::new(l)).collect(),
             stage: None,
-            line_is_directive: false
+            line_is_directive: false,
+            using_sal: false
         }
     }
 }
@@ -97,6 +99,7 @@ impl<'a> Handler for BasicPreprocessor<'a>
 
     fn directive(&mut self, name: &str, value: Option<&str>) -> Result<(), Self::Error>
     {
+        debug!("Found directive #{} {:?}", name, value);
         match name {
             "stage" => {
                 let value = value.unwrap_or("");
@@ -123,6 +126,7 @@ impl<'a> Handler for BasicPreprocessor<'a>
                     return Err(Error::IncludeNotFound(value.into()));
                 }
             },
+            "sal" => self.using_sal = !self.using_sal,
             _ => return Ok(())
         };
         self.line_is_directive = true;
@@ -131,14 +135,20 @@ impl<'a> Handler for BasicPreprocessor<'a>
 
     fn sal_code(&mut self, content: &str) -> Result<(), Self::Error>
     {
+        trace!("SAL> {}", content);
         self.sal_code.write_all(content.as_bytes())?;
+        self.sal_code.push(b'\n');
         Ok(())
     }
 
     fn code_line(&mut self, mut line: String) -> Result<(), Self::Error>
     {
-        if self.line_is_directive {
+        if self.line_is_directive || self.using_sal {
             line.insert_str(0, "//");
+            self.line_is_directive = false;
+        }
+        if !self.using_sal {
+            trace!("{}", line);
         }
         self.src_code.push(line);
         Ok(())
