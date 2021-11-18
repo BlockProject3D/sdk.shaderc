@@ -375,11 +375,34 @@ mod test
     }
 
     #[test]
-    fn lexer_comments_no_space_simple()
+    fn lexer_comments_no_space_simple_1()
     {
         let source_code = b"
 #this is a single line comment
 const float DeltaTime; # delta time
+const uint FrameCount; # frame count
+const mat3f ModelViewMatrix; # vew * model (2D only)
+const mat3f ProjectionMatrix; # projection (2D only)
+
+const struct PerMaterial { vec4f BaseColor; float UvMultiplier; }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
+        basic_assert(toks);
+    }
+
+    #[test]
+    fn lexer_comments_no_space_simple_2()
+    {
+        let source_code = b"
+const float DeltaTime; # delta time # with a second comment character
 const uint FrameCount; # frame count
 const mat3f ModelViewMatrix; # vew * model (2D only)
 const mat3f ProjectionMatrix; # projection (2D only)
