@@ -6,8 +6,8 @@ const struct Viewport
     mat4f Projection;
 }
 
-const mat4f ModelView;
-const vec3f CamPos;
+const mat4f ModelView : ORDER_0;
+const vec3f CamPos : ORDER_1;
 
 const vformat Vertex
 {

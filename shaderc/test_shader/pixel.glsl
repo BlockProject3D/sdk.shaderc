@@ -3,7 +3,7 @@
 in vec2 tex_coords;
 
 #sal
-output vec4f FragColor;
+output vec4f FragColor : ORDER_0;
 
 const struct Material
 {
