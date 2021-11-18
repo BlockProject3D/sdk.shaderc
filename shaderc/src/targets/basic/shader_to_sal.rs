@@ -26,6 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::cmp::Ordering;
+use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::ops::Deref;
@@ -86,10 +88,52 @@ pub fn load_shader_to_sal(unit: &ShaderUnit, args: &Args) -> Result<ShaderToSal,
     }
 }
 
+pub struct OrderedProp<'a>
+{
+    pub inner: &'a Property,
+    index: u64
+}
+
+impl<'a> PartialEq<Self> for OrderedProp<'a>
+{
+    fn eq(&self, other: &Self) -> bool
+    {
+        let order = self.inner.pattr.as_ref().map(|s| s.get_order()).unwrap_or_default().unwrap_or(0);
+        let order1 = other.inner.pattr.as_ref().map(|s| s.get_order()).unwrap_or_default().unwrap_or(0);
+        order == order1 && self.index == other.index
+    }
+}
+
+impl<'a> PartialOrd for OrderedProp<'a>
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering>
+    {
+        Some(self.cmp(other))
+    }
+}
+
+impl<'a> Eq for OrderedProp<'a> {}
+
+impl<'a> Ord for OrderedProp<'a>
+{
+    fn cmp(&self, other: &Self) -> Ordering
+    {
+        let order = self.inner.pattr.as_ref().map(|s| s.get_order()).unwrap_or_default().unwrap_or(0);
+        let order1 = other.inner.pattr.as_ref().map(|s| s.get_order()).unwrap_or_default().unwrap_or(0);
+        if order < order1 && self.index < other.index {
+            Ordering::Less
+        } else if order > order1 && self.index > other.index {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    }
+}
+
 pub struct StmtDecomposition<'a>
 {
-    root_constants: Vec<&'a Property>, //Root constants/push constants, emulated by global uniform buffer in GL targets
-    outputs: Vec<&'a Property>, //Fragment shader outputs/render target outputs
+    root_constants: BTreeSet<OrderedProp<'a>>, //Root constants/push constants, emulated by global uniform buffer in GL targets
+    outputs: BTreeSet<OrderedProp<'a>>, //Fragment shader outputs/render target outputs
     objects: Vec<&'a Property>, //Samplers and textures
     cbuffers: Vec<&'a Struct>,
     vformat: Option<&'a Struct>,
@@ -99,76 +143,57 @@ pub struct StmtDecomposition<'a>
 
 pub fn decompose_statements<'a>(stmts: &'a Vec<Statement>) -> Result<StmtDecomposition<'a>, Error>
 {
-    let (root_constants, objects): (Vec<&Property>, Vec<&Property>) = stmts.iter().filter_map(|s| {
-        if let Statement::Constant(p) = s {
-            Some(p)
-        } else {
-            None
+    let mut rcounter: u64 = 0;
+    let mut ocounter: u64 = 0;
+    let mut root_constants = BTreeSet::new();
+    let mut outputs= BTreeSet::new();
+    let mut objects = Vec::new();
+    let mut cbuffers= Vec::new();
+    let mut vformat = None;
+    let mut pipeline = None;
+    let mut blendfuncs= Vec::new();
+    let mut insert_root_const = |p: &'a Property| {
+        assert!(root_constants.insert(OrderedProp {
+            inner: p,
+            index: rcounter
+        }));
+        rcounter += 1;
+    };
+    let mut insert_output = |p: &'a Property| {
+        assert!(outputs.insert(OrderedProp {
+            inner: p,
+            index: ocounter
+        }));
+        ocounter += 1;
+    };
+    for v in stmts {
+        match v {
+            Statement::Constant(p) => {
+                match p.ptype {
+                    PropertyType::Scalar(_) => insert_root_const(p),
+                    PropertyType::Vector(_) => insert_root_const(p),
+                    PropertyType::Matrix(_) => insert_root_const(p),
+                    _ => objects.push(p)
+                };
+            }
+            Statement::ConstantBuffer(s) => cbuffers.push(s),
+            Statement::Output(o) => insert_output(o),
+            Statement::VertexFormat(s) => {
+                if vformat.is_some() {
+                    return Err(Error::new("only 1 vertex format is allowed per shader"));
+                }
+                vformat = Some(s);
+            },
+            Statement::Pipeline(p) => {
+                if pipeline.is_some() {
+                    return Err(Error::new("only 1 pipeline is allowed per shader"));
+                }
+                pipeline = Some(p);
+            },
+            Statement::Blendfunc(b) => blendfuncs.push(b),
+            Statement::Noop => (),
         }
-    }).partition(|p| {
-        match p.ptype {
-            PropertyType::Scalar(_) => true,
-            PropertyType::Vector(_) => true,
-            PropertyType::Matrix(_) => true,
-            _ => false
-        }
-    });
-    let (outputs, stmts): (Vec<&Statement>, Vec<&Statement>) = stmts.iter().filter(|s| {
-        if let Statement::Constant(_) = s {
-            false
-        } else {
-            true
-        }
-    }).partition(|s| {
-        if let Statement::Output(_) = s {
-            true
-        } else {
-            false
-        }
-    });
-    let outputs: Vec<&Property> = outputs.iter().filter_map(|s| {
-        if let Statement::Output(p) = s {
-            Some(p)
-        } else {
-            None
-        }
-    }).collect();
-    let vformats: Vec<&Struct> = stmts.iter().filter_map(|s| {
-        if let Statement::VertexFormat(s) = s {
-            Some(s)
-        } else {
-            None
-        }
-    }).collect();
-    if vformats.len() > 1 {
-        return Err(Error::new("only 1 vertex format is allowed per shader"));
     }
-    let vformat = vformats.get(0).map(|v| *v);
-    let cbuffers: Vec<&'a Struct> = stmts.iter().filter_map(|s| {
-        if let Statement::ConstantBuffer(s) = s {
-            Some(s)
-        } else {
-            None
-        }
-    }).collect();
-    let pipelines: Vec<&PipelineStatement> = stmts.iter().filter_map(|s| {
-        if let Statement::Pipeline(s) = s {
-            Some(s)
-        } else {
-            None
-        }
-    }).collect();
-    if pipelines.len() > 1 {
-        return Err(Error::new("only 1 pipeline is allowed per shader"));
-    }
-    let pipeline = pipelines.get(0).map(|v| *v);
-    let blendfuncs: Vec<&BlendfuncStatement> = stmts.iter().filter_map(|s| {
-        if let Statement::Blendfunc(s) = s {
-            Some(s)
-        } else {
-            None
-        }
-    }).collect();
     Ok(StmtDecomposition {
         root_constants,
         objects,
