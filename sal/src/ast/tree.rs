@@ -151,6 +151,7 @@ pub struct Property
 pub struct Struct
 {
     pub name: String,
+    pub attr: Option<Attribute>,
     pub props: Vec<Property>
 }
 

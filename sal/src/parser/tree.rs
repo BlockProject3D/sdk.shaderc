@@ -39,7 +39,8 @@ pub struct Property
 pub struct Struct
 {
     pub name: String,
-    pub props: Vec<Property>
+    pub props: Vec<Property>,
+    pub attr: Option<String>
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

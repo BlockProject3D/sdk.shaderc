@@ -181,7 +181,24 @@ impl Parser
         self.pop_expect(TokenType::Struct)?;
         let token = self.pop_expect(TokenType::Identifier)?;
         let name = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
-        self.pop_expect(TokenType::BlockStart)?;
+        let token = self.pop()?;
+        let attr;
+        match token {
+            Token::Colon => {
+                let ident = self.pop_expect(TokenType::Identifier)?;
+                attr = Some(ident.identifier().unwrap()); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
+                self.pop_expect(TokenType::BlockStart)?;
+            },
+            Token::BlockStart => attr = None,
+            _ => return Err(Error::new(
+                self.cur_line,
+                self.cur_column,
+                Type::UnexpectedToken {
+                    expected: TokenType::combined([TokenType::Colon, TokenType::BlockStart]),
+                    actual: token
+                }
+            ))
+        }
         let mut props = Vec::new();
         loop {
             let prop = self.parse_property()?;
@@ -190,7 +207,7 @@ impl Parser
                 break;
             }
         }
-        Ok(tree::Struct { name, props })
+        Ok(tree::Struct { name, attr, props })
     }
 
     fn try_parse_const(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
@@ -392,6 +409,7 @@ mod tests
             }),
             Root::ConstantBuffer(Struct {
                 name: "PerMaterial".into(),
+                attr: None,
                 props: vec![
                     Property {
                         pname: "BaseColor".into(),
@@ -419,7 +437,7 @@ mod tests
             const Sampler BaseSampler;
             const Texture2D:vec4f BaseTexture : BaseSampler;
             const Texture2D:float NoiseTexture : BaseSampler;
-            const struct PerMaterial
+            const struct PerMaterial : ORDER_1
             {
                 vec4f BaseColor;
                 float Specular : Pack;
@@ -451,6 +469,7 @@ mod tests
             }),
             Root::ConstantBuffer(Struct {
                 name: "PerMaterial".into(),
+                attr: Some("ORDER_1".into()),
                 props: vec![
                     Property {
                         pname: "BaseColor".into(),
@@ -512,6 +531,7 @@ mod tests
         let roots = parser.parse().unwrap();
         let expected_roots = vec![Root::VertexFormat(Struct {
             name: "Vertex".into(),
+            attr: None,
             props: vec![Property {
                 pname: "Pos".into(),
                 ptype: "vec3f".into(),

@@ -170,6 +170,7 @@ fn parse_struct(s: tree::Struct) -> Result<ast::Struct, TypeError>
     }
     Ok(ast::Struct {
         name: s.name,
+        attr: parse_attribute(s.attr)?,
         props: plist
     })
 }
@@ -454,6 +455,7 @@ mod tests
             }),
             Statement::ConstantBuffer(Struct {
                 name: "PerMaterial".into(),
+                attr: None,
                 props: vec![
                     Property {
                         pname: "BaseColor".into(),
@@ -481,7 +483,7 @@ mod tests
             const Sampler BaseSampler;
             const Texture2D:vec4f BaseTexture : BaseSampler;
             const Texture2D:float NoiseTexture : BaseSampler;
-            const struct PerMaterial
+            const struct PerMaterial : ORDER_1
             {
                 vec4f BaseColor;
                 float Specular : Pack;
@@ -514,6 +516,7 @@ mod tests
             }),
             Statement::ConstantBuffer(Struct {
                 name: "PerMaterial".into(),
+                attr: Some(Attribute::Order(1)),
                 props: vec![
                     Property {
                         pname: "BaseColor".into(),
@@ -577,6 +580,7 @@ mod tests
         let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
         let expected_ast = vec![Statement::VertexFormat(Struct {
             name: "Vertex".into(),
+            attr: None,
             props: vec![Property {
                 pname: "Pos".into(),
                 ptype: PropertyType::Vector(VectorType {
