@@ -43,6 +43,7 @@ use sal::preprocessor;
 
 pub struct ShaderToSal
 {
+    pub name: String,
     pub strings: Vec<rglslang::shader::Part>,
     pub statements: Vec<Statement>
 }
@@ -51,7 +52,8 @@ fn shader_sal_stage<T: BufRead>(name: String, content: T, args: &Args) -> Result
 {
     let mut result = ShaderToSal {
         strings: Vec::new(),
-        statements: Vec::new()
+        statements: Vec::new(),
+        name: name.clone()
     };
     let mut preprocessor = BasicPreprocessor::new(&args.libs);
     preprocessor::run(content, &mut preprocessor)?;
@@ -88,13 +90,13 @@ pub fn load_shader_to_sal(unit: &ShaderUnit, args: &Args) -> Result<ShaderToSal,
     }
 }
 
-pub struct OrderedProp<'a>
+pub struct OrderedProp
 {
-    pub inner: &'a Property,
+    pub inner: Property,
     index: u64
 }
 
-impl<'a> OrderedProp<'a>
+impl OrderedProp
 {
     pub fn get_native_order(&self) -> u32
     {
@@ -103,7 +105,7 @@ impl<'a> OrderedProp<'a>
     }
 }
 
-impl<'a> PartialEq<Self> for OrderedProp<'a>
+impl PartialEq<Self> for OrderedProp
 {
     fn eq(&self, other: &Self) -> bool
     {
@@ -113,7 +115,7 @@ impl<'a> PartialEq<Self> for OrderedProp<'a>
     }
 }
 
-impl<'a> PartialOrd for OrderedProp<'a>
+impl PartialOrd for OrderedProp
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering>
     {
@@ -121,9 +123,9 @@ impl<'a> PartialOrd for OrderedProp<'a>
     }
 }
 
-impl<'a> Eq for OrderedProp<'a> {}
+impl Eq for OrderedProp {}
 
-impl<'a> Ord for OrderedProp<'a>
+impl Ord for OrderedProp
 {
     fn cmp(&self, other: &Self) -> Ordering
     {
@@ -139,18 +141,18 @@ impl<'a> Ord for OrderedProp<'a>
     }
 }
 
-pub struct StmtDecomposition<'a>
+pub struct StmtDecomposition
 {
-    pub root_constants: BTreeSet<OrderedProp<'a>>, //Root constants/push constants, emulated by global uniform buffer in GL targets
-    pub outputs: BTreeSet<OrderedProp<'a>>, //Fragment shader outputs/render target outputs
-    pub objects: Vec<&'a Property>, //Samplers and textures
-    pub cbuffers: Vec<&'a Struct>,
-    pub vformat: Option<&'a Struct>,
-    pub pipeline: Option<&'a PipelineStatement>,
-    pub blendfuncs: Vec<&'a BlendfuncStatement>
+    pub root_constants: BTreeSet<OrderedProp>, //Root constants/push constants, emulated by global uniform buffer in GL targets
+    pub outputs: BTreeSet<OrderedProp>, //Fragment shader outputs/render target outputs
+    pub objects: Vec<Property>, //Samplers and textures
+    pub cbuffers: Vec<Struct>,
+    pub vformat: Option<Struct>,
+    pub pipeline: Option<PipelineStatement>,
+    pub blendfuncs: Vec<BlendfuncStatement>
 }
 
-pub fn decompose_statements<'a>(stmts: &'a Vec<Statement>) -> Result<StmtDecomposition<'a>, Error>
+pub fn decompose_statements<'a>(stmts: Vec<Statement>) -> Result<StmtDecomposition, Error>
 {
     let mut rcounter: u64 = 0;
     let mut ocounter: u64 = 0;
@@ -161,14 +163,14 @@ pub fn decompose_statements<'a>(stmts: &'a Vec<Statement>) -> Result<StmtDecompo
     let mut vformat = None;
     let mut pipeline = None;
     let mut blendfuncs= Vec::new();
-    let mut insert_root_const = |p: &'a Property| {
+    let mut insert_root_const = |p: Property| {
         assert!(root_constants.insert(OrderedProp {
             inner: p,
             index: rcounter
         }));
         rcounter += 1;
     };
-    let mut insert_output = |p: &'a Property| {
+    let mut insert_output = |p: Property| {
         assert!(outputs.insert(OrderedProp {
             inner: p,
             index: ocounter
