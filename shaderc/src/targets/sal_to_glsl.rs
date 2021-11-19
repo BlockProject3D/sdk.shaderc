@@ -116,11 +116,11 @@ fn offset_of(c: &Property, layout: &Struct) -> usize
         if size == 0 {
             warn!("Property '{}' in layout '{}' is zero-sized!", c.pname, layout.name);
         }
-        offset += size;
         if v.pname == c.pname {
             flag = true;
             break;
         }
+        offset += size;
     }
     if !flag {
         warn!("Unable to locate property '{}' in layout '{}'", c.pname, layout.name);
