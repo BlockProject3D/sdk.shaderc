@@ -2,7 +2,7 @@
 
 #sal
 # Additional line
-const struct Viewport # : ORDER_1 # Allows binding the constant buffer to a fixed always same slot; currently not working
+const struct Viewport : ORDER_1 # Allows binding the constant buffer to a fixed always same slot; currently not working
 {
     mat4f Projection;
 }
