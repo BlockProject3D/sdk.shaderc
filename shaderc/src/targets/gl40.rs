@@ -27,46 +27,32 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::borrow::Cow;
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::Deref;
 use bp3d_threads::{ScopedThreadManager, ThreadPool};
-use log::{debug, info};
-use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
+use bpx::shader::Stage;
+use log::{debug, info, warn};
+use sal::ast::tree::{Attribute, BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
 use crate::options::{Args, Error};
-use crate::targets::basic::{decompose_statements, load_shader_to_sal, OrderedProp, StmtDecomposition};
+use crate::targets::basic::{decompose_pass, decompose_statements, DecomposedShader, get_root_constants_layout, load_shader_to_sal, merge_stages, OrderedProp, relocate_bindings, ShaderStage, StmtDecomposition, test_bindings};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
 
-struct DecomposedShader
+fn compile_stages(args: &Args, stages: HashMap<Stage, ShaderStage>) -> Result<(), Error>
 {
-    name: String,
-    statements: StmtDecomposition,
-    strings: Vec<rglslang::shader::Part>
-}
-
-fn decompose_pass(args: &Args) -> Result<Vec<DecomposedShader>, Error>
-{
+    let root_constants_layout = get_root_constants_layout(&stages)?;
     let root = crossbeam::scope(|scope| {
         let mut root = Vec::new();
         let manager = ScopedThreadManager::new(scope);
-        let mut pool: ThreadPool<ScopedThreadManager, Result<DecomposedShader, Error>> = ThreadPool::new(args.n_threads);
+        let mut pool: ThreadPool<ScopedThreadManager, Result<(), Error>> = ThreadPool::new(args.n_threads);
         info!("Initialized thread pool with {} max thread(s)", args.n_threads);
-        for unit in &args.units {
+        for (stage, shader) in &stages {
             pool.dispatch(&manager, |_| {
-                debug!("Loading SAL for shader unit {:?}...", *unit);
-                let res = load_shader_to_sal(unit, &args)?;
-                debug!("Decomposing SAL AST for shader unit {:?}...", *unit);
-                let sal = decompose_statements(res.statements)?;
-                let decomposed = DecomposedShader {
-                    name: res.name,
-                    statements: sal,
-                    strings: res.strings
-                };
-                /*debug!("Translating SAL AST for shader unit {:?} to GLSL for OpenGL 4.0...", *unit);
-                let glsl = translate_sal_to_glsl(&sal)?;
-                info!("Translated GLSL: \n{}", glsl);*/
-                Ok(decomposed)
+                debug!("Translating SAL AST for stage {:?} to GLSL for OpenGL 4.0...", *stage);
+                let glsl = translate_sal_to_glsl(&root_constants_layout, &shader.statements)?;
+                info!("Translated GLSL: \n{}", glsl);
+                Ok(())
             });
-            debug!("Dispatch shader unit {:?}", unit);
+            debug!("Dispatch stage {:?}", stage);
         }
         pool.join().unwrap();
         while let Some(res) = pool.poll() {
@@ -74,17 +60,24 @@ fn decompose_pass(args: &Args) -> Result<Vec<DecomposedShader>, Error>
         }
         root
     }).unwrap();
-    let mut vec = Vec::new();
     for v in root {
-        vec.push(v?);
+        v?;
     }
-    Ok(vec)
+    Ok(())
 }
 
 pub fn build(args: Args) -> Result<(), Error>
 {
     info!("Running initial shader decomposition phase...");
     let shaders = decompose_pass(&args)?;
-    info!("Applying relocations...");
+    info!("Merging shader stages");
+    let mut stages = merge_stages(shaders)?;
+    info!("Applying binding relocations...");
+    relocate_bindings(&mut stages);
+    info!("Testing binding relocations...");
+    test_bindings(&stages)?;
+    //relocate_bindings(&mut shaders);
+    info!("Compiling shaders...");
+    compile_stages(&args, stages)?;
     todo!()
 }
