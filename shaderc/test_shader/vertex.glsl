@@ -1,6 +1,12 @@
 #stage vertex
 
 #sal
+const struct Root : ORDER_0
+{
+    mat4f ModelView;
+    vec3f CamPos;
+}
+
 # Additional line
 const struct Viewport : ORDER_1 # Allows binding the constant buffer to a fixed always same slot; currently not working
 {
