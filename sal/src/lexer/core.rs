@@ -235,13 +235,11 @@ impl Lexer
             } else if code[pos2 - 1] == CHR_NL {
                 if self.in_comment {
                     self.in_comment = false;
-                    pos1 = pos2 + 1;
-                    pos2 = pos1 + 1;
+                    pos1 = pos2;
+                    pos2 += 1;
                 }
-                if code[pos2 - 1] == b'\n' {
-                    self.cur_line += 1;
-                    self.cur_column = 0;
-                }
+                self.cur_line += 1;
+                self.cur_column = 0;
             }
             if !self.in_comment {
                 if let Some(tok) = check_terminator(code[pos2 - 1]) {
@@ -287,6 +285,7 @@ impl Lexer
 #[cfg(test)]
 mod test
 {
+    use proptest::proptest;
     use super::*;
 
     fn basic_assert(toks: Vec<Token>)
@@ -684,5 +683,16 @@ const mat4f ModelView;
                 Token::Identifier("color".into())
             ]
         );
+    }
+
+    proptest! {
+        #[test]
+        fn random_input_no_panic(s in "//PC*")
+        {
+            let mut lexer = Lexer::new();
+            let _ = lexer.process(s.as_bytes());
+            lexer.eliminate_whitespace();
+            lexer.eliminate_breaks();
+        }
     }
 }
