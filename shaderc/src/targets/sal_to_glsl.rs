@@ -28,10 +28,10 @@
 
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashSet};
-use log::{debug, error};
+use log::{debug, error, warn};
 use sal::ast::tree::{Attribute, Property, PropertyType, Struct};
 use crate::options::Error;
-use crate::targets::basic::{OrderedProp, StmtDecomposition};
+use crate::targets::basic::{OrderedProp, Slot, StmtDecomposition};
 
 fn translate_property(p: &Property) -> String
 {
@@ -51,13 +51,13 @@ fn translate_property(p: &Property) -> String
     format!("{} {};", ptype, p.pname)
 }
 
-fn translate_cbuffer(binding: usize, s: &Struct) -> String
+fn translate_cbuffer(s: &Slot<Struct>) -> String
 {
-    let mut str = format!("layout (binding = {}, std140) uniform {} {{", binding, s.name);
-    for v in &s.props {
+    let mut str = format!("layout (binding = {}, std140) uniform {} {{", s.slot, s.inner.name);
+    for v in &s.inner.props {
         let prop = Property {
             pattr: None,
-            pname: [&*s.name, &*v.pname].join("_"),
+            pname: [&*s.inner.name, &*v.pname].join("_"),
             ptype: v.ptype
         };
         str.push_str(&translate_property(&prop));
@@ -93,64 +93,94 @@ fn translate_outputs(outputs: &BTreeSet<OrderedProp>) -> Result<String, Error>
     Ok(str)
 }
 
-fn translate_root_consts(consts: &BTreeSet<OrderedProp>) -> String
+fn size_of(p: &Property) -> usize
 {
+    match p.ptype {
+        PropertyType::Scalar(_) => 16, //layout (std140) requires all fields to be aligned to 16 bytes boundaries
+        PropertyType::Vector(_) => 16,
+        PropertyType::Matrix(m) => m.size as usize * 16,
+        PropertyType::Sampler => 0,
+        PropertyType::Texture2D(_) => 0,
+        PropertyType::Texture3D(_) => 0,
+        PropertyType::Texture2DArray(_) => 0,
+        PropertyType::TextureCube(_) => 0
+    }
+}
+
+fn offset_of(c: &Property, layout: &Struct) -> usize
+{
+    let mut flag = false;
+    let mut offset: usize = 0;
+    for v in &layout.props {
+        let size = size_of(v);
+        if size == 0 {
+            warn!("Property '{}' in layout '{}' is zero-sized!", c.pname, layout.name);
+        }
+        offset += size;
+        if v.pname == c.pname {
+            flag = true;
+            break;
+        }
+    }
+    if !flag {
+        warn!("Unable to locate property '{}' in layout '{}'", c.pname, layout.name);
+    }
+    offset
+}
+
+fn translate_root_consts(root_constants_layout: &Struct, consts: &BTreeSet<OrderedProp>) -> String
+{
+    if consts.is_empty() {
+        return String::default();
+    }
     let mut str = String::from("layout (binding = 0, std140) uniform __Root {");
-    for v in consts {
-        str.push_str(&translate_property(&v.inner));
+    let mut last_offset: usize = 0;
+    for (i, v) in root_constants_layout.props.iter().enumerate() {
+        if consts.iter().any(|p| p.inner.pname == v.pname) {
+            let offset = offset_of(v, root_constants_layout);
+            let padding_size = (offset - last_offset) / 16; //obtain number of vec4f to pad
+            if padding_size > 0 {
+                str.push_str(&format!("vec4f __padding{}__[{}];", i, padding_size));
+            }
+            last_offset = offset;
+        }
+        str.push_str(&translate_property(v));
     }
     str.push_str("};");
     str
 }
 
-fn test_cbuffers_unique_slots(cbuffers: &Vec<Struct>) -> Result<(), Error>
+fn test_cbuffers_unique_slots(cbuffers: &Vec<Slot<Struct>>) -> Result<(), Error>
 {
     let mut set = HashSet::new();
     // Extract duplicate binding slots
     let flag = cbuffers.iter().any(|s| {
-        if let Some(attr) = &s.attr {
-            if let Attribute::Order(slot) = attr {
-                if set.contains(slot) {
-                    error!("Duplicate slot binding {}", slot);
-                    return true;
-                } else {
-                    set.insert(slot);
-                }
-            }
-        }
-        false
-    });
-    let flag2 = cbuffers.iter().any(|s| {
-        if let Some(attr) = &s.attr {
-            if let Attribute::Order(slot) = attr {
-                if *slot == 0 {
-                    return true;
-                }
-            }
+        if set.contains(&s.slot) {
+            error!("Duplicate slot binding {}", s.slot);
+            return true;
+        } else {
+            set.insert(s.slot);
         }
         false
     });
     if flag { //Oh now we've got duplicate binding slots => terminate compilation immediately
         return Err(Error::new("duplicate slot bindings in one or more constant buffer declaration"));
     }
-    if flag2 {
-        return Err(Error::new("the constant buffer at slot 0 is used internally to store root constants"));
-    }
     Ok(())
 }
 
-pub fn translate_sal_to_glsl(sal: &StmtDecomposition) -> Result<String, Error>
+pub fn translate_sal_to_glsl(root_constants_layout: &Struct, sal: &StmtDecomposition) -> Result<String, Error>
 {
     let vformat = sal.vformat.as_ref().map(|s| translate_vformat(&s)).unwrap_or_default();
-    let constants = translate_root_consts(&sal.root_constants);
+    let constants = translate_root_consts(root_constants_layout, &sal.root_constants);
     let outputs = translate_outputs(&sal.outputs)?;
     test_cbuffers_unique_slots(&sal.cbuffers)?;
-    let cbuffers: Vec<String> = sal.cbuffers.iter().enumerate().map(|(i, s)| translate_cbuffer(i + 1, s)).collect();
+    let cbuffers: Vec<String> = sal.cbuffers.iter().map(|s| translate_cbuffer(s)).collect();
     let cbuffers = cbuffers.join("\n");
-    let objects: Vec<String> = sal.objects.iter().enumerate().filter_map(|(i, p)| {
-        let p = translate_property(p);
-        if !p.is_empty() {
-            Some(format!("layout (binding = {}) uniform {}", i, p))
+    let objects: Vec<String> = sal.objects.iter().filter_map(|p| {
+        let sji = translate_property(&p.inner);
+        if !sji.is_empty() {
+            Some(format!("layout (binding = {}) uniform {}", p.slot, sji))
         } else {
             None
         }
