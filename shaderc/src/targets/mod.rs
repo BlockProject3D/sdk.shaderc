@@ -27,5 +27,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 mod basic;
+mod sal_to_glsl;
 pub mod gl40;
 pub mod lib;
