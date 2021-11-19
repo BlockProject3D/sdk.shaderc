@@ -34,123 +34,37 @@ use log::{debug, info};
 use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
 use crate::options::{Args, Error};
 use crate::targets::basic::{decompose_statements, load_shader_to_sal, OrderedProp, StmtDecomposition};
+use crate::targets::sal_to_glsl::translate_sal_to_glsl;
 
-fn translate_property(p: &Property) -> String
+struct DecomposedShader
 {
-    let ptype: Cow<str> = match p.ptype {
-        PropertyType::Scalar(s) => s.get_name().into(),
-        PropertyType::Vector(v) => format!("vec{}{}", v.size, v.item.get_char()).into(),
-        PropertyType::Matrix(m) => format!("mat{}{}", m.size, m.item.get_char()).into(),
-        PropertyType::Sampler => "".into(),
-        PropertyType::Texture2D(_) => "sampler2D".into(),
-        PropertyType::Texture3D(_) => "sampler3D".into(),
-        PropertyType::Texture2DArray(_) => "sampler2DArray".into(),
-        PropertyType::TextureCube(_) => "samplerCube".into()
-    };
-    if &ptype == "" {
-        return String::default()
-    }
-    format!("{} {};", ptype, p.pname)
+    name: String,
+    statements: StmtDecomposition,
+    strings: Vec<rglslang::shader::Part>
 }
 
-fn translate_cbuffer(binding: usize, s: &Struct) -> String
+fn decompose_pass(args: &Args) -> Result<Vec<DecomposedShader>, Error>
 {
-    let mut str = format!("layout (binding = {}, std140) uniform {} {{", binding, s.name);
-    for v in &s.props {
-        let prop = Property {
-            pattr: None,
-            pname: [&*s.name, &*v.pname].join("_"),
-            ptype: v.ptype
-        };
-        str.push_str(&translate_property(&prop));
-    }
-    str.push_str("};");
-    str
-}
-
-fn translate_vformat(s: &Struct) -> String
-{
-    let mut str= String::new();
-    for (loc, v) in s.props.iter().enumerate() {
-        let prop = Property {
-            pattr: None,
-            pname: [&*s.name, &*v.pname].join("_"),
-            ptype: v.ptype
-        };
-        str.push_str(&format!("layout (location = {}) in {}", loc, translate_property(&prop)));
-    }
-    str
-}
-
-fn translate_outputs(outputs: &BTreeSet<OrderedProp>) -> Result<String, Error>
-{
-    let mut str= String::new();
-    let mut set = HashSet::new();
-    for v in outputs.iter() {
-        if !set.insert(v.get_native_order()) {
-            return Err(Error::from(format!("multiple definition of output slot {}", v.get_native_order())))
-        }
-        str.push_str(&format!("layout (location = {}) out {}", v.get_native_order(), translate_property(v.inner)));
-    }
-    Ok(str)
-}
-
-fn translate_root_consts(consts: &BTreeSet<OrderedProp>) -> String
-{
-    let mut str = String::from("layout (binding = 0, std140) uniform __Root {");
-    for v in consts {
-        str.push_str(&translate_property(v.inner));
-    }
-    str.push_str("};");
-    str
-}
-
-fn translate_sal_to_glsl(sal: &StmtDecomposition) -> Result<String, Error>
-{
-    let vformat = sal.vformat.map(|s| translate_vformat(s)).unwrap_or_default();
-    let constants = translate_root_consts(&sal.root_constants);
-    let outputs = translate_outputs(&sal.outputs)?;
-    let cbuffers: Vec<String> = sal.cbuffers.iter().enumerate().map(|(i, s)| translate_cbuffer(i + 1, s)).collect();
-    let cbuffers = cbuffers.join("\n");
-    let objects: Vec<String> = sal.objects.iter().enumerate().filter_map(|(i, p)| {
-        let p = translate_property(p);
-        if !p.is_empty() {
-            Some(format!("layout (binding = {}) uniform {}", i, p))
-        } else {
-            None
-        }
-    }).collect();
-    let objects = objects.join("\n");
-    debug!("translated vertex format: {}", vformat);
-    debug!("translated root constants: {}", constants);
-    debug!("translated outputs: {}", outputs);
-    debug!("translated constant buffers: {}", cbuffers);
-    debug!("translated objects: {}", objects);
-    let output = [&*vformat, &*constants, &*outputs, &*cbuffers, &*objects].iter()
-        .map(|s| *s)
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<&str>>()
-        .join("\n");
-    Ok(output)
-}
-
-pub fn build(args: Args) -> Result<(), Error>
-{
-    let mut root = Vec::new();
-    crossbeam::scope(|scope| {
+    let root = crossbeam::scope(|scope| {
+        let mut root = Vec::new();
         let manager = ScopedThreadManager::new(scope);
-        let mut pool: ThreadPool<ScopedThreadManager, Result<(), Error>> = ThreadPool::new(args.n_threads);
+        let mut pool: ThreadPool<ScopedThreadManager, Result<DecomposedShader, Error>> = ThreadPool::new(args.n_threads);
         info!("Initialized thread pool with {} max thread(s)", args.n_threads);
         for unit in &args.units {
             pool.dispatch(&manager, |_| {
                 debug!("Loading SAL for shader unit {:?}...", *unit);
                 let res = load_shader_to_sal(unit, &args)?;
                 debug!("Decomposing SAL AST for shader unit {:?}...", *unit);
-                let sal = decompose_statements(&res.statements)?;
-                debug!("Translating SAL AST for shader unit {:?} to GLSL for OpenGL 4.0...", *unit);
+                let sal = decompose_statements(res.statements)?;
+                let decomposed = DecomposedShader {
+                    name: res.name,
+                    statements: sal,
+                    strings: res.strings
+                };
+                /*debug!("Translating SAL AST for shader unit {:?} to GLSL for OpenGL 4.0...", *unit);
                 let glsl = translate_sal_to_glsl(&sal)?;
-                info!("Translated GLSL: \n{}", glsl);
-                Ok(())
+                info!("Translated GLSL: \n{}", glsl);*/
+                Ok(decomposed)
             });
             debug!("Dispatch shader unit {:?}", unit);
         }
@@ -158,9 +72,19 @@ pub fn build(args: Args) -> Result<(), Error>
         while let Some(res) = pool.poll() {
             root.push(res);
         }
+        root
     }).unwrap();
+    let mut vec = Vec::new();
     for v in root {
-        v?;
+        vec.push(v?);
     }
+    Ok(vec)
+}
+
+pub fn build(args: Args) -> Result<(), Error>
+{
+    info!("Running initial shader decomposition phase...");
+    let shaders = decompose_pass(&args)?;
+    info!("Applying relocations...");
     todo!()
 }

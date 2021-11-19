@@ -88,7 +88,7 @@ fn translate_outputs(outputs: &BTreeSet<OrderedProp>) -> Result<String, Error>
         if !set.insert(v.get_native_order()) {
             return Err(Error::from(format!("multiple definition of output slot {}", v.get_native_order())))
         }
-        str.push_str(&format!("layout (location = {}) out {}", v.get_native_order(), translate_property(v.inner)));
+        str.push_str(&format!("layout (location = {}) out {}", v.get_native_order(), translate_property(&v.inner)));
     }
     Ok(str)
 }
@@ -97,13 +97,13 @@ fn translate_root_consts(consts: &BTreeSet<OrderedProp>) -> String
 {
     let mut str = String::from("layout (binding = 0, std140) uniform __Root {");
     for v in consts {
-        str.push_str(&translate_property(v.inner));
+        str.push_str(&translate_property(&v.inner));
     }
     str.push_str("};");
     str
 }
 
-fn test_cbuffers_unique_slots(cbuffers: &Vec<&Struct>) -> Result<(), Error>
+fn test_cbuffers_unique_slots(cbuffers: &Vec<Struct>) -> Result<(), Error>
 {
     let mut set = HashSet::new();
     // Extract duplicate binding slots
@@ -130,7 +130,7 @@ fn test_cbuffers_unique_slots(cbuffers: &Vec<&Struct>) -> Result<(), Error>
         }
         false
     });
-    if flag { //Oh now we've got duplicate binding slots => terminate compilation immediatly
+    if flag { //Oh now we've got duplicate binding slots => terminate compilation immediately
         return Err(Error::new("duplicate slot bindings in one or more constant buffer declaration"));
     }
     if flag2 {
@@ -141,7 +141,7 @@ fn test_cbuffers_unique_slots(cbuffers: &Vec<&Struct>) -> Result<(), Error>
 
 pub fn translate_sal_to_glsl(sal: &StmtDecomposition) -> Result<String, Error>
 {
-    let vformat = sal.vformat.map(|s| translate_vformat(s)).unwrap_or_default();
+    let vformat = sal.vformat.as_ref().map(|s| translate_vformat(&s)).unwrap_or_default();
     let constants = translate_root_consts(&sal.root_constants);
     let outputs = translate_outputs(&sal.outputs)?;
     test_cbuffers_unique_slots(&sal.cbuffers)?;
