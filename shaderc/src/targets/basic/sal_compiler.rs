@@ -109,6 +109,7 @@ pub fn relocate_bindings(stages: &mut HashMap<Stage, ShaderStage>)
 {
     let mut cbuf_slots = HashSet::new();
     let mut cur_obj_slot: u32 = 0;
+    let mut cur_samp_slot: u32 = 0;
     let mut cur_cbuf_slot: u32 = 1;
     stages.iter_mut().for_each(|(_, v)| {
         v.statements.cbuffers.iter_mut().for_each(|v| {
@@ -122,7 +123,10 @@ pub fn relocate_bindings(stages: &mut HashMap<Stage, ShaderStage>)
             }
         });
         v.statements.objects.iter_mut().for_each(|v| {
-            if v.inner.ptype != PropertyType::Sampler { //Samplers are ignored in final output
+            if v.inner.ptype != PropertyType::Sampler {
+                v.slot = cur_samp_slot;
+                cur_samp_slot += 1;
+            } else {
                 v.slot = cur_obj_slot;
                 cur_obj_slot += 1;
             }
@@ -145,6 +149,7 @@ pub fn test_bindings(stages: &HashMap<Stage, ShaderStage>) -> Result<(), Error>
 {
     let mut cbuf_slots = HashSet::new();
     let mut obj_slots = HashSet::new();
+    let mut samp_slots = HashSet::new();
     for (stage, v) in stages {
         if v.statements.root_constants_layout.is_some() &&!cbuf_slots.insert(0) {
             return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
@@ -156,9 +161,16 @@ pub fn test_bindings(stages: &HashMap<Stage, ShaderStage>) -> Result<(), Error>
             }
         }
         for slot in &v.statements.objects {
-            if !obj_slots.insert(slot.slot) {
-                warn!("Object '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot);
-                return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
+            if slot.inner.ptype != PropertyType::Sampler {
+                if !samp_slots.insert(slot.slot) {
+                    warn!("Sampler '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot);
+                    return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
+                }
+            } else {
+                if !obj_slots.insert(slot.slot) {
+                    warn!("Object '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot);
+                    return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
+                }
             }
         }
     }
