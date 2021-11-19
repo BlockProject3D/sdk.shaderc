@@ -173,6 +173,8 @@ fn main()
     generate_build_info_h(proj, &generated_include_dir);
     let mut builder = cc::Build::new();
     let compiler = builder.get_compiler();
+    //Apparently cc crate is defective and all C++ code refuses to compile
+    builder.flag("-std=c++14");
     builder.cpp(true);
     builder.warnings(false);
     if compiler.is_like_gnu() || compiler.is_like_clang() {
