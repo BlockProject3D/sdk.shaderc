@@ -26,7 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
 use log::{debug, error, info, warn};
@@ -95,9 +95,9 @@ pub fn decompose_pass(args: &Args) -> Result<Vec<DecomposedShader>, Error>
     Ok(vec)
 }
 
-pub fn merge_stages(shaders: Vec<DecomposedShader>) -> Result<HashMap<Stage, ShaderStage>, Error>
+pub fn merge_stages(shaders: Vec<DecomposedShader>) -> Result<BTreeMap<Stage, ShaderStage>, Error>
 {
-    let mut map = HashMap::new();
+    let mut map = BTreeMap::new();
     for v in shaders {
         if !map.contains_key(&v.stage) {
             map.insert(v.stage, ShaderStage {
@@ -113,7 +113,7 @@ pub fn merge_stages(shaders: Vec<DecomposedShader>) -> Result<HashMap<Stage, Sha
     Ok(map)
 }
 
-pub fn relocate_bindings<F: FnMut(BindingType, Option<u32>, u32) -> u32>(stages: &mut HashMap<Stage, ShaderStage>, mut func: F)
+pub fn relocate_bindings<F: FnMut(BindingType, Option<u32>, u32) -> u32>(stages: &mut BTreeMap<Stage, ShaderStage>, mut func: F)
 {
     let mut map = HashMap::new();
     stages.iter_mut().for_each(|(_, v)| {
@@ -160,7 +160,7 @@ pub fn relocate_bindings<F: FnMut(BindingType, Option<u32>, u32) -> u32>(stages:
     });
 }
 
-pub fn test_bindings<F: FnMut(BindingType, u32) -> bool>(stages: &HashMap<Stage, ShaderStage>, mut func: F) -> Result<(), Error>
+pub fn test_bindings<F: FnMut(BindingType, u32) -> bool>(stages: &BTreeMap<Stage, ShaderStage>, mut func: F) -> Result<(), Error>
 {
     let mut map = HashMap::new();
     for (stage, v) in stages {
@@ -198,7 +198,7 @@ pub fn test_bindings<F: FnMut(BindingType, u32) -> bool>(stages: &HashMap<Stage,
     Ok(())
 }
 
-pub fn test_symbols(stages: &HashMap<Stage, ShaderStage>) -> Result<(), Error>
+pub fn test_symbols(stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
 {
     for (stage, v) in stages {
         let mut set = HashSet::new();
@@ -218,7 +218,7 @@ pub fn test_symbols(stages: &HashMap<Stage, ShaderStage>) -> Result<(), Error>
     Ok(())
 }
 
-pub fn get_root_constants_layout(stages: &HashMap<Stage, ShaderStage>) -> Result<&Struct, Error>
+pub fn get_root_constants_layout(stages: &BTreeMap<Stage, ShaderStage>) -> Result<&Struct, Error>
 {
     let root_constants_layout = stages.iter().find(|(_, v)| {
         if let Some(_) = &v.statements.root_constants_layout {

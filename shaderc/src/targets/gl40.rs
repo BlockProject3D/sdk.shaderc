@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::borrow::Cow;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::ops::Deref;
 use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
@@ -37,7 +37,7 @@ use crate::options::{Args, Error};
 use crate::targets::basic::{BindingType, decompose_pass, decompose_statements, DecomposedShader, get_root_constants_layout, load_shader_to_sal, merge_stages, OrderedProp, relocate_bindings, ShaderStage, StmtDecomposition, test_bindings, test_symbols};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
 
-fn compile_stages(args: &Args, stages: HashMap<Stage, ShaderStage>) -> Result<(), Error>
+fn compile_stages(args: &Args, stages: BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
 {
     let root_constants_layout = get_root_constants_layout(&stages)?;
     let root = crossbeam::scope(|scope| {
@@ -67,7 +67,7 @@ fn compile_stages(args: &Args, stages: HashMap<Stage, ShaderStage>) -> Result<()
 }
 
 //TODO: In VK target ensure that all bindings are unique across all types of bindings
-fn gl40_relocate_bindings(stages: &mut HashMap<Stage, ShaderStage>)
+fn gl40_relocate_bindings(stages: &mut BTreeMap<Stage, ShaderStage>)
 {
     let mut cbufs = HashSet::new();
     let mut textures = HashSet::new();
@@ -148,7 +148,7 @@ fn gl40_relocate_bindings(stages: &mut HashMap<Stage, ShaderStage>)
     });
 }
 
-fn gl40_test_bindings(stages: &HashMap<Stage, ShaderStage>) -> Result<(), Error>
+fn gl40_test_bindings(stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
 {
     let mut cbufs = HashSet::new();
     let mut textures = HashSet::new();
