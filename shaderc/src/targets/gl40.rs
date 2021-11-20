@@ -40,6 +40,11 @@ use crate::targets::basic::{BindingType, decompose_pass, decompose_statements, D
 use crate::targets::gl::{compile_stages, EnvInfo, gl_relocate_bindings, gl_test_bindings};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
 
+//TODO: At shader initialization, procedure for each binding:
+// - glUseProgram(prog)
+// - location = glGetUniformLocation(prog, binding_name)
+// for constant buffers - glUniformBlockBinding(prog, location, binding)
+// for objects - glUniform1i(location, binding)
 
 pub fn build(args: Args) -> Result<(), Error>
 {

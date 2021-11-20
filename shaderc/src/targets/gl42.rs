@@ -47,7 +47,7 @@ pub fn build(args: Args) -> Result<(), Error>
         let env = EnvInfo {
             gl_version_int: 420,
             gl_version_str: "4.2",
-            explicit_bindings: false
+            explicit_bindings: true
         };
         info!("Compiling shaders...");
         compile_stages(&env, &args, stages).unwrap() //We have a problem rust does not allow passing the error back to the build function

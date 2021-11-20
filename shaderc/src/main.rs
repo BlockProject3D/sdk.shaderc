@@ -38,7 +38,8 @@ use simple_logger::SimpleLogger;
 
 static TARGETS: phf::Map<&'static str, options::TargetFunc> = phf_map! {
     "LIB" => targets::lib::build,
-    "GL40" => targets::gl40::build
+    "GL40" => targets::gl40::build,
+    "GL42" => targets::gl42::build
 };
 
 fn transform_output(path: &Path) -> Cow<Path>
