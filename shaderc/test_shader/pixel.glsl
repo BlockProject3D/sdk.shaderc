@@ -19,10 +19,10 @@ const Texture2D:vec4f BaseTexture : BaseSampler;
 
 void main()
 {
-    vec4f color;
+    vec4 color;
     if (Material_UvMult > 0.0f)
-        color = BaseTexture_Sample(tex_coords * Material_UvMult);
+        color = texture(BaseTexture, tex_coords * Material_UvMult);
     else
-        color = BaseTexture_Sample(tex_coords);
+        color = texture(BaseTexture, tex_coords);
     FragColor = Material_BaseColor * color;
 }
