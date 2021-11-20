@@ -139,10 +139,10 @@ pub fn relocate_bindings<F: FnMut(BindingType, Option<u32>, u32) -> u32>(stages:
             let mut prop_func = |t: BindingType| {
                 if let Some(attr) = &v.inner.pattr {
                     if let Attribute::Order(slot) = attr {
-                        return func(BindingType::Sampler, Some(*slot), v.slot);
+                        return func(t, Some(*slot), v.slot);
                     }
                 }
-                func(BindingType::Sampler, None, v.slot)
+                func(t, None, v.slot)
             };
             let fsk;
             if let Some(slot) = map.get(&v.inner.pname) {
@@ -154,6 +154,7 @@ pub fn relocate_bindings<F: FnMut(BindingType, Option<u32>, u32) -> u32>(stages:
                 };
                 map.insert(&v.inner.pname, fsk);
             }
+            debug!("Object {:?} {} : {}", v.inner.ptype, v.inner.pname, fsk);
             v.slot = fsk;
         }
     });
