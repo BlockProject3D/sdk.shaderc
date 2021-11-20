@@ -48,6 +48,14 @@ pub struct ShaderStage
     pub strings: Vec<rglslang::shader::Part>
 }
 
+#[derive(Debug)]
+pub enum BindingType
+{
+    Texture,
+    Sampler,
+    CBuf
+}
+
 pub fn decompose_pass(args: &Args) -> Result<Vec<DecomposedShader>, Error>
 {
     let root = crossbeam::scope(|scope| {
@@ -105,34 +113,43 @@ pub fn merge_stages(shaders: Vec<DecomposedShader>) -> Result<HashMap<Stage, Sha
     Ok(map)
 }
 
-pub fn relocate_bindings(stages: &mut HashMap<Stage, ShaderStage>)
+//TODO: Handle/test the case where the same constant buffer/constant would be used across multiple stages
+pub fn relocate_bindings<F: FnMut(BindingType, Option<u32>, u32) -> u32>(stages: &mut HashMap<Stage, ShaderStage>, mut func: F)
 {
-    let mut cbuf_slots = HashSet::new();
-    let mut cur_obj_slot: u32 = 0;
-    let mut cur_samp_slot: u32 = 0;
-    let mut cur_cbuf_slot: u32 = 1;
     stages.iter_mut().for_each(|(_, v)| {
-        v.statements.cbuffers.iter_mut().for_each(|v| {
+        for v in &mut v.statements.cbuffers {
             if let Some(attr) = &v.inner.attr {
                 if let Attribute::Order(slot) = attr {
-                    if !cbuf_slots.insert(*slot) {
+                    /*if !cbuf_slots.insert(*slot) {
                         warn!("Possible duplicate of binding slot {} when relocating constant buffer '{}'", slot, v.inner.name);
-                    }
-                    v.slot = *slot;
+                    }*/
+                    v.slot = func(BindingType::CBuf, Some(*slot), v.slot);
+                    continue;
                 }
             }
-        });
-        v.statements.objects.iter_mut().for_each(|v| {
+            v.slot = func(BindingType::CBuf, None, v.slot);
+        }
+        for v in &mut v.statements.objects {
             if v.inner.ptype != PropertyType::Sampler {
-                v.slot = cur_samp_slot;
-                cur_samp_slot += 1;
+                if let Some(attr) = &v.inner.pattr {
+                    if let Attribute::Order(slot) = attr {
+                        v.slot = func(BindingType::Sampler, Some(*slot), v.slot);
+                        continue;
+                    }
+                }
+                v.slot = func(BindingType::Sampler, None, v.slot);
             } else {
-                v.slot = cur_obj_slot;
-                cur_obj_slot += 1;
+                if let Some(attr) = &v.inner.pattr {
+                    if let Attribute::Order(slot) = attr {
+                        v.slot = func(BindingType::Texture, Some(*slot), v.slot);
+                        continue;
+                    }
+                }
+                v.slot = func(BindingType::Texture, None, v.slot);
             }
-        });
+        }
     });
-    stages.iter_mut().for_each(|(_, v)| {
+    /*stages.iter_mut().for_each(|(_, v)| {
         v.statements.cbuffers.iter_mut().for_each(|v| {
             if v.slot == 0 {
                 while cbuf_slots.contains(&cur_cbuf_slot) {
@@ -142,33 +159,30 @@ pub fn relocate_bindings(stages: &mut HashMap<Stage, ShaderStage>)
                 cur_cbuf_slot += 1;
             }
         });
-    });
+    });*/
 }
 
-pub fn test_bindings(stages: &HashMap<Stage, ShaderStage>) -> Result<(), Error>
+pub fn test_bindings<F: FnMut(BindingType, u32) -> bool>(stages: &HashMap<Stage, ShaderStage>, mut func: F) -> Result<(), Error>
 {
-    let mut cbuf_slots = HashSet::new();
-    let mut obj_slots = HashSet::new();
-    let mut samp_slots = HashSet::new();
     for (stage, v) in stages {
-        if v.statements.root_constants_layout.is_some() &&!cbuf_slots.insert(0) {
+        if v.statements.root_constants_layout.is_some() && !func(BindingType::CBuf, 0) {
             return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
         }
         for slot in &v.statements.cbuffers {
-            if !cbuf_slots.insert(slot.slot) {
+            if !func(BindingType::CBuf, slot.slot) {
                 warn!("Constant buffer '{}' is attempting to relocate to {} which is already in use!", slot.inner.name, slot.slot);
                 return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
             }
         }
         for slot in &v.statements.objects {
             if slot.inner.ptype != PropertyType::Sampler {
-                if !samp_slots.insert(slot.slot) {
+                if !func(BindingType::Sampler, slot.slot) {
                     warn!("Sampler '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot);
                     return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
                 }
             } else {
-                if !obj_slots.insert(slot.slot) {
-                    warn!("Object '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot);
+                if !func(BindingType::Texture, slot.slot) {
+                    warn!("Texture '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot);
                     return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
                 }
             }

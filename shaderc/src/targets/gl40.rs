@@ -34,7 +34,7 @@ use bpx::shader::Stage;
 use log::{debug, info, warn};
 use sal::ast::tree::{Attribute, BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
 use crate::options::{Args, Error};
-use crate::targets::basic::{decompose_pass, decompose_statements, DecomposedShader, get_root_constants_layout, load_shader_to_sal, merge_stages, OrderedProp, relocate_bindings, ShaderStage, StmtDecomposition, test_bindings};
+use crate::targets::basic::{BindingType, decompose_pass, decompose_statements, DecomposedShader, get_root_constants_layout, load_shader_to_sal, merge_stages, OrderedProp, relocate_bindings, ShaderStage, StmtDecomposition, test_bindings};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
 
 fn compile_stages(args: &Args, stages: HashMap<Stage, ShaderStage>) -> Result<(), Error>
@@ -66,6 +66,103 @@ fn compile_stages(args: &Args, stages: HashMap<Stage, ShaderStage>) -> Result<()
     Ok(())
 }
 
+//TODO: In VK target ensure that all bindings are unique across all types of bindings
+fn gl40_relocate_bindings(stages: &mut HashMap<Stage, ShaderStage>)
+{
+    let mut cbufs = HashSet::new();
+    let mut textures = HashSet::new();
+    let mut samplers = HashSet::new();
+    let mut cbuf_counter: u32 = 1;
+    let mut sampler_counter: u32 = 0;
+    let mut texture_counter: u32 = 0;
+    relocate_bindings(stages, |t, existing, _| {
+        match t {
+            BindingType::Texture => {
+                existing.map(|slot| {
+                    if !textures.insert(slot) {
+                        warn!("Possible duplicate of texture slot {}", slot);
+                    }
+                    slot
+                }).unwrap_or_else(|| {
+                    texture_counter += 1;
+                    texture_counter - 1
+                })
+            },
+            BindingType::Sampler => {
+                existing.map(|slot| {
+                    if !samplers.insert(slot) {
+                        warn!("Possible duplicate of sampler slot {}", slot);
+                    }
+                    slot
+                }).unwrap_or_else(|| {
+                    sampler_counter += 1;
+                    sampler_counter - 1
+                })
+            },
+            BindingType::CBuf => {
+                existing.map(|slot| {
+                    debug!("{}", slot);
+                    if !cbufs.insert(slot) {
+                        warn!("Possible duplicate of constant buffer slot {}", slot);
+                    }
+                    slot
+                }).unwrap_or_else(|| {
+                    cbuf_counter += 1;
+                    cbuf_counter - 1
+                })
+            }
+        }
+    });
+    relocate_bindings(stages, |t, existing, mut current| {
+        match t {
+            BindingType::Texture => {
+                if let Some(slot) = existing {
+                    slot
+                } else {
+                    while textures.contains(&current) {
+                        current += 1;
+                    }
+                    current
+                }
+            },
+            BindingType::Sampler => {
+                if let Some(slot) = existing {
+                    slot
+                } else {
+                    while samplers.contains(&current) {
+                        current += 1;
+                    }
+                    current
+                }
+            },
+            BindingType::CBuf => {
+                if let Some(slot) = existing {
+                    slot
+                } else {
+                    while cbufs.contains(&current) {
+                        current += 1;
+                    }
+                    current
+                }
+            }
+        }
+    });
+}
+
+fn gl40_test_bindings(stages: &HashMap<Stage, ShaderStage>) -> Result<(), Error>
+{
+    let mut cbufs = HashSet::new();
+    let mut textures = HashSet::new();
+    let mut samplers = HashSet::new();
+    test_bindings(stages, |t, slot| {
+        match t {
+            BindingType::Texture => textures.insert(slot),
+            BindingType::Sampler => samplers.insert(slot),
+            BindingType::CBuf => cbufs.insert(slot),
+        }
+    })
+}
+
 pub fn build(args: Args) -> Result<(), Error>
 {
     info!("Running initial shader decomposition phase...");
@@ -73,9 +170,9 @@ pub fn build(args: Args) -> Result<(), Error>
     info!("Merging shader stages");
     let mut stages = merge_stages(shaders)?;
     info!("Applying binding relocations...");
-    relocate_bindings(&mut stages);
+    gl40_relocate_bindings(&mut stages);
     info!("Testing binding relocations...");
-    test_bindings(&stages)?;
+    gl40_test_bindings(&stages)?;
     //relocate_bindings(&mut shaders);
     info!("Compiling shaders...");
     compile_stages(&args, stages)?;
