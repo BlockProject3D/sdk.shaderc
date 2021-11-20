@@ -34,7 +34,7 @@ use bpx::shader::Stage;
 use log::{debug, info, warn};
 use sal::ast::tree::{Attribute, BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
 use crate::options::{Args, Error};
-use crate::targets::basic::{BindingType, decompose_pass, decompose_statements, DecomposedShader, get_root_constants_layout, load_shader_to_sal, merge_stages, OrderedProp, relocate_bindings, ShaderStage, StmtDecomposition, test_bindings};
+use crate::targets::basic::{BindingType, decompose_pass, decompose_statements, DecomposedShader, get_root_constants_layout, load_shader_to_sal, merge_stages, OrderedProp, relocate_bindings, ShaderStage, StmtDecomposition, test_bindings, test_symbols};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
 
 fn compile_stages(args: &Args, stages: HashMap<Stage, ShaderStage>) -> Result<(), Error>
@@ -101,7 +101,6 @@ fn gl40_relocate_bindings(stages: &mut HashMap<Stage, ShaderStage>)
             },
             BindingType::CBuf => {
                 existing.map(|slot| {
-                    debug!("{}", slot);
                     if !cbufs.insert(slot) {
                         warn!("Possible duplicate of constant buffer slot {}", slot);
                     }
@@ -169,11 +168,12 @@ pub fn build(args: Args) -> Result<(), Error>
     let shaders = decompose_pass(&args)?;
     info!("Merging shader stages");
     let mut stages = merge_stages(shaders)?;
+    info!("Testing SAL symbols...");
+    test_symbols(&stages)?;
     info!("Applying binding relocations...");
     gl40_relocate_bindings(&mut stages);
     info!("Testing binding relocations...");
     gl40_test_bindings(&stages)?;
-    //relocate_bindings(&mut shaders);
     info!("Compiling shaders...");
     compile_stages(&args, stages)?;
     todo!()
