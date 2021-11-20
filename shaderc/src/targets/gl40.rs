@@ -31,7 +31,9 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::ops::Deref;
 use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
+use rglslang::environment::{Client, Environment};
+use rglslang::shader::{Messages, Profile};
 use sal::ast::tree::{Attribute, BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
 use crate::options::{Args, Error};
 use crate::targets::basic::{BindingType, decompose_pass, decompose_statements, DecomposedShader, get_root_constants_layout, load_shader_to_sal, merge_stages, OrderedProp, relocate_bindings, ShaderStage, StmtDecomposition, test_bindings, test_symbols};
@@ -50,6 +52,39 @@ fn compile_stages(args: &Args, stages: BTreeMap<Stage, ShaderStage>) -> Result<(
                 debug!("Translating SAL AST for stage {:?} to GLSL for OpenGL 4.0...", *stage);
                 let glsl = translate_sal_to_glsl(&root_constants_layout, &shader.statements)?;
                 info!("Translated GLSL: \n{}", glsl);
+                let mut strings = shader.strings.clone();
+                strings.insert(0, rglslang::shader::Part::new_with_name(glsl, "__internal_sal__"));
+                let rst = match *stage {
+                    Stage::Vertex => rglslang::environment::Stage::Vertex,
+                    Stage::Hull => rglslang::environment::Stage::Hull,
+                    Stage::Domain => rglslang::environment::Stage::Domain,
+                    Stage::Geometry => rglslang::environment::Stage::Geometry,
+                    Stage::Pixel => rglslang::environment::Stage::Pixel
+                };
+                let msgs;
+                if args.debug {
+                    msgs = Messages::new().debug().ast();
+                } else {
+                    msgs = Messages::new();
+                }
+                let mut builder = rglslang::shader::Builder::new(Environment::new_opengl(rst, Client::OpenGL, Some(400)))
+                    .messages(msgs)
+                    .entry_point("main")
+                    .source_entry_point("main")
+                    .default_version(400)
+                    .default_profile(Profile::Core);
+                for v in strings {
+                    builder = builder.add_part(v);
+                }
+                let rshader = builder.parse();
+                if !rshader.check() {
+                    error!("GLSL has reported the following error: \n{}", rshader.get_info_log());
+                    return Err(Error::new("error parsing GLSL"));
+                } else {
+                    info!("Successfully parsed GLSL code");
+                    info!("Shader log: \n{}", rshader.get_info_log());
+                    info!("Shader debug log: \n{}", rshader.get_info_debug_log());
+                }
                 Ok(())
             });
             debug!("Dispatch stage {:?}", stage);
@@ -174,7 +209,9 @@ pub fn build(args: Args) -> Result<(), Error>
     gl40_relocate_bindings(&mut stages);
     info!("Testing binding relocations...");
     gl40_test_bindings(&stages)?;
-    info!("Compiling shaders...");
-    compile_stages(&args, stages)?;
+    rglslang::main(|| {
+        info!("Compiling shaders...");
+        compile_stages(&args, stages).unwrap() //We have a problem rust does not allow passing the error back to the build function
+    });
     todo!()
 }
