@@ -29,16 +29,26 @@
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashSet};
 use log::{debug, error, warn};
-use sal::ast::tree::{Attribute, Property, PropertyType, Struct};
+use sal::ast::tree::{Attribute, Property, PropertyType, Struct, VectorType};
 use crate::options::Error;
 use crate::targets::basic::{OrderedProp, Slot, StmtDecomposition};
+
+fn get_char(v: VectorType) -> char
+{
+    let c = v.item.get_char();
+    if c == 'f' {
+        ' '
+    } else {
+        c
+    }
+}
 
 fn translate_property(p: &Property) -> String
 {
     let ptype: Cow<str> = match p.ptype {
         PropertyType::Scalar(s) => s.get_name().into(),
-        PropertyType::Vector(v) => format!("vec{}{}", v.size, v.item.get_char()).into(),
-        PropertyType::Matrix(m) => format!("mat{}{}", m.size, m.item.get_char()).into(),
+        PropertyType::Vector(v) => format!("{}vec{}", get_char(v), v.size).into(),
+        PropertyType::Matrix(m) => format!("{}mat{}", get_char(m), m.size).into(),
         PropertyType::Sampler => "".into(),
         PropertyType::Texture2D(_) => "sampler2D".into(),
         PropertyType::Texture3D(_) => "sampler3D".into(),
@@ -51,9 +61,14 @@ fn translate_property(p: &Property) -> String
     format!("{} {};", ptype, p.pname)
 }
 
-fn translate_cbuffer(s: &Slot<Struct>) -> String
+fn translate_cbuffer(explicit_bindings: bool, s: &Slot<Struct>) -> String
 {
-    let mut str = format!("layout (binding = {}, std140) uniform {} {{", s.slot, s.inner.name);
+    let mut str;
+    if explicit_bindings {
+        str = format!("layout (binding = {}, std140) uniform {} {{", s.slot, s.inner.name);
+    } else {
+        str = format!("layout (std140) uniform {} {{", s.inner.name);
+    }
     for v in &s.inner.props {
         let prop = Property {
             pattr: None,
@@ -128,12 +143,17 @@ fn offset_of(c: &Property, layout: &Struct) -> usize
     offset
 }
 
-fn translate_root_consts(root_constants_layout: &Struct, consts: &BTreeSet<OrderedProp>) -> String
+fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct, consts: &BTreeSet<OrderedProp>) -> String
 {
     if consts.is_empty() {
         return String::default();
     }
-    let mut str = String::from("layout (binding = 0, std140) uniform __Root {");
+    let mut str;
+    if explicit_bindings {
+        str = String::from("layout (binding = 0, std140) uniform __Root {");
+    } else {
+        str = String::from("layout (std140) uniform __Root {");
+    }
     let mut last_offset: usize = 0;
     for (i, v) in root_constants_layout.props.iter().enumerate() {
         if consts.iter().any(|p| p.inner.pname == v.pname) {
@@ -169,18 +189,22 @@ fn test_cbuffers_unique_slots(cbuffers: &Vec<Slot<Struct>>) -> Result<(), Error>
     Ok(())
 }
 
-pub fn translate_sal_to_glsl(root_constants_layout: &Struct, sal: &StmtDecomposition) -> Result<String, Error>
+pub fn translate_sal_to_glsl(explicit_bindings: bool, root_constants_layout: &Struct, sal: &StmtDecomposition) -> Result<String, Error>
 {
     let vformat = sal.vformat.as_ref().map(|s| translate_vformat(&s)).unwrap_or_default();
-    let constants = translate_root_consts(root_constants_layout, &sal.root_constants);
+    let constants = translate_root_consts(explicit_bindings, root_constants_layout, &sal.root_constants);
     let outputs = translate_outputs(&sal.outputs)?;
     test_cbuffers_unique_slots(&sal.cbuffers)?;
-    let cbuffers: Vec<String> = sal.cbuffers.iter().map(|s| translate_cbuffer(s)).collect();
+    let cbuffers: Vec<String> = sal.cbuffers.iter().map(|s| translate_cbuffer(explicit_bindings, s)).collect();
     let cbuffers = cbuffers.join("\n");
     let objects: Vec<String> = sal.objects.iter().filter_map(|p| {
         let sji = translate_property(&p.inner);
         if !sji.is_empty() {
-            Some(format!("layout (binding = {}) uniform {}", p.slot, sji))
+            if explicit_bindings {
+                Some(format!("layout (binding = {}) uniform {}", p.slot, sji))
+            } else {
+                Some(format!("uniform {}", sji))
+            }
         } else {
             None
         }
