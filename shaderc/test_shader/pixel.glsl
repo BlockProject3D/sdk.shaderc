@@ -9,12 +9,14 @@ const struct Material
 {
     vec4f BaseColor;
     vec4f SpecularColor;
-    float Specular : Pack;
-    float UvMult : Pack;
+    float Specular;
+    float UvMult;
 }
 
 const Sampler BaseSampler;
 const Texture2D:vec4f BaseTexture : BaseSampler;
+
+const vec3f CamPos;
 #sal
 
 void main()
