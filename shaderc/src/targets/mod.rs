@@ -29,6 +29,7 @@
 mod basic;
 mod sal_to_glsl;
 mod gl;
+mod layout140;
 pub mod gl40;
 pub mod gl42;
 pub mod lib;

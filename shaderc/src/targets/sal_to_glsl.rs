@@ -34,6 +34,7 @@ use log::{debug, error, warn};
 use sal::ast::tree::{Attribute, Property, PropertyType, Struct, VectorType};
 use crate::options::Error;
 use crate::targets::basic::{Slot, StmtDecomposition};
+use crate::targets::layout140::{offset_of, size_of};
 
 fn get_char(v: VectorType) -> char
 {
@@ -110,41 +111,6 @@ fn translate_outputs(outputs: &Vec<Slot<Property>>) -> Result<String, Error>
     Ok(str)
 }
 
-fn size_of(p: &Property) -> usize
-{
-    match p.ptype {
-        PropertyType::Scalar(_) => 16, //layout (std140) requires all fields to be aligned to 16 bytes boundaries
-        PropertyType::Vector(_) => 16,
-        PropertyType::Matrix(m) => m.size as usize * 16,
-        PropertyType::Sampler => 0,
-        PropertyType::Texture2D(_) => 0,
-        PropertyType::Texture3D(_) => 0,
-        PropertyType::Texture2DArray(_) => 0,
-        PropertyType::TextureCube(_) => 0
-    }
-}
-
-fn offset_of(c: &Property, layout: &Struct) -> usize
-{
-    let mut flag = false;
-    let mut offset: usize = 0;
-    for v in &layout.props {
-        let size = size_of(v);
-        if size == 0 {
-            warn!("Property '{}' in layout '{}' is zero-sized!", c.pname, layout.name);
-        }
-        if v.pname == c.pname {
-            flag = true;
-            break;
-        }
-        offset += size;
-    }
-    if !flag {
-        warn!("Unable to locate property '{}' in layout '{}'", c.pname, layout.name);
-    }
-    offset
-}
-
 fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct, consts: &Vec<Slot<Property>>) -> String
 {
     if consts.is_empty() {
@@ -160,7 +126,7 @@ fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct
     for (i, v) in root_constants_layout.props.iter().enumerate() {
         if consts.iter().any(|p| p.inner.pname == v.pname) {
             let offset = offset_of(v, root_constants_layout);
-            let size = size_of(v);
+            let size = size_of(&v.ptype);
             let padding_size = (offset - last_offset) / 16; //obtain number of vec4f to pad
             debug!("Property '{}': offset = {}, size = {}", v.pname, offset, size);
             if padding_size > 0 {
