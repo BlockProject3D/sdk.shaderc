@@ -92,58 +92,6 @@ pub fn load_shader_to_sal(unit: &ShaderUnit, args: &Args) -> Result<ShaderToSal,
     }
 }
 
-pub struct OrderedProp
-{
-    pub inner: Property,
-    pub slot: u32,
-    index: u64
-}
-
-impl OrderedProp
-{
-    pub fn get_native_order(&self) -> u32
-    {
-        let order = self.inner.pattr.as_ref().map(|s| s.get_order()).unwrap_or_default().unwrap_or(0);
-        order
-    }
-}
-
-impl PartialEq<Self> for OrderedProp
-{
-    fn eq(&self, other: &Self) -> bool
-    {
-        let order = self.inner.pattr.as_ref().map(|s| s.get_order()).unwrap_or_default().unwrap_or(0);
-        let order1 = other.inner.pattr.as_ref().map(|s| s.get_order()).unwrap_or_default().unwrap_or(0);
-        order == order1 && self.index == other.index
-    }
-}
-
-impl PartialOrd for OrderedProp
-{
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering>
-    {
-        Some(self.cmp(other))
-    }
-}
-
-impl Eq for OrderedProp {}
-
-impl Ord for OrderedProp
-{
-    fn cmp(&self, other: &Self) -> Ordering
-    {
-        let order = self.inner.pattr.as_ref().map(|s| s.get_order()).unwrap_or_default().unwrap_or(0);
-        let order1 = other.inner.pattr.as_ref().map(|s| s.get_order()).unwrap_or_default().unwrap_or(0);
-        if order < order1 && self.index < other.index {
-            Ordering::Less
-        } else if order > order1 && self.index > other.index {
-            Ordering::Greater
-        } else {
-            Ordering::Equal
-        }
-    }
-}
-
 pub struct Slot<T>
 {
     pub inner: T,
@@ -164,8 +112,8 @@ impl<T> Slot<T>
 pub struct StmtDecomposition
 {
     pub root_constants_layout: Option<Struct>,
-    pub root_constants: BTreeSet<OrderedProp>, //Root constants/push constants, emulated by global uniform buffer in GL targets
-    pub outputs: BTreeSet<OrderedProp>, //Fragment shader outputs/render target outputs
+    pub root_constants: Vec<Slot<Property>>, //Root constants/push constants, emulated by global uniform buffer in GL targets
+    pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
     pub objects: Vec<Slot<Property>>, //Samplers and textures
     pub cbuffers: Vec<Slot<Struct>>,
     pub vformat: Option<Struct>,
@@ -206,39 +154,30 @@ impl StmtDecomposition
 
 pub fn decompose_statements<'a>(stmts: Vec<Statement>) -> Result<StmtDecomposition, Error>
 {
-    let mut rcounter: u64 = 0;
-    let mut ocounter: u64 = 0;
-    let mut root_constants = BTreeSet::new();
-    let mut outputs= BTreeSet::new();
+    let mut root_constants = Vec::new();
+    let mut outputs= Vec::new();
     let mut objects = Vec::new();
     let mut cbuffers= Vec::new();
     let mut vformat = None;
     let mut pipeline = None;
     let mut root_constants_layout = None;
     let mut blendfuncs= Vec::new();
-    let mut insert_root_const = |p: Property| {
-        assert!(root_constants.insert(OrderedProp {
-            inner: p,
-            index: rcounter,
-            slot: 0
-        }));
-        rcounter += 1;
-    };
-    let mut insert_output = |p: Property| {
-        assert!(outputs.insert(OrderedProp {
-            inner: p,
-            index: ocounter,
-            slot: 0
-        }));
-        ocounter += 1;
+    let mut add_output = |o: Property| {
+        let mut slot = Slot::new(o);
+        if let Some(attr) = &slot.inner.pattr {
+            if let Attribute::Order(id) = attr {
+                slot.slot = *id;
+            }
+        }
+        outputs.push(slot);
     };
     for v in stmts {
         match v {
             Statement::Constant(p) => {
                 match p.ptype {
-                    PropertyType::Scalar(_) => insert_root_const(p),
-                    PropertyType::Vector(_) => insert_root_const(p),
-                    PropertyType::Matrix(_) => insert_root_const(p),
+                    PropertyType::Scalar(_) => root_constants.push(Slot::new(p)),
+                    PropertyType::Vector(_) => root_constants.push(Slot::new(p)),
+                    PropertyType::Matrix(_) => root_constants.push(Slot::new(p)),
                     _ => objects.push(Slot::new(p))
                 };
             }
@@ -253,7 +192,7 @@ pub fn decompose_statements<'a>(stmts: Vec<Statement>) -> Result<StmtDecompositi
                 }
                 cbuffers.push(Slot::new(inner))
             },
-            Statement::Output(o) => insert_output(o),
+            Statement::Output(o) => add_output(o),
             Statement::VertexFormat(s) => {
                 if vformat.is_some() {
                     return Err(Error::new("only 1 vertex format is allowed per shader"));
