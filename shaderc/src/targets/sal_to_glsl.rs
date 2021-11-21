@@ -26,12 +26,14 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//TODO: Write the function to compile constant buffers and optimize layout for std140
+
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashSet};
 use log::{debug, error, warn};
 use sal::ast::tree::{Attribute, Property, PropertyType, Struct, VectorType};
 use crate::options::Error;
-use crate::targets::basic::{OrderedProp, Slot, StmtDecomposition};
+use crate::targets::basic::{Slot, StmtDecomposition};
 
 fn get_char(v: VectorType) -> char
 {
@@ -95,15 +97,15 @@ fn translate_vformat(s: &Struct) -> String
     str
 }
 
-fn translate_outputs(outputs: &BTreeSet<OrderedProp>) -> Result<String, Error>
+fn translate_outputs(outputs: &Vec<Slot<Property>>) -> Result<String, Error>
 {
     let mut str= String::new();
     let mut set = HashSet::new();
     for v in outputs.iter() {
-        if !set.insert(v.get_native_order()) {
-            return Err(Error::from(format!("multiple definition of output slot {}", v.get_native_order())))
+        if !set.insert(v.slot) {
+            return Err(Error::from(format!("multiple definition of output slot {}", v.slot)))
         }
-        str.push_str(&format!("layout (location = {}) out {}", v.get_native_order(), translate_property(&v.inner)));
+        str.push_str(&format!("layout (location = {}) out {}", v.slot, translate_property(&v.inner)));
     }
     Ok(str)
 }
@@ -143,7 +145,7 @@ fn offset_of(c: &Property, layout: &Struct) -> usize
     offset
 }
 
-fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct, consts: &BTreeSet<OrderedProp>) -> String
+fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct, consts: &Vec<Slot<Property>>) -> String
 {
     if consts.is_empty() {
         return String::default();
@@ -158,13 +160,15 @@ fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct
     for (i, v) in root_constants_layout.props.iter().enumerate() {
         if consts.iter().any(|p| p.inner.pname == v.pname) {
             let offset = offset_of(v, root_constants_layout);
+            let size = size_of(v);
             let padding_size = (offset - last_offset) / 16; //obtain number of vec4f to pad
+            debug!("Property '{}': offset = {}, size = {}", v.pname, offset, size);
             if padding_size > 0 {
-                str.push_str(&format!("vec4f __padding{}__[{}];", i, padding_size));
+                str.push_str(&format!("vec4 __padding{}__[{}];", i, padding_size));
             }
-            last_offset = offset;
+            last_offset = offset + size;
+            str.push_str(&translate_property(v));
         }
-        str.push_str(&translate_property(v));
     }
     str.push_str("};");
     str
