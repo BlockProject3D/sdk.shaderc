@@ -36,7 +36,7 @@ use rglslang::environment::{Client, Environment};
 use rglslang::shader::{Messages, Profile};
 use sal::ast::tree::{Attribute, BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
 use crate::options::{Args, Error};
-use crate::targets::basic::{BindingType, decompose_pass, decompose_statements, DecomposedShader, get_root_constants_layout, load_shader_to_sal, merge_stages, OrderedProp, relocate_bindings, ShaderStage, StmtDecomposition, test_bindings, test_symbols};
+use crate::targets::basic::{BindingType, decompose_pass, decompose_statements, DecomposedShader, get_root_constants_layout, load_shader_to_sal, merge_stages, relocate_bindings, ShaderStage, StmtDecomposition, test_bindings, test_symbols};
 use crate::targets::gl::{compile_stages, EnvInfo, gl_relocate_bindings, gl_test_bindings};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
 
