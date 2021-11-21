@@ -95,9 +95,8 @@ fn check_litteral(substr: &[u8]) -> Option<Token>
     } else if substr == STR_FALSE {
         return Some(Token::Bool(false));
     }
-    //^\d+$
-    let int = Regex::new(r"^\d+$").unwrap();
-    let float = Regex::new(r"^\d*.\d+$").unwrap();
+    let int = Regex::new(r"^-?\d+$").unwrap();
+    let float = Regex::new(r"^-?\d*\.\d+$").unwrap();
     if int.is_match(substr) {
         //SAFETY: If we get there and that we don't have a valid int well then regex crate is broken!
         unsafe {
