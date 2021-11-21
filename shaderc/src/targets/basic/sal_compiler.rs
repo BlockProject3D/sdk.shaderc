@@ -75,9 +75,6 @@ pub fn decompose_pass(args: &Args) -> Result<Vec<DecomposedShader>, Error>
                     strings: res.strings,
                     stage: res.stage
                 };
-                /*debug!("Translating SAL AST for shader unit {:?} to GLSL for OpenGL 4.0...", *unit);
-                let glsl = translate_sal_to_glsl(&sal)?;
-                info!("Translated GLSL: \n{}", glsl);*/
                 Ok(decomposed)
             });
             debug!("Dispatch shader unit {:?}", unit);
