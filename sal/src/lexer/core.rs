@@ -36,6 +36,8 @@ use crate::lexer::{
         Token,
         CHR_BLOCK_END,
         CHR_BLOCK_START,
+        CHR_ARRAY_START,
+        CHR_ARRAY_END,
         CHR_BREAK,
         CHR_COLON,
         CHR_COMMENT,
@@ -114,7 +116,7 @@ fn check_litteral(substr: &[u8]) -> Option<Token>
 
 fn check_identifier(substr: &[u8]) -> Option<Token>
 {
-    let re = Regex::new(r"^[A-z]([A-z]|\d)*$").unwrap();
+    let re = Regex::new(r"^([a-zA-Z]|_)([a-zA-Z]|\d|_)*$").unwrap();
     if re.is_match(substr) {
         //SAFETY: If we get there but substr is not valid UTF8 well then regex crate is broken!
         unsafe {
@@ -132,6 +134,8 @@ fn check_terminator(chr: u8) -> Option<Token>
         match chr {
             CHR_BREAK => Some(Token::Break),
             CHR_COLON => Some(Token::Colon),
+            CHR_ARRAY_START => Some(Token::ArrayStart),
+            CHR_ARRAY_END => Some(Token::ArrayEnd),
             _ => None
         }
     }
@@ -563,6 +567,49 @@ const mat4f ModelView;
             .map(|TokenEntry { token, .. }| token.clone())
             .collect();
         assert_typical(toks);
+    }
+
+    #[test]
+    fn lexer_arrays()
+    {
+        let source_code = b"
+            struct Light { vec3f color; float attenuation; }
+            const struct Lighting { uint count; Light[32] lights; }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        lexer.eliminate_whitespace();
+        lexer.eliminate_breaks();
+        let toks: Vec<Token> = lexer
+            .into_tokens()
+            .iter()
+            .map(|TokenEntry { token, .. }| token.clone())
+            .collect();
+        assert_eq!(
+            toks,
+            vec![
+                Token::Struct,
+                Token::Identifier("Light".into()),
+                Token::BlockStart,
+                Token::Identifier("vec3f".into()),
+                Token::Identifier("color".into()),
+                Token::Identifier("float".into()),
+                Token::Identifier("attenuation".into()),
+                Token::BlockEnd,
+                Token::Const,
+                Token::Struct,
+                Token::Identifier("Lighting".into()),
+                Token::BlockStart,
+                Token::Identifier("uint".into()),
+                Token::Identifier("count".into()),
+                Token::Identifier("Light".into()),
+                Token::ArrayStart,
+                Token::Int(32),
+                Token::ArrayEnd,
+                Token::Identifier("lights".into()),
+                Token::BlockEnd
+            ]
+        );
     }
 
     #[test]

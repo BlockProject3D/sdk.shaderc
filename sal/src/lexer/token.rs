@@ -44,6 +44,8 @@ pub const CHR_BLOCK_START: u8 = b'{';
 pub const CHR_BLOCK_END: u8 = b'}';
 pub const CHR_COMMENT: u8 = b'#';
 pub const CHR_COLON: u8 = b':';
+pub const CHR_ARRAY_START: u8 = b'[';
+pub const CHR_ARRAY_END: u8 = b']';
 
 pub const CHR_NL: u8 = b'\n';
 
@@ -58,6 +60,8 @@ pub enum Type
     Eq,
     BlockStart,
     BlockEnd,
+    ArrayStart,
+    ArrayEnd,
     Output,
     Bool,
     Int,
@@ -92,7 +96,9 @@ impl Type
             Type::Blendfunc => "blendfunc",
             Type::Whitespace => "whitespace",
             Type::Break => "';'",
-            Type::Combined(_) => "combined"
+            Type::Combined(_) => "combined",
+            Type::ArrayStart => "'['",
+            Type::ArrayEnd => "']'"
         }
     }
 
@@ -131,6 +137,8 @@ pub enum Token
     Eq,
     BlockStart,
     BlockEnd,
+    ArrayStart,
+    ArrayEnd,
     Output,
     Bool(bool),
     Int(i32),
@@ -155,6 +163,8 @@ impl Token
             Token::Eq => Type::Eq,
             Token::BlockStart => Type::BlockStart,
             Token::BlockEnd => Type::BlockEnd,
+            Token::ArrayStart => Type::ArrayStart,
+            Token::ArrayEnd => Type::ArrayEnd,
             Token::Output => Type::Output,
             Token::Bool(_) => Type::Bool,
             Token::Int(_) => Type::Int,
