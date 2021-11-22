@@ -103,13 +103,10 @@ impl Parser
         }
     }
 
-    fn parse_property(&mut self) -> Result<tree::Property, Error>
+    fn parse_prop_type(&mut self, token: Token) -> Result<(String, Option<String>), Error>
     {
-        let token = self.pop_expect(TokenType::Identifier)?;
-        let ptype = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
         let mut ptype_attr = None;
         let pname;
-        let token = self.pop()?;
         match token {
             Token::Identifier(n) => pname = n,
             Token::Colon => {
@@ -129,6 +126,47 @@ impl Parser
                 ))
             },
         };
+        Ok((pname, ptype_attr))
+    }
+
+    fn parse_property(&mut self) -> Result<tree::Property, Error>
+    {
+        let token = self.pop_expect(TokenType::Identifier)?;
+        let ptype = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
+        //let mut ptype_attr = None;
+        //let pname;
+        let mut ptype_arr = None;
+        let token = self.pop()?;
+        let (pname, ptype_attr) = match token {
+            Token::ArrayStart => {
+                let array_size = self.pop_expect(TokenType::Int)?;
+                ptype_arr = Some(array_size.int().unwrap() as u32); // SAFETY: we have tested for int in pop_expect so no panic possible here!
+                self.pop_expect(TokenType::ArrayEnd)?;
+                let token = self.pop()?;
+                self.parse_prop_type(token)?
+            },
+            _ => self.parse_prop_type(token)?
+        };
+        //let (pname, ptype_attr) = self.parse_prop_type(token)?;
+        /*match token {
+            Token::Identifier(n) => pname = n,
+            Token::Colon => {
+                let token = self.pop_expect(TokenType::Identifier)?;
+                ptype_attr = Some(token.identifier().unwrap()); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
+                let token = self.pop_expect(TokenType::Identifier)?;
+                pname = token.identifier().unwrap();
+            },
+            _ => {
+                return Err(Error::new(
+                    self.cur_line,
+                    self.cur_column,
+                    Type::UnexpectedToken {
+                        expected: TokenType::combined([TokenType::Identifier, TokenType::Colon]),
+                        actual: token
+                    }
+                ))
+            },
+        };*/
         let token = self.pop()?;
         let pattr = match token {
             Token::Colon => {
@@ -152,6 +190,7 @@ impl Parser
             pname,
             ptype,
             ptype_attr,
+            ptype_arr,
             pattr
         })
     }
@@ -386,24 +425,28 @@ mod tests
             Root::Constant(Property {
                 pname: "DeltaTime".into(),
                 ptype: "float".into(),
+                ptype_arr: None,
                 pattr: None,
                 ptype_attr: None
             }),
             Root::Constant(Property {
                 pname: "FrameCount".into(),
                 ptype: "uint".into(),
+                ptype_arr: None,
                 pattr: None,
                 ptype_attr: None
             }),
             Root::Constant(Property {
                 pname: "ModelViewMatrix".into(),
                 ptype: "mat3f".into(),
+                ptype_arr: None,
                 pattr: None,
                 ptype_attr: None
             }),
             Root::Constant(Property {
                 pname: "ProjectionMatrix".into(),
                 ptype: "mat3f".into(),
+                ptype_arr: None,
                 pattr: None,
                 ptype_attr: None
             }),
@@ -414,12 +457,14 @@ mod tests
                     Property {
                         pname: "BaseColor".into(),
                         ptype: "vec4f".into(),
+                        ptype_arr: None,
                         pattr: None,
                         ptype_attr: None
                     },
                     Property {
                         pname: "UvMultiplier".into(),
                         ptype: "float".into(),
+                        ptype_arr: None,
                         pattr: None,
                         ptype_attr: None
                     },
@@ -452,18 +497,21 @@ mod tests
             Root::Constant(Property {
                 pname: "BaseSampler".into(),
                 ptype: "Sampler".into(),
+                ptype_arr: None,
                 pattr: None,
                 ptype_attr: None
             }),
             Root::Constant(Property {
                 pname: "BaseTexture".into(),
                 ptype: "Texture2D".into(),
+                ptype_arr: None,
                 pattr: Some("BaseSampler".into()),
                 ptype_attr: Some("vec4f".into())
             }),
             Root::Constant(Property {
                 pname: "NoiseTexture".into(),
                 ptype: "Texture2D".into(),
+                ptype_arr: None,
                 pattr: Some("BaseSampler".into()),
                 ptype_attr: Some("float".into())
             }),
@@ -474,24 +522,62 @@ mod tests
                     Property {
                         pname: "BaseColor".into(),
                         ptype: "vec4f".into(),
+                        ptype_arr: None,
                         pattr: None,
                         ptype_attr: None
                     },
                     Property {
                         pname: "Specular".into(),
                         ptype: "float".into(),
+                        ptype_arr: None,
                         pattr: Some("Pack".into()),
                         ptype_attr: None
                     },
                     Property {
                         pname: "UvMultiplier".into(),
                         ptype: "float".into(),
+                        ptype_arr: None,
                         pattr: Some("Pack".into()),
                         ptype_attr: None
                     },
                 ]
             }),
         ];
+        assert_eq!(roots, expected_roots);
+        assert!(parser.tokens.is_empty());
+    }
+
+    #[test]
+    fn parser_arrays()
+    {
+        let source_code = b"
+            #struct Light { vec3f color; float attenuation; }
+            const struct Lighting { uint count; Light[32] lights; }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let expected_roots = vec![Root::ConstantBuffer(Struct {
+            name: "Lighting".into(),
+            attr: None,
+            props: vec![
+                Property {
+                    pname: "count".into(),
+                    ptype: "uint".into(),
+                    ptype_arr: None,
+                    pattr: None,
+                    ptype_attr: None
+                },
+                Property {
+                    pname: "lights".into(),
+                    ptype: "Light".into(),
+                    ptype_arr: Some(32),
+                    pattr: None,
+                    ptype_attr: None
+                }
+            ]
+        })];
         assert_eq!(roots, expected_roots);
         assert!(parser.tokens.is_empty());
     }
@@ -509,6 +595,7 @@ mod tests
         let expected_roots = vec![Root::Output(Property {
             pname: "FragColor".into(),
             ptype: "vec4f".into(),
+            ptype_arr: None,
             pattr: None,
             ptype_attr: None
         })];
@@ -535,6 +622,7 @@ mod tests
             props: vec![Property {
                 pname: "Pos".into(),
                 ptype: "vec3f".into(),
+                ptype_arr: None,
                 pattr: None,
                 ptype_attr: None
             }]

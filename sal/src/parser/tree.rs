@@ -31,6 +31,7 @@ pub struct Property
 {
     pub ptype: String,
     pub ptype_attr: Option<String>,
+    pub ptype_arr: Option<u32>,
     pub pname: String,
     pub pattr: Option<String>
 }
@@ -77,6 +78,7 @@ pub struct VariableList
 #[derive(Debug, Clone, PartialEq)]
 pub enum Root
 {
+    //Struct(Struct),
     Constant(Property),
     ConstantBuffer(Struct),
     Output(Property),
