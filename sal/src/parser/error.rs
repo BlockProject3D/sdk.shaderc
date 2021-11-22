@@ -45,6 +45,7 @@ pub enum Type
         expected: TokenType
     },
     UnknownToken(Token),
+    NegativeArraySize(i32),
     Eof
 }
 
@@ -55,7 +56,8 @@ impl Display for Type
         match self {
             Type::UnexpectedToken { actual, expected } => write!(f, "unexpected token (expected {}, got {})", expected, actual),
             Type::UnknownToken(token) => write!(f, "unknown token ({})", token),
-            Type::Eof => f.write_str("unexpected EOF")
+            Type::Eof => f.write_str("unexpected EOF"),
+            Type::NegativeArraySize(i) => write!(f, "negative array size ({})", i)
         }
     }
 }

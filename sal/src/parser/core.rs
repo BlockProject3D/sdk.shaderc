@@ -140,7 +140,11 @@ impl Parser
         let (pname, ptype_attr) = match token {
             Token::ArrayStart => {
                 let array_size = self.pop_expect(TokenType::Int)?;
-                ptype_arr = Some(array_size.int().unwrap() as u32); // SAFETY: we have tested for int in pop_expect so no panic possible here!
+                let val = array_size.int().unwrap();
+                if val < 0 {
+                    return Err(Error::new(self.cur_line, self.cur_column, Type::NegativeArraySize(val)));
+                }
+                ptype_arr = Some(val as u32); // SAFETY: we have tested for int in pop_expect so no panic possible here!
                 self.pop_expect(TokenType::ArrayEnd)?;
                 let token = self.pop()?;
                 self.parse_prop_type(token)?
