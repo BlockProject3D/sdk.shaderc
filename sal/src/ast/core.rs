@@ -38,6 +38,7 @@ use crate::{
     },
     parser::tree
 };
+use crate::ast::tree::ArrayType;
 
 fn parse_vec_base(ptype: &str) -> Result<ast::VectorType, TypeError>
 {
@@ -60,12 +61,13 @@ fn parse_vec_base(ptype: &str) -> Result<ast::VectorType, TypeError>
     Ok(ast::VectorType { item, size })
 }
 
-fn parse_vec(ptype: &str) -> Result<ast::VectorType, TypeError>
+fn try_parse_vec(ptype: &str) -> Result<Option<ast::PropertyType>, TypeError>
 {
     if !ptype.starts_with("vec") {
-        return Err(TypeError::Unknown(ptype.into()));
+        return Ok(None);
     }
-    parse_vec_base(ptype)
+    let vtype = parse_vec_base(ptype)?;
+    Ok(Some(ast::PropertyType::Vector(vtype)))
 }
 
 fn try_parse_matrix(ptype: &str) -> Result<Option<ast::PropertyType>, TypeError>
@@ -82,7 +84,7 @@ fn try_parse_texture(ptype: &str, ptype_attr: Option<&str>) -> Result<Option<ast
     if let Some(subtype) = ptype_attr {
         return match ptype {
             "Texture2D" | "Texture3D" | "Texture2DArray" | "TextureCube" => {
-                let ttype = match parse_type(subtype, None)? {
+                let ttype = match parse_type(subtype, None, None)? {
                     ast::PropertyType::Scalar(t) => ast::TextureType::Scalar(t),
                     ast::PropertyType::Vector(t) => ast::TextureType::Vector(t),
                     _ => return Err(TypeError::UnknownTexture([ptype, subtype].join(":")))
@@ -103,7 +105,25 @@ fn try_parse_texture(ptype: &str, ptype_attr: Option<&str>) -> Result<Option<ast
     Ok(None)
 }
 
-fn parse_type(ptype: &str, ptype_attr: Option<&str>) -> Result<ast::PropertyType, TypeError>
+fn try_parse_array(ptype: &str, ptype_arr: Option<u32>) -> Result<Option<ast::PropertyType>, TypeError>
+{
+    if let Some(size) = ptype_arr {
+        let item = match parse_type(ptype, None, None)? {
+            ast::PropertyType::Vector(t) => ast::ArrayItemType::Vector(t),
+            ast::PropertyType::Matrix(t) => ast::ArrayItemType::Matrix(t),
+            ast::PropertyType::StructRef(t) => ast::ArrayItemType::StructRef(t),
+            _ => return Err(TypeError::Unknown(ptype.into()))
+        };
+        Ok(Some(ast::PropertyType::Array(ArrayType {
+            item,
+            size
+        })))
+    } else {
+        Ok(None)
+    }
+}
+
+fn parse_type(ptype: &str, ptype_arr: Option<u32>, ptype_attr: Option<&str>) -> Result<ast::PropertyType, TypeError>
 {
     match ptype {
         "Sampler" => Ok(ast::PropertyType::Sampler),
@@ -113,14 +133,21 @@ fn parse_type(ptype: &str, ptype_attr: Option<&str>) -> Result<ast::PropertyType
         "uint" => Ok(ast::PropertyType::Scalar(ast::BaseType::Uint)),
         "bool" => Ok(ast::PropertyType::Scalar(ast::BaseType::Bool)),
         _ => {
+            if let Some(elem) = try_parse_array(ptype, ptype_arr)? {
+                return Ok(elem)
+            }
             if let Some(elem) = try_parse_matrix(ptype)? {
                 return Ok(elem);
             }
             if let Some(elem) = try_parse_texture(ptype, ptype_attr)? {
                 return Ok(elem);
             }
-            let vtype = parse_vec(ptype)?;
-            Ok(ast::PropertyType::Vector(vtype))
+            if let Some(elem) = try_parse_vec(ptype)? {
+                return Ok(elem);
+            }
+            //let vtype = parse_vec(ptype)?;
+            //Ok(ast::PropertyType::Vector(vtype))
+            Ok(ast::PropertyType::StructRef(ptype.into()))
         }
     }
 }
@@ -144,7 +171,7 @@ fn parse_attribute(pattr: Option<String>) -> Result<Option<ast::Attribute>, Type
 
 fn parse_prop(p: tree::Property) -> Result<ast::Property, TypeError>
 {
-    let ptype = parse_type(&p.ptype, p.ptype_attr.as_deref())?;
+    let ptype = parse_type(&p.ptype, p.ptype_arr, p.ptype_attr.as_deref())?;
     Ok(ast::Property {
         ptype,
         pname: p.pname,
@@ -405,7 +432,7 @@ mod tests
         lexer::Lexer,
         parser::Parser
     };
-    use crate::ast::tree::Attribute;
+    use crate::ast::tree::{ArrayItemType, Attribute};
 
     #[test]
     fn basic_ast()
@@ -538,6 +565,61 @@ mod tests
                     },
                 ]
             }),
+        ];
+        assert_eq!(ast, expected_ast);
+    }
+
+    #[test]
+    fn parser_arrays()
+    {
+        let source_code = b"
+            const struct Light : Pack { vec4f color; float attenuation; }
+            const struct Lighting { uint count; Light[32] lights; }
+        ";
+        let mut lexer = Lexer::new();
+        lexer.process(source_code).unwrap();
+        let mut parser = Parser::new(lexer);
+        let roots = parser.parse().unwrap();
+        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
+        let expected_ast = vec![
+            Statement::ConstantBuffer(Struct {
+                name: "Light".into(),
+                attr: Some(Attribute::Pack),
+                props: vec![
+                    Property {
+                        pname: "color".into(),
+                        ptype: PropertyType::Vector(VectorType {
+                            size: 4,
+                            item: BaseType::Float
+                        }),
+                        pattr: None
+                    },
+                    Property {
+                        pname: "attenuation".into(),
+                        ptype: PropertyType::Scalar(BaseType::Float),
+                        pattr: None
+                    }
+                ]
+            }),
+            Statement::ConstantBuffer(Struct {
+                name: "Lighting".into(),
+                attr: None,
+                props: vec![
+                    Property {
+                        pname: "count".into(),
+                        ptype: PropertyType::Scalar(BaseType::Uint),
+                        pattr: None
+                    },
+                    Property {
+                        pname: "lights".into(),
+                        ptype: PropertyType::Array(ArrayType {
+                            size: 32,
+                            item: ArrayItemType::StructRef("Light".into())
+                        }),
+                        pattr: None,
+                    }
+                ]
+            })
         ];
         assert_eq!(ast, expected_ast);
     }

@@ -26,8 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::cmp::Ordering;
-use std::fmt::{Display, Formatter, write};
+use std::fmt::{Display, Formatter};
 
 pub trait VarlistStatement
 {
@@ -83,7 +82,34 @@ pub enum TextureType
     Vector(VectorType)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ArrayItemType
+{
+    Vector(VectorType),
+    Matrix(VectorType),
+    StructRef(String)
+}
+
+impl Display for ArrayItemType
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
+    {
+        match self {
+            ArrayItemType::Vector(v) => write!(f, "vec{}{}", v.size, v.item.get_char()),
+            ArrayItemType::Matrix(m) => write!(f, "mat{}{}", m.size, m.item.get_char()),
+            ArrayItemType::StructRef(s) => write!(f, "StructRef({})", s)
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArrayType
+{
+    pub size: u32,
+    pub item: ArrayItemType
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PropertyType
 {
     Scalar(BaseType),
@@ -93,7 +119,9 @@ pub enum PropertyType
     Texture2D(TextureType),
     Texture3D(TextureType),
     Texture2DArray(TextureType),
-    TextureCube(TextureType)
+    TextureCube(TextureType),
+    StructRef(String),
+    Array(ArrayType)
 }
 
 impl Display for PropertyType
@@ -115,6 +143,8 @@ impl Display for PropertyType
             PropertyType::Texture3D(t) => fmt_texture_type("Texture3D", t),
             PropertyType::Texture2DArray(t) => fmt_texture_type("Texture2DArray", t),
             PropertyType::TextureCube(t) => fmt_texture_type("TextureCube", t),
+            PropertyType::StructRef(s) => write!(f, "StructRef({})", s),
+            PropertyType::Array(a) => write!(f, "{}[{}]", a.item, a.size)
         }
     }
 }
