@@ -48,6 +48,7 @@ fn get_char(v: VectorType) -> char
 
 fn translate_property(p: &Property) -> String
 {
+    let mut array = None;
     let ptype: Cow<str> = match &p.ptype {
         PropertyType::Scalar(s) => s.get_name().into(),
         PropertyType::Vector(v) => format!("{}vec{}", get_char(*v), v.size).into(),
@@ -64,13 +65,18 @@ fn translate_property(p: &Property) -> String
                 ArrayItemType::Matrix(m) => format!("{}mat{}", get_char(*m), m.size).into(),
                 ArrayItemType::StructRef(s) => s.into()
             };
-            format!("{}[{}]", item, a.size).into()
+            array = Some(a.size);
+            format!("{}", item).into()
         }
     };
     if &ptype == "" {
         return String::default()
     }
-    format!("{} {};", ptype, p.pname)
+    if let Some(size) = array {
+        format!("{} {}[{}];", ptype, p.pname, size)
+    } else {
+        format!("{} {};", ptype, p.pname)
+    }
 }
 
 fn translate_cbuffer(explicit_bindings: bool, s: &Slot<Struct>) -> String
