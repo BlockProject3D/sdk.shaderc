@@ -570,7 +570,7 @@ mod tests
     }
 
     #[test]
-    fn parser_arrays()
+    fn ast_arrays()
     {
         let source_code = b"
             const struct Light : Pack { vec4f color; float attenuation; }
