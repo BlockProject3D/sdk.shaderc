@@ -26,6 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap};
 use std::fs::File;
@@ -95,7 +96,7 @@ pub fn load_shader_to_sal(unit: &ShaderUnit, args: &Args) -> Result<ShaderToSal,
 pub struct Slot<T>
 {
     pub inner: T,
-    pub slot: u32
+    pub slot: Cell<u32>
 }
 
 impl<T> Slot<T>
@@ -104,7 +105,7 @@ impl<T> Slot<T>
     {
         Self {
             inner: t,
-            slot: 0
+            slot: Cell::new(0)
         }
     }
 }
@@ -166,7 +167,7 @@ pub fn decompose_statements<'a>(stmts: Vec<Statement>) -> Result<StmtDecompositi
         let mut slot = Slot::new(o);
         if let Some(attr) = &slot.inner.pattr {
             if let Attribute::Order(id) = attr {
-                slot.slot = *id;
+                slot.slot.set(*id);
             }
         }
         outputs.push(slot);

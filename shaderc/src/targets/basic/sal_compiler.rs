@@ -110,18 +110,18 @@ pub fn merge_stages(shaders: Vec<DecomposedShader>) -> Result<BTreeMap<Stage, Sh
     Ok(map)
 }
 
-pub fn relocate_bindings<'a, F: FnMut(&'a str, BindingType, Option<u32>, u32) -> u32>(stages: &'a mut BTreeMap<Stage, ShaderStage>, mut func: F)
+pub fn relocate_bindings<'a, F: FnMut(&'a str, BindingType, Option<u32>, u32) -> u32>(stages: &'a BTreeMap<Stage, ShaderStage>, mut func: F)
 {
     let mut map = HashMap::new();
-    stages.iter_mut().for_each(|(_, v)| {
-        for v in &mut v.statements.cbuffers {
+    stages.iter().for_each(|(_, v)| {
+        for v in &v.statements.cbuffers {
             let mut cbuf_func = || {
                 if let Some(attr) = &v.inner.attr {
                     if let Attribute::Order(slot) = attr {
-                        return func(&v.inner.name, BindingType::CBuf, Some(*slot), v.slot);
+                        return func(&v.inner.name, BindingType::CBuf, Some(*slot), v.slot.get());
                     }
                 }
-                func(&v.inner.name, BindingType::CBuf, None, v.slot)
+                func(&v.inner.name, BindingType::CBuf, None, v.slot.get())
             };
             let fsk;
             if let Some(slot) = map.get(&v.inner.name) {
@@ -131,16 +131,16 @@ pub fn relocate_bindings<'a, F: FnMut(&'a str, BindingType, Option<u32>, u32) ->
                 map.insert(&v.inner.name, fsk);
             }
             debug!("CBuffer {} : {}", v.inner.name, fsk);
-            v.slot = fsk;
+            v.slot.set(fsk);
         }
-        for v in &mut v.statements.objects {
+        for v in &v.statements.objects {
             let mut prop_func = |t: BindingType| {
                 if let Some(attr) = &v.inner.pattr {
                     if let Attribute::Order(slot) = attr {
-                        return func(&v.inner.pname, t, Some(*slot), v.slot);
+                        return func(&v.inner.pname, t, Some(*slot), v.slot.get());
                     }
                 }
-                func(&v.inner.pname, t, None, v.slot)
+                func(&v.inner.pname, t, None, v.slot.get())
             };
             let fsk;
             if let Some(slot) = map.get(&v.inner.pname) {
@@ -153,7 +153,7 @@ pub fn relocate_bindings<'a, F: FnMut(&'a str, BindingType, Option<u32>, u32) ->
                 map.insert(&v.inner.pname, fsk);
             }
             debug!("Object {:?} {} : {}", v.inner.ptype, v.inner.pname, fsk);
-            v.slot = fsk;
+            v.slot.set(fsk);
         }
     });
 }
@@ -169,28 +169,28 @@ pub fn test_bindings<F: FnMut(BindingType, u32) -> bool>(stages: &BTreeMap<Stage
             if map.contains_key(&slot.inner.name) {
                 continue;
             }
-            if !func(BindingType::CBuf, slot.slot) {
-                warn!("Constant buffer '{}' is attempting to relocate to {} which is already in use!", slot.inner.name, slot.slot);
+            if !func(BindingType::CBuf, slot.slot.get()) {
+                warn!("Constant buffer '{}' is attempting to relocate to {} which is already in use!", slot.inner.name, slot.slot.get());
                 return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
             }
-            map.insert(&slot.inner.name, slot.slot);
+            map.insert(&slot.inner.name, slot.slot.get());
         }
         for slot in &v.statements.objects {
             if map.contains_key(&slot.inner.pname) {
                 continue;
             }
             if slot.inner.ptype != PropertyType::Sampler {
-                if !func(BindingType::Sampler, slot.slot) {
-                    warn!("Sampler '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot);
+                if !func(BindingType::Sampler, slot.slot.get()) {
+                    warn!("Sampler '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot.get());
                     return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
                 }
             } else {
-                if !func(BindingType::Texture, slot.slot) {
-                    warn!("Texture '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot);
+                if !func(BindingType::Texture, slot.slot.get()) {
+                    warn!("Texture '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot.get());
                     return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
                 }
             }
-            map.insert(&slot.inner.pname, slot.slot);
+            map.insert(&slot.inner.pname, slot.slot.get());
         }
     }
     Ok(())
@@ -216,14 +216,14 @@ pub fn test_symbols(stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
     Ok(())
 }
 
-pub fn get_root_constants_layout(stages: &BTreeMap<Stage, ShaderStage>) -> Result<&Struct, Error>
+pub fn get_root_constants_layout(stages: &mut BTreeMap<Stage, ShaderStage>) -> Result<Struct, Error>
 {
-    let root_constants_layout = stages.iter().find(|(_, v)| {
+    let root_constants_layout = stages.iter_mut().find(|(_, v)| {
         if let Some(_) = &v.statements.root_constants_layout {
             true
         } else {
             false
         }
     }).ok_or_else(|| Error::new("unable to locate root constant buffer"))?.1;
-    Ok(root_constants_layout.statements.root_constants_layout.as_ref().unwrap())
+    Ok(root_constants_layout.statements.root_constants_layout.take().unwrap())
 }

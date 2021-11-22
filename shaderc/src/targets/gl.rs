@@ -43,22 +43,22 @@ pub struct EnvInfo
     pub explicit_bindings: bool
 }
 
-pub fn compile_stages(env: &EnvInfo, args: &Args, stages: BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
+pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
 {
-    let root_constants_layout = get_root_constants_layout(&stages)?;
+    let root_constants_layout = &get_root_constants_layout(&mut stages)?;
     let root = crossbeam::scope(|scope| {
         let mut root = Vec::new();
         let manager = ScopedThreadManager::new(scope);
         let mut pool: ThreadPool<ScopedThreadManager, Result<(), Error>> = ThreadPool::new(args.n_threads);
         info!("Initialized thread pool with {} max thread(s)", args.n_threads);
-        for (stage, shader) in &stages {
-            pool.dispatch(&manager, |_| {
-                debug!("Translating SAL AST for stage {:?} to GLSL for OpenGL {}...", *stage, env.gl_version_str);
+        for (stage, shader) in stages {
+            pool.dispatch(&manager, move |_| {
+                debug!("Translating SAL AST for stage {:?} to GLSL for OpenGL {}...", stage, env.gl_version_str);
                 let glsl = translate_sal_to_glsl(env.explicit_bindings, &root_constants_layout, &shader.statements)?;
                 info!("Translated GLSL: \n{}", glsl);
                 let mut strings = shader.strings.clone();
                 strings.insert(0, rglslang::shader::Part::new_with_name(glsl, "__internal_sal__"));
-                let rst = match *stage {
+                let rst = match stage {
                     Stage::Vertex => rglslang::environment::Stage::Vertex,
                     Stage::Hull => rglslang::environment::Stage::Hull,
                     Stage::Domain => rglslang::environment::Stage::Domain,
@@ -121,19 +121,19 @@ pub fn gl_relocate_bindings(stages: &mut BTreeMap<Stage, ShaderStage>)
         if !textures.insert(slot) {
             warn!("Possible duplicate of texture slot {}", slot);
         }
-        textures_name.insert(slot, String::from(name));
+        textures_name.insert(slot, name);
     };
     let mut insert_sampler = |name, slot| {
         if !samplers.insert(slot) {
             warn!("Possible duplicate of sampler slot {}", slot);
         }
-        samplers_name.insert(slot, String::from(name));
+        samplers_name.insert(slot, name);
     };
     let mut insert_cbuffer = |name, slot| {
         if !cbufs.insert(slot) {
             warn!("Possible duplicate of constant buffer slot {}", slot);
         }
-        cbufs_name.insert(slot, String::from(name));
+        cbufs_name.insert(slot, name);
     };
     relocate_bindings(stages, |name, t, existing, _| {
         match t {
@@ -179,7 +179,7 @@ pub fn gl_relocate_bindings(stages: &mut BTreeMap<Stage, ShaderStage>)
                     slot
                 } else {
                     if let Some(name1) = textures_name.get(&current) {
-                        if name1 == name {
+                        if name1 == &name {
                             return current
                         }
                     }
@@ -194,7 +194,7 @@ pub fn gl_relocate_bindings(stages: &mut BTreeMap<Stage, ShaderStage>)
                     slot
                 } else {
                     if let Some(name1) = samplers_name.get(&current) {
-                        if name1 == name {
+                        if name1 == &name {
                             return current
                         }
                     }
@@ -209,7 +209,7 @@ pub fn gl_relocate_bindings(stages: &mut BTreeMap<Stage, ShaderStage>)
                     slot
                 } else {
                     if let Some(name1) = cbufs_name.get(&current) {
-                        if name1 == name {
+                        if name1 == &name {
                             return current
                         }
                     }

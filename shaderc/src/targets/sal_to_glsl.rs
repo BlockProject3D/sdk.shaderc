@@ -77,7 +77,7 @@ fn translate_cbuffer(explicit_bindings: bool, s: &Slot<Struct>) -> String
 {
     let mut str;
     if explicit_bindings {
-        str = format!("layout (binding = {}, std140) uniform {} {{", s.slot, s.inner.name);
+        str = format!("layout (binding = {}, std140) uniform {} {{", s.slot.get(), s.inner.name);
     } else {
         str = format!("layout (std140) uniform {} {{", s.inner.name);
     }
@@ -112,10 +112,10 @@ fn translate_outputs(outputs: &Vec<Slot<Property>>) -> Result<String, Error>
     let mut str= String::new();
     let mut set = HashSet::new();
     for v in outputs.iter() {
-        if !set.insert(v.slot) {
-            return Err(Error::from(format!("multiple definition of output slot {}", v.slot)))
+        if !set.insert(v.slot.get()) {
+            return Err(Error::from(format!("multiple definition of output slot {}", v.slot.get())))
         }
-        str.push_str(&format!("layout (location = {}) out {}", v.slot, translate_property(&v.inner)));
+        str.push_str(&format!("layout (location = {}) out {}", v.slot.get(), translate_property(&v.inner)));
     }
     Ok(str)
 }
@@ -154,11 +154,11 @@ fn test_cbuffers_unique_slots(cbuffers: &Vec<Slot<Struct>>) -> Result<(), Error>
     let mut set = HashSet::new();
     // Extract duplicate binding slots
     let flag = cbuffers.iter().any(|s| {
-        if set.contains(&s.slot) {
-            error!("Duplicate slot binding {}", s.slot);
+        if set.contains(&s.slot.get()) {
+            error!("Duplicate slot binding {}", s.slot.get());
             return true;
         } else {
-            set.insert(s.slot);
+            set.insert(s.slot.get());
         }
         false
     });
@@ -180,7 +180,7 @@ pub fn translate_sal_to_glsl(explicit_bindings: bool, root_constants_layout: &St
         let sji = translate_property(&p.inner);
         if !sji.is_empty() {
             if explicit_bindings {
-                Some(format!("layout (binding = {}) uniform {}", p.slot, sji))
+                Some(format!("layout (binding = {}) uniform {}", p.slot.get(), sji))
             } else {
                 Some(format!("uniform {}", sji))
             }
