@@ -31,7 +31,7 @@
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashSet};
 use log::{debug, error, warn};
-use sal::ast::tree::{Attribute, Property, PropertyType, Struct, VectorType};
+use sal::ast::tree::{ArrayItemType, Attribute, Property, PropertyType, Struct, VectorType};
 use crate::options::Error;
 use crate::targets::basic::{Slot, StmtDecomposition};
 use crate::targets::layout140::{offset_of, size_of};
@@ -48,15 +48,24 @@ fn get_char(v: VectorType) -> char
 
 fn translate_property(p: &Property) -> String
 {
-    let ptype: Cow<str> = match p.ptype {
+    let ptype: Cow<str> = match &p.ptype {
         PropertyType::Scalar(s) => s.get_name().into(),
-        PropertyType::Vector(v) => format!("{}vec{}", get_char(v), v.size).into(),
-        PropertyType::Matrix(m) => format!("{}mat{}", get_char(m), m.size).into(),
+        PropertyType::Vector(v) => format!("{}vec{}", get_char(*v), v.size).into(),
+        PropertyType::Matrix(m) => format!("{}mat{}", get_char(*m), m.size).into(),
         PropertyType::Sampler => "".into(),
         PropertyType::Texture2D(_) => "sampler2D".into(),
         PropertyType::Texture3D(_) => "sampler3D".into(),
         PropertyType::Texture2DArray(_) => "sampler2DArray".into(),
-        PropertyType::TextureCube(_) => "samplerCube".into()
+        PropertyType::TextureCube(_) => "samplerCube".into(),
+        PropertyType::StructRef(s) => s.into(),
+        PropertyType::Array(a) => {
+            let item: Cow<str> = match &a.item {
+                ArrayItemType::Vector(v) => format!("{}vec{}", get_char(*v), v.size).into(),
+                ArrayItemType::Matrix(m) => format!("{}mat{}", get_char(*m), m.size).into(),
+                ArrayItemType::StructRef(s) => s.into()
+            };
+            format!("{}[{}]", item, a.size).into()
+        }
     };
     if &ptype == "" {
         return String::default()
@@ -76,7 +85,7 @@ fn translate_cbuffer(explicit_bindings: bool, s: &Slot<Struct>) -> String
         let prop = Property {
             pattr: None,
             pname: [&*s.inner.name, &*v.pname].join("_"),
-            ptype: v.ptype
+            ptype: v.ptype.clone()
         };
         str.push_str(&translate_property(&prop));
     }
@@ -91,7 +100,7 @@ fn translate_vformat(s: &Struct) -> String
         let prop = Property {
             pattr: None,
             pname: [&*s.name, &*v.pname].join("_"),
-            ptype: v.ptype
+            ptype: v.ptype.clone()
         };
         str.push_str(&format!("layout (location = {}) in {}", loc, translate_property(&prop)));
     }
