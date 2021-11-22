@@ -133,8 +133,6 @@ impl Parser
     {
         let token = self.pop_expect(TokenType::Identifier)?;
         let ptype = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
-        //let mut ptype_attr = None;
-        //let pname;
         let mut ptype_arr = None;
         let token = self.pop()?;
         let (pname, ptype_attr) = match token {
@@ -151,26 +149,6 @@ impl Parser
             },
             _ => self.parse_prop_type(token)?
         };
-        //let (pname, ptype_attr) = self.parse_prop_type(token)?;
-        /*match token {
-            Token::Identifier(n) => pname = n,
-            Token::Colon => {
-                let token = self.pop_expect(TokenType::Identifier)?;
-                ptype_attr = Some(token.identifier().unwrap()); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
-                let token = self.pop_expect(TokenType::Identifier)?;
-                pname = token.identifier().unwrap();
-            },
-            _ => {
-                return Err(Error::new(
-                    self.cur_line,
-                    self.cur_column,
-                    Type::UnexpectedToken {
-                        expected: TokenType::combined([TokenType::Identifier, TokenType::Colon]),
-                        actual: token
-                    }
-                ))
-            },
-        };*/
         let token = self.pop()?;
         let pattr = match token {
             Token::Colon => {
