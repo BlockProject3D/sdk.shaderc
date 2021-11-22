@@ -78,7 +78,6 @@ pub struct VariableList
 #[derive(Debug, Clone, PartialEq)]
 pub enum Root
 {
-    //Struct(Struct),
     Constant(Property),
     ConstantBuffer(Struct),
     Output(Property),

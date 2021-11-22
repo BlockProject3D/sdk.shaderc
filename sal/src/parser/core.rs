@@ -551,33 +551,55 @@ mod tests
     fn parser_arrays()
     {
         let source_code = b"
-            #struct Light { vec3f color; float attenuation; }
+            const struct Light : Pack { vec4f color; float attenuation; }
             const struct Lighting { uint count; Light[32] lights; }
         ";
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
         let roots = parser.parse().unwrap();
-        let expected_roots = vec![Root::ConstantBuffer(Struct {
-            name: "Lighting".into(),
-            attr: None,
-            props: vec![
-                Property {
-                    pname: "count".into(),
-                    ptype: "uint".into(),
-                    ptype_arr: None,
-                    pattr: None,
-                    ptype_attr: None
-                },
-                Property {
-                    pname: "lights".into(),
-                    ptype: "Light".into(),
-                    ptype_arr: Some(32),
-                    pattr: None,
-                    ptype_attr: None
-                }
-            ]
-        })];
+        let expected_roots = vec![
+            Root::ConstantBuffer(Struct {
+                name: "Light".into(),
+                attr: Some("Pack".into()),
+                props: vec![
+                    Property {
+                        pname: "color".into(),
+                        ptype: "vec4f".into(),
+                        ptype_arr: None,
+                        pattr: None,
+                        ptype_attr: None
+                    },
+                    Property {
+                        pname: "attenuation".into(),
+                        ptype: "float".into(),
+                        ptype_arr: None,
+                        pattr: None,
+                        ptype_attr: None
+                    }
+                ]
+            }),
+            Root::ConstantBuffer(Struct {
+                name: "Lighting".into(),
+                attr: None,
+                props: vec![
+                    Property {
+                        pname: "count".into(),
+                        ptype: "uint".into(),
+                        ptype_arr: None,
+                        pattr: None,
+                        ptype_attr: None
+                    },
+                    Property {
+                        pname: "lights".into(),
+                        ptype: "Light".into(),
+                        ptype_arr: Some(32),
+                        pattr: None,
+                        ptype_attr: None
+                    }
+                ]
+            })
+        ];
         assert_eq!(roots, expected_roots);
         assert!(parser.tokens.is_empty());
     }
