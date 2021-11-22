@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::{fmt::Debug, num::ParseIntError};
-use std::fmt::{Display, Formatter, write};
+use std::fmt::{Display, Formatter};
 
 use crate::{ast::tree as ast, parser::tree};
 
