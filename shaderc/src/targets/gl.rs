@@ -26,7 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
 use log::{debug, error, info, warn};
@@ -111,52 +111,78 @@ pub fn gl_relocate_bindings(stages: &mut BTreeMap<Stage, ShaderStage>)
     let mut cbufs = HashSet::new();
     let mut textures = HashSet::new();
     let mut samplers = HashSet::new();
+    let mut cbufs_name = HashMap::new();
+    let mut samplers_name = HashMap::new();
+    let mut textures_name = HashMap::new();
     let mut cbuf_counter: u32 = 1;
     let mut sampler_counter: u32 = 0;
     let mut texture_counter: u32 = 0;
-    relocate_bindings(stages, |t, existing, _| {
+    let mut insert_texture = |name, slot| {
+        if !textures.insert(slot) {
+            warn!("Possible duplicate of texture slot {}", slot);
+        }
+        textures_name.insert(slot, String::from(name));
+    };
+    let mut insert_sampler = |name, slot| {
+        if !samplers.insert(slot) {
+            warn!("Possible duplicate of sampler slot {}", slot);
+        }
+        samplers_name.insert(slot, String::from(name));
+    };
+    let mut insert_cbuffer = |name, slot| {
+        if !cbufs.insert(slot) {
+            warn!("Possible duplicate of constant buffer slot {}", slot);
+        }
+        cbufs_name.insert(slot, String::from(name));
+    };
+    relocate_bindings(stages, |name, t, existing, _| {
         match t {
             BindingType::Texture => {
-                existing.map(|slot| {
-                    if !textures.insert(slot) {
-                        warn!("Possible duplicate of texture slot {}", slot);
-                    }
+                let slot = existing.map(|slot| {
+                    texture_counter = slot + 1;
                     slot
                 }).unwrap_or_else(|| {
                     texture_counter += 1;
                     texture_counter - 1
-                })
+                });
+                insert_texture(name, slot);
+                slot
             },
             BindingType::Sampler => {
-                existing.map(|slot| {
-                    if !samplers.insert(slot) {
-                        warn!("Possible duplicate of sampler slot {}", slot);
-                    }
+                let slot = existing.map(|slot| {
+                    sampler_counter = slot + 1;
                     slot
                 }).unwrap_or_else(|| {
                     sampler_counter += 1;
                     sampler_counter - 1
-                })
+                });
+                insert_sampler(name, slot);
+                slot
             },
             BindingType::CBuf => {
-                existing.map(|slot| {
-                    if !cbufs.insert(slot) {
-                        warn!("Possible duplicate of constant buffer slot {}", slot);
-                    }
+                let slot = existing.map(|slot| {
+                    cbuf_counter = slot + 1;
                     slot
                 }).unwrap_or_else(|| {
                     cbuf_counter += 1;
                     cbuf_counter - 1
-                })
+                });
+                insert_cbuffer(name, slot);
+                slot
             }
         }
     });
-    relocate_bindings(stages, |t, existing, mut current| {
+    relocate_bindings(stages, |name, t, existing, mut current| {
         match t {
             BindingType::Texture => {
                 if let Some(slot) = existing {
                     slot
                 } else {
+                    if let Some(name1) = textures_name.get(&current) {
+                        if name1 == name {
+                            return current
+                        }
+                    }
                     while textures.contains(&current) {
                         current += 1;
                     }
@@ -167,6 +193,11 @@ pub fn gl_relocate_bindings(stages: &mut BTreeMap<Stage, ShaderStage>)
                 if let Some(slot) = existing {
                     slot
                 } else {
+                    if let Some(name1) = samplers_name.get(&current) {
+                        if name1 == name {
+                            return current
+                        }
+                    }
                     while samplers.contains(&current) {
                         current += 1;
                     }
@@ -177,6 +208,11 @@ pub fn gl_relocate_bindings(stages: &mut BTreeMap<Stage, ShaderStage>)
                 if let Some(slot) = existing {
                     slot
                 } else {
+                    if let Some(name1) = cbufs_name.get(&current) {
+                        if name1 == name {
+                            return current
+                        }
+                    }
                     while cbufs.contains(&current) {
                         current += 1;
                     }

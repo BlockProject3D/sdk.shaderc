@@ -110,7 +110,7 @@ pub fn merge_stages(shaders: Vec<DecomposedShader>) -> Result<BTreeMap<Stage, Sh
     Ok(map)
 }
 
-pub fn relocate_bindings<F: FnMut(BindingType, Option<u32>, u32) -> u32>(stages: &mut BTreeMap<Stage, ShaderStage>, mut func: F)
+pub fn relocate_bindings<'a, F: FnMut(&'a str, BindingType, Option<u32>, u32) -> u32>(stages: &'a mut BTreeMap<Stage, ShaderStage>, mut func: F)
 {
     let mut map = HashMap::new();
     stages.iter_mut().for_each(|(_, v)| {
@@ -118,10 +118,10 @@ pub fn relocate_bindings<F: FnMut(BindingType, Option<u32>, u32) -> u32>(stages:
             let mut cbuf_func = || {
                 if let Some(attr) = &v.inner.attr {
                     if let Attribute::Order(slot) = attr {
-                        return func(BindingType::CBuf, Some(*slot), v.slot);
+                        return func(&v.inner.name, BindingType::CBuf, Some(*slot), v.slot);
                     }
                 }
-                func(BindingType::CBuf, None, v.slot)
+                func(&v.inner.name, BindingType::CBuf, None, v.slot)
             };
             let fsk;
             if let Some(slot) = map.get(&v.inner.name) {
@@ -130,16 +130,17 @@ pub fn relocate_bindings<F: FnMut(BindingType, Option<u32>, u32) -> u32>(stages:
                 fsk = cbuf_func();
                 map.insert(&v.inner.name, fsk);
             }
+            debug!("CBuffer {} : {}", v.inner.name, fsk);
             v.slot = fsk;
         }
         for v in &mut v.statements.objects {
             let mut prop_func = |t: BindingType| {
                 if let Some(attr) = &v.inner.pattr {
                     if let Attribute::Order(slot) = attr {
-                        return func(t, Some(*slot), v.slot);
+                        return func(&v.inner.pname, t, Some(*slot), v.slot);
                     }
                 }
-                func(t, None, v.slot)
+                func(&v.inner.pname, t, None, v.slot)
             };
             let fsk;
             if let Some(slot) = map.get(&v.inner.pname) {
