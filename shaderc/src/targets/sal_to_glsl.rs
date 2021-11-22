@@ -79,6 +79,16 @@ fn translate_property(p: &Property) -> String
     }
 }
 
+fn translate_packed_struct(s: &Struct) -> String
+{
+    let mut str= format!("struct {} {{", s.name);
+    for v in &s.props {
+        str.push_str(&translate_property(v));
+    }
+    str.push_str("};");
+    str
+}
+
 fn translate_cbuffer(explicit_bindings: bool, s: &Slot<Struct>) -> String
 {
     let mut str;
@@ -180,6 +190,8 @@ pub fn translate_sal_to_glsl(explicit_bindings: bool, root_constants_layout: &St
     let constants = translate_root_consts(explicit_bindings, root_constants_layout, &sal.root_constants);
     let outputs = translate_outputs(&sal.outputs)?;
     test_cbuffers_unique_slots(&sal.cbuffers)?;
+    let structs: Vec<String> = sal.packed_structs.iter().map(|s| translate_packed_struct(s)).collect();
+    let structs = structs.join("\n");
     let cbuffers: Vec<String> = sal.cbuffers.iter().map(|s| translate_cbuffer(explicit_bindings, s)).collect();
     let cbuffers = cbuffers.join("\n");
     let objects: Vec<String> = sal.objects.iter().filter_map(|p| {
@@ -198,9 +210,10 @@ pub fn translate_sal_to_glsl(explicit_bindings: bool, root_constants_layout: &St
     debug!("translated vertex format: {}", vformat);
     debug!("translated root constants: {}", constants);
     debug!("translated outputs: {}", outputs);
+    debug!("translated structures: {}", structs);
     debug!("translated constant buffers: {}", cbuffers);
     debug!("translated objects: {}", objects);
-    let output = [&*vformat, &*constants, &*outputs, &*cbuffers, &*objects].iter()
+    let output = [&*vformat, &*constants, &*outputs, &*structs, &*cbuffers, &*objects].iter()
         .map(|s| *s)
         .filter(|s| !s.is_empty())
         .collect::<Vec<&str>>()
