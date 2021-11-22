@@ -33,7 +33,7 @@ pub struct UnexpectedToken
     pub expected: Token
 }*/
 
-use std::fmt::{Display, Formatter, write};
+use std::fmt::{Display, Formatter};
 use crate::lexer::token::{Token, Type as TokenType};
 
 #[derive(Debug, Clone, PartialEq)]
