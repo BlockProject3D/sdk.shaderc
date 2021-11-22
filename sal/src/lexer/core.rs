@@ -573,7 +573,7 @@ const mat4f ModelView;
     fn lexer_arrays()
     {
         let source_code = b"
-            struct Light { vec3f color; float attenuation; }
+            const struct Light : Pack { vec4f color; float attenuation; }
             const struct Lighting { uint count; Light[32] lights; }
         ";
         let mut lexer = Lexer::new();
@@ -588,10 +588,13 @@ const mat4f ModelView;
         assert_eq!(
             toks,
             vec![
+                Token::Const,
                 Token::Struct,
                 Token::Identifier("Light".into()),
+                Token::Colon,
+                Token::Identifier("Pack".into()),
                 Token::BlockStart,
-                Token::Identifier("vec3f".into()),
+                Token::Identifier("vec4f".into()),
                 Token::Identifier("color".into()),
                 Token::Identifier("float".into()),
                 Token::Identifier("attenuation".into()),
