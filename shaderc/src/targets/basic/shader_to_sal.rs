@@ -113,6 +113,7 @@ impl<T> Slot<T>
 pub struct StmtDecomposition
 {
     pub root_constants_layout: Option<Struct>,
+    pub packed_structs: Vec<Struct>,
     pub root_constants: Vec<Slot<Property>>, //Root constants/push constants, emulated by global uniform buffer in GL targets
     pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
     pub objects: Vec<Slot<Property>>, //Samplers and textures
@@ -126,6 +127,7 @@ impl StmtDecomposition
 {
     pub fn extend(&mut self, other: StmtDecomposition) -> Result<(), Error>
     {
+        self.packed_structs.extend(other.packed_structs);
         self.root_constants.extend(other.root_constants);
         self.outputs.extend(other.outputs);
         self.objects.extend(other.objects);
@@ -156,6 +158,7 @@ impl StmtDecomposition
 pub fn decompose_statements<'a>(stmts: Vec<Statement>) -> Result<StmtDecomposition, Error>
 {
     let mut root_constants = Vec::new();
+    let mut packed_structs = Vec::new();
     let mut outputs= Vec::new();
     let mut objects = Vec::new();
     let mut cbuffers= Vec::new();
@@ -184,11 +187,18 @@ pub fn decompose_statements<'a>(stmts: Vec<Statement>) -> Result<StmtDecompositi
             }
             Statement::ConstantBuffer(inner) => {
                 if let Some(attr) = &inner.attr {
-                    if let Attribute::Order(o) = attr {
-                        if *o == 0 {
-                            root_constants_layout = Some(inner);
+                    match attr {
+                        Attribute::Order(o) => {
+                            if *o == 0 {
+                                root_constants_layout = Some(inner);
+                                continue;
+                            }
+                        }
+                        Attribute::Pack => {
+                            packed_structs.push(inner);
                             continue;
                         }
+                        _ => ()
                     }
                 }
                 cbuffers.push(Slot::new(inner))
@@ -213,6 +223,7 @@ pub fn decompose_statements<'a>(stmts: Vec<Statement>) -> Result<StmtDecompositi
     Ok(StmtDecomposition {
         root_constants_layout,
         root_constants,
+        packed_structs,
         objects,
         outputs,
         cbuffers,
