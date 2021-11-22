@@ -26,19 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::ops::Deref;
-use bp3d_threads::{ScopedThreadManager, ThreadPool};
-use bpx::shader::Stage;
-use log::{debug, error, info, warn};
-use rglslang::environment::{Client, Environment};
-use rglslang::shader::{Messages, Profile};
-use sal::ast::tree::{Attribute, BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
+use log::info;
 use crate::options::{Args, Error};
-use crate::targets::basic::{BindingType, decompose_pass, decompose_statements, DecomposedShader, get_root_constants_layout, load_shader_to_sal, merge_stages, relocate_bindings, ShaderStage, StmtDecomposition, test_bindings, test_symbols};
+use crate::targets::basic::{decompose_pass, merge_stages, test_symbols};
 use crate::targets::gl::{compile_stages, EnvInfo, gl_relocate_bindings, gl_test_bindings};
-use crate::targets::sal_to_glsl::translate_sal_to_glsl;
 
 //TODO: At shader initialization, procedure for each binding:
 // - glUseProgram(prog)

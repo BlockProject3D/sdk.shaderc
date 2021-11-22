@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::{io::Write, path::Path};
-use std::fmt::{Display, Formatter, write};
+use std::fmt::{Display, Formatter};
 
 use bpx::{macros::impl_err_conversion, shader::Stage};
 use log::{debug, trace};

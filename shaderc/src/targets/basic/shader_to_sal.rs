@@ -27,8 +27,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::cell::Cell;
-use std::cmp::Ordering;
-use std::collections::{BTreeSet, HashMap};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::ops::Deref;
@@ -167,7 +165,7 @@ pub fn decompose_statements<'a>(stmts: Vec<Statement>) -> Result<StmtDecompositi
     let mut root_constants_layout = None;
     let mut blendfuncs= Vec::new();
     let mut add_output = |o: Property| {
-        let mut slot = Slot::new(o);
+        let slot = Slot::new(o);
         if let Some(attr) = &slot.inner.pattr {
             if let Attribute::Order(id) = attr {
                 slot.slot.set(*id);

@@ -30,9 +30,9 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
 use log::{debug, error, info, warn};
-use sal::ast::tree::{Attribute, Property, PropertyType, Struct};
+use sal::ast::tree::{Attribute, PropertyType, Struct};
 use crate::options::{Args, Error};
-use crate::targets::basic::{decompose_statements, load_shader_to_sal, Slot, StmtDecomposition};
+use crate::targets::basic::{decompose_statements, load_shader_to_sal, StmtDecomposition};
 
 pub struct DecomposedShader
 {
@@ -198,7 +198,7 @@ pub fn test_bindings<F: FnMut(BindingType, u32) -> bool>(stages: &BTreeMap<Stage
 
 pub fn test_symbols(stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
 {
-    for (stage, v) in stages {
+    for (_, v) in stages {
         let mut set = HashSet::new();
         for v in &v.statements.cbuffers {
             if !set.insert(&v.inner.name) {

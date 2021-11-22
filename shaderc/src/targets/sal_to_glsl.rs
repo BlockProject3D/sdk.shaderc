@@ -29,9 +29,9 @@
 //TODO: Write the function to compile constant buffers and optimize layout for std140
 
 use std::borrow::Cow;
-use std::collections::{BTreeSet, HashSet};
-use log::{debug, error, warn};
-use sal::ast::tree::{ArrayItemType, Attribute, Property, PropertyType, Struct, VectorType};
+use std::collections::HashSet;
+use log::{debug, error};
+use sal::ast::tree::{ArrayItemType, Property, PropertyType, Struct, VectorType};
 use crate::options::Error;
 use crate::targets::basic::{Slot, StmtDecomposition};
 use crate::targets::layout140::{offset_of, size_of};

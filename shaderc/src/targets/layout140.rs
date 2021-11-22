@@ -26,10 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
-use log::{debug, error, warn};
-use sal::ast::tree::{ArrayItemType, Attribute, BaseType, Property, PropertyType, Struct, VectorType};
+use log::{error, warn};
+use sal::ast::tree::{ArrayItemType, Attribute, BaseType, Property, PropertyType, Struct};
 use crate::options::Error;
 
 // STD140 layout rules for paddings
@@ -111,32 +111,6 @@ pub fn offset_of(c: &Property, layout: &Struct) -> usize
             break;
         }
         offset += size;
-    }
-    if !flag {
-        warn!("Unable to locate property '{}' in layout '{}'", c.pname, layout.name);
-    }
-    offset
-}
-
-pub fn aligned_offset_of(c: &Property, layout: &Struct) -> usize
-{
-    let mut flag = false;
-    let mut offset: usize = 0;
-    for v in &layout.props {
-        let size = size_of(&v.ptype);
-        let align = base_alignment(&v.ptype);
-        if size == 0 {
-            warn!("Property '{}' in layout '{}' is zero-sized!", c.pname, layout.name);
-            continue;
-        }
-        if v.pname == c.pname {
-            flag = true;
-            break;
-        }
-        offset += size;
-        while offset % align != 0 {
-            offset += 1;
-        }
     }
     if !flag {
         warn!("Unable to locate property '{}' in layout '{}'", c.pname, layout.name);
@@ -263,7 +237,7 @@ pub fn compile_packed_structs(mut packed_structs: Vec<Struct>) -> Result<HashMap
 mod tests
 {
     use sal::ast::tree::{ArrayItemType, ArrayType, Attribute, BaseType, Property, PropertyType, Struct, VectorType};
-    use crate::targets::layout140::{compile_packed_structs, compile_struct, round_to_base_alignment};
+    use crate::targets::layout140::{compile_packed_structs, compile_struct};
 
     #[test]
     fn basic()
