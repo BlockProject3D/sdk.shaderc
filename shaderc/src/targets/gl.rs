@@ -29,7 +29,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
-use log::{debug, error, info, warn};
+use log::{debug, error, info, trace, warn};
 use rglslang::environment::{Client, Environment};
 use rglslang::shader::{Messages, Profile};
 use crate::options::{Args, Error};
@@ -51,13 +51,15 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
         let manager = ScopedThreadManager::new(scope);
         let mut pool: ThreadPool<ScopedThreadManager, Result<(), Error>> = ThreadPool::new(args.n_threads);
         info!("Initialized thread pool with {} max thread(s)", args.n_threads);
-        for (stage, shader) in stages {
+        for (stage, mut shader) in stages {
             pool.dispatch(&manager, move |_| {
                 debug!("Translating SAL AST for stage {:?} to GLSL for OpenGL {}...", stage, env.gl_version_str);
                 let glsl = translate_sal_to_glsl(env.explicit_bindings, &root_constants_layout, &shader.statements)?;
                 info!("Translated GLSL: \n{}", glsl);
-                let mut strings = shader.strings.clone();
-                strings.insert(0, rglslang::shader::Part::new_with_name(glsl, "__internal_sal__"));
+                shader.strings.insert(0, rglslang::shader::Part::new_with_name(glsl, "__internal_sal__"));
+                shader.strings.insert(0, rglslang::shader::Part::new_with_name(format!("#version {} core\n", env.gl_version_int), "__internal_glsl_version__"));
+                let strings = shader.strings.clone();
+                trace!("Shader strings: \n{:?}", strings);
                 let rst = match stage {
                     Stage::Vertex => rglslang::environment::Stage::Vertex,
                     Stage::Hull => rglslang::environment::Stage::Hull,
