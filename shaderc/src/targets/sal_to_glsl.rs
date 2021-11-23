@@ -148,8 +148,21 @@ fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct
         str = String::from("layout (std140) uniform __Root {");
     }
     let mut last_offset: usize = 0;
+    let last_used_prop = root_constants_layout.props.iter().rfind(|p| {
+        if consts.iter().any(|v| &v.inner == *p) {
+            true
+        } else {
+            false
+        }
+    }).unwrap(); //SAFETY: unwrap cannot fail otherwise their exists no constants in the root constant buffer
+    // but in this case the very first if block in this function would have triggered
     for (i, v) in root_constants_layout.props.iter().enumerate() {
-        if consts.iter().any(|p| p.inner.pname == v.pname) {
+        str.push_str(&translate_property(v));
+        //No more root constants in the root constants layout are used in the shader: stop generation
+        if v == last_used_prop {
+            break;
+        }
+        /*if consts.iter().any(|p| p.inner.pname == v.pname) {
             let offset = offset_of(v, root_constants_layout);
             let size = size_of(&v.ptype);
             let padding_size = (offset - last_offset) / 16; //obtain number of vec4f to pad
@@ -159,7 +172,7 @@ fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct
             }
             last_offset = offset + size;
             str.push_str(&translate_property(v));
-        }
+        }*/
     }
     str.push_str("};");
     str

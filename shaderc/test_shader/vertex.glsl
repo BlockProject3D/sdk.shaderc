@@ -14,7 +14,6 @@ const struct Viewport : ORDER_1 # Allows binding the constant buffer to a fixed 
 }
 
 const mat4f ModelView;
-const vec3f CamPos;
 
 vformat struct Vertex
 {
