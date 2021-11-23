@@ -31,10 +31,15 @@ use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
 use log::{debug, error, info, trace, warn};
 use rglslang::environment::{Client, Environment};
-use rglslang::shader::{Messages, Profile};
+use rglslang::shader::{Messages, Profile, Shader};
+use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property};
 use crate::options::{Args, Error};
-use crate::targets::basic::{BindingType, get_root_constants_layout, relocate_bindings, ShaderStage, test_bindings};
+use crate::targets::basic::{BindingType, get_root_constants_layout, relocate_bindings, ShaderStage, Slot, test_bindings};
+use crate::targets::layout140::{compile_packed_structs, compile_struct, StructOffset};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
+
+const MAX_CBUFFER_SIZE: usize = 65536;
+const MAX_ROOT_CONSTANTS_SIZE: usize = 128;
 
 pub struct EnvInfo
 {
@@ -43,14 +48,27 @@ pub struct EnvInfo
     pub explicit_bindings: bool
 }
 
+pub struct CompiledShaderStage
+{
+    pub packed_structs: HashMap<String, StructOffset>,
+    pub cbuffers: Vec<Slot<StructOffset>>,
+    pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
+    pub objects: Vec<Slot<Property>>, //Samplers and textures
+    pub pipeline: Option<PipelineStatement>,
+    pub blendfuncs: Vec<BlendfuncStatement>,
+    pub strings: Vec<rglslang::shader::Part>,
+    pub shader: Shader
+}
+
 pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
 {
-    let root_constants_layout = &get_root_constants_layout(&mut stages)?;
+    let root_constants_layout = get_root_constants_layout(&mut stages)?;
     let root = crossbeam::scope(|scope| {
         let mut root = Vec::new();
         let manager = ScopedThreadManager::new(scope);
-        let mut pool: ThreadPool<ScopedThreadManager, Result<(), Error>> = ThreadPool::new(args.n_threads);
+        let mut pool: ThreadPool<ScopedThreadManager, Result<CompiledShaderStage, Error>> = ThreadPool::new(args.n_threads);
         info!("Initialized thread pool with {} max thread(s)", args.n_threads);
+        let root_constants_layout = &root_constants_layout;
         for (stage, mut shader) in stages {
             pool.dispatch(&manager, move |_| {
                 debug!("Translating SAL AST for stage {:?} to GLSL for OpenGL {}...", stage, env.gl_version_str);
@@ -86,12 +104,35 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
                 if !rshader.check() {
                     error!("GLSL has reported the following error: \n{}", rshader.get_info_log());
                     return Err(Error::new("error parsing GLSL"));
-                } else {
-                    info!("Successfully parsed GLSL code");
-                    info!("Shader log: \n{}", rshader.get_info_log());
-                    info!("Shader debug log: \n{}", rshader.get_info_debug_log());
                 }
-                Ok(())
+                info!("Successfully parsed GLSL code");
+                info!("Shader log: \n{}", rshader.get_info_log());
+                info!("Shader debug log: \n{}", rshader.get_info_debug_log());
+                let packed_structs = compile_packed_structs(shader.statements.packed_structs)?;
+                let mut cbuffers = Vec::new();
+                for v in shader.statements.cbuffers {
+                    let inner = compile_struct(v.inner, &packed_structs)?;
+                    debug!("Size of constant buffer '{}' is {} bytes", inner.name, inner.size);
+                    if inner.size > MAX_CBUFFER_SIZE { // Check if UBO exceeds maximum size
+                        error!("The size of a constant buffer cannot exceed 65536 bytes after alignment, however constant buffer '{}' takes {} bytes after alignment", inner.name, inner.size);
+                        return Err(Error::new("constant buffer size overload"));
+                    }
+                    cbuffers.push(Slot {
+                        inner,
+                        slot: v.slot
+                    });
+                }
+                let compiled = CompiledShaderStage {
+                    cbuffers,
+                    packed_structs,
+                    outputs: shader.statements.outputs,
+                    objects: shader.statements.objects,
+                    pipeline: shader.statements.pipeline,
+                    blendfuncs: shader.statements.blendfuncs,
+                    strings: shader.strings,
+                    shader: rshader
+                };
+                Ok(compiled)
             });
             debug!("Dispatch stage {:?}", stage);
         }
@@ -101,6 +142,12 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
         }
         root
     }).unwrap();
+    let dummy = HashMap::new();
+    let compiled_root_constants = compile_struct(root_constants_layout, &dummy)?;
+    debug!("Size of root constants layout is {} bytes", compiled_root_constants.size);
+    if compiled_root_constants.size > MAX_ROOT_CONSTANTS_SIZE {
+        warn!("Root constants layout size ({} bytes) exceeds the recommended limit of 128 bytes after alignment", compiled_root_constants.size);
+    }
     for v in root {
         v?;
     }
