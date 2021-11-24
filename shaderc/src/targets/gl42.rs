@@ -50,7 +50,7 @@ pub fn build(args: Args) -> Result<(), Error>
             explicit_bindings: true
         };
         info!("Compiling shaders...");
-        compile_stages(&env, &args, stages).unwrap() //We have a problem rust does not allow passing the error back to the build function
+        compile_stages(&env, &args, stages).unwrap(); //We have a problem rust does not allow passing the error back to the build function
     });
     todo!()
 }

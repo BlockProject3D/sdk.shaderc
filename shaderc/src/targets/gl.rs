@@ -57,10 +57,17 @@ pub struct CompiledShaderStage
     pub pipeline: Option<PipelineStatement>,
     pub blendfuncs: Vec<BlendfuncStatement>,
     pub strings: Vec<rglslang::shader::Part>,
-    pub shader: Shader
+    pub shader: Shader,
+    pub stage: Stage
 }
 
-pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
+pub struct CompileOutput
+{
+    pub root_constant_layout: StructOffset,
+    pub stages: Vec<CompiledShaderStage>
+}
+
+pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, ShaderStage>) -> Result<CompileOutput, Error>
 {
     let root_constants_layout = get_root_constants_layout(&mut stages)?;
     let root = crossbeam::scope(|scope| {
@@ -130,7 +137,8 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
                     pipeline: shader.statements.pipeline,
                     blendfuncs: shader.statements.blendfuncs,
                     strings: shader.strings,
-                    shader: rshader
+                    shader: rshader,
+                    stage
                 };
                 Ok(compiled)
             });
@@ -148,10 +156,15 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
     if compiled_root_constants.size > MAX_ROOT_CONSTANTS_SIZE {
         warn!("Root constants layout size ({} bytes) exceeds the recommended limit of 128 bytes after alignment", compiled_root_constants.size);
     }
+    let mut stages = Vec::new();
     for v in root {
-        v?;
+        let stage = v?;
+        stages.push(stage);
     }
-    Ok(())
+    Ok(CompileOutput {
+        stages,
+        root_constant_layout: compiled_root_constants
+    })
 }
 
 //TODO: In VK target ensure that all bindings are unique across all types of bindings
