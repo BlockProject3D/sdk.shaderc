@@ -42,7 +42,7 @@ pub mod environment;
 pub mod program;
 pub mod shader;
 
-pub fn main<F: FnOnce()>(f: F)
+pub fn main<T, F: FnOnce() -> T>(f: F) -> T
 {
     let flag = FLAG.load(Ordering::Relaxed);
     if flag {
@@ -54,8 +54,9 @@ pub fn main<F: FnOnce()>(f: F)
         }
         FLAG.store(true, Ordering::Relaxed);
     });
-    f();
+    let t = f();
     END.call_once(|| unsafe {
         finalize_process();
     });
+    t
 }
