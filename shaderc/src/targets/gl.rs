@@ -48,6 +48,30 @@ pub struct EnvInfo
     pub explicit_bindings: bool
 }
 
+pub struct Symbols
+{
+    pub root_constant_layout: StructOffset,
+    pub packed_structs: Vec<StructOffset>,
+    pub cbuffers: Vec<Slot<StructOffset>>,
+    pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
+    pub objects: Vec<Slot<Property>>, //Samplers and textures
+    pub pipeline: Option<PipelineStatement>,
+    pub blendfuncs: Vec<BlendfuncStatement>
+}
+
+pub struct ShaderData
+{
+    strings: Vec<rglslang::shader::Part>,
+    shader: Shader,
+    stage: Stage
+}
+
+pub struct ShaderData1
+{
+    pub strings: Vec<rglslang::shader::Part>,
+    pub stage: Stage
+}
+
 pub struct CompiledShaderStage
 {
     pub packed_structs: HashMap<String, StructOffset>,
@@ -65,6 +89,17 @@ pub struct CompileOutput
 {
     pub root_constant_layout: StructOffset,
     pub stages: Vec<CompiledShaderStage>
+}
+
+fn build_messages(args: &Args) -> Messages
+{
+    let msgs;
+    if args.debug {
+        msgs = Messages::new().debug().ast();
+    } else {
+        msgs = Messages::new();
+    }
+    msgs
 }
 
 pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, ShaderStage>) -> Result<CompileOutput, Error>
@@ -92,12 +127,7 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
                     Stage::Geometry => rglslang::environment::Stage::Geometry,
                     Stage::Pixel => rglslang::environment::Stage::Pixel
                 };
-                let msgs;
-                if args.debug {
-                    msgs = Messages::new().debug().ast();
-                } else {
-                    msgs = Messages::new();
-                }
+                let msgs = build_messages(args);
                 let mut builder = rglslang::shader::Builder::new(Environment::new_opengl(rst, Client::OpenGL, Some(env.gl_version_int)))
                     .messages(msgs)
                     .entry_point("main")
@@ -166,6 +196,103 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
         stages,
         root_constant_layout: compiled_root_constants
     })
+}
+
+fn merge_symbols(output: CompileOutput) -> (Symbols, Vec<ShaderData>)
+{
+    let mut symbols = HashMap::new();
+    let mut check_insert_symbol = |name: &String, slot| {
+        let mut flag = false;
+        if let Some(s) = symbols.get(name) {
+            if *s != slot {
+                warn!("Duplicate symbol name '{}'", name);
+            }
+            flag = true;
+        }
+        symbols.insert(name.clone(), slot);
+        flag
+    };
+    let mut shaders = Vec::new();
+    let mut cbuffers = Vec::new();
+    let mut outputs = Vec::new();
+    let mut objects = Vec::new();
+    let mut pipeline = None;
+    let mut blendfuncs = Vec::new();
+    let mut packed_structs = Vec::new();
+    for v in output.stages {
+        for v in v.objects {
+            if !check_insert_symbol(&v.inner.pname, v.slot.get()) {
+                objects.push(v);
+            }
+        }
+        for v in v.outputs {
+            if !check_insert_symbol(&v.inner.pname, v.slot.get()) {
+                outputs.push(v);
+            }
+        }
+        for v in v.cbuffers {
+            if !check_insert_symbol(&v.inner.name, v.slot.get()) {
+                cbuffers.push(v);
+            }
+        }
+        for (i, v) in v.blendfuncs.into_iter().enumerate() {
+            if !check_insert_symbol(&v.name, i as u32) {
+                blendfuncs.push(v);
+            }
+        }
+        if let Some(p) = v.pipeline {
+            if pipeline.is_some() {
+                warn!("Duplicate symbol name '{}'", p.name)
+            } else {
+                pipeline = Some(p);
+            }
+        }
+        for (i, (_, v)) in v.packed_structs.into_iter().enumerate() {
+            if !check_insert_symbol(&v.name, i as u32) {
+                packed_structs.push(v);
+            }
+        }
+        shaders.push(ShaderData {
+            shader: v.shader,
+            stage: v.stage,
+            strings: v.strings
+        });
+    }
+    let syms = Symbols {
+        cbuffers,
+        packed_structs,
+        outputs,
+        objects,
+        pipeline,
+        blendfuncs,
+        root_constant_layout: output.root_constant_layout
+    };
+    (syms, shaders)
+}
+
+pub fn link_shaders(args: &Args, output: CompileOutput) -> Result<(Symbols, Vec<ShaderData1>), Error>
+{
+    let (syms, shaders) = merge_symbols(output);
+    let mut shaders1 = Vec::with_capacity(shaders.len());
+    let msgs = build_messages(args);
+    let mut builder = rglslang::program::Builder::new()
+        .messages(msgs);
+    for v in shaders {
+        shaders1.push(ShaderData1 {
+            strings: v.strings,
+            stage: v.stage
+        });
+        builder = builder.add_shader(v.shader);
+    }
+    let prog = builder.link();
+    if !prog.check() {
+        error!("GLSL has reported the following error: \n{}", prog.get_info_log());
+        return Err(Error::new("error linking GLSL"));
+    }
+    info!("Successfully linked GLSL shaders");
+    info!("Shader log: \n{}", prog.get_info_log());
+    info!("Shader debug log: \n{}", prog.get_info_debug_log());
+    Ok((syms, shaders1))
 }
 
 //TODO: In VK target ensure that all bindings are unique across all types of bindings

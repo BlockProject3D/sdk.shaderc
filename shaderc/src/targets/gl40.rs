@@ -29,7 +29,7 @@
 use log::info;
 use crate::options::{Args, Error};
 use crate::targets::basic::{decompose_pass, merge_stages, test_symbols};
-use crate::targets::gl::{compile_stages, EnvInfo, gl_relocate_bindings, gl_test_bindings};
+use crate::targets::gl::{compile_stages, EnvInfo, gl_relocate_bindings, gl_test_bindings, link_shaders};
 
 //TODO: At shader initialization, procedure for each binding:
 // - glUseProgram(prog)
@@ -56,7 +56,9 @@ pub fn build(args: Args) -> Result<(), Error>
             explicit_bindings: false
         };
         info!("Compiling shaders...");
-        compile_stages(&env, &args, stages).unwrap(); //We have a problem rust does not allow passing the error back to the build function
+        let output = compile_stages(&env, &args, stages).unwrap(); //We have a problem rust does not allow passing the error back to the build function
+        info!("Linking shaders...");
+        link_shaders(&args, output).unwrap();
     });
     todo!()
 }
