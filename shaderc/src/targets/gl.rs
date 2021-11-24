@@ -126,7 +126,8 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
                     }
                     cbuffers.push(Slot {
                         inner,
-                        slot: v.slot
+                        slot: v.slot,
+                        explicit: v.explicit
                     });
                 }
                 let compiled = CompiledShaderStage {

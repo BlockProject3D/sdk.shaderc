@@ -94,7 +94,8 @@ pub fn load_shader_to_sal(unit: &ShaderUnit, args: &Args) -> Result<ShaderToSal,
 pub struct Slot<T>
 {
     pub inner: T,
-    pub slot: Cell<u32>
+    pub slot: Cell<u32>,
+    pub explicit: Cell<bool>
 }
 
 impl<T> Slot<T>
@@ -103,7 +104,8 @@ impl<T> Slot<T>
     {
         Self {
             inner: t,
-            slot: Cell::new(0)
+            slot: Cell::new(0),
+            explicit: Cell::new(false)
         }
     }
 }
@@ -169,6 +171,7 @@ pub fn decompose_statements<'a>(stmts: Vec<Statement>) -> Result<StmtDecompositi
         if let Some(attr) = &slot.inner.pattr {
             if let Attribute::Order(id) = attr {
                 slot.slot.set(*id);
+                slot.explicit.set(true);
             }
         }
         outputs.push(slot);

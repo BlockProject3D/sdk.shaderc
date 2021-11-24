@@ -118,6 +118,7 @@ pub fn relocate_bindings<'a, F: FnMut(&'a str, BindingType, Option<u32>, u32) ->
             let mut cbuf_func = || {
                 if let Some(attr) = &v.inner.attr {
                     if let Attribute::Order(slot) = attr {
+                        v.explicit.set(true);
                         return func(&v.inner.name, BindingType::CBuf, Some(*slot), v.slot.get());
                     }
                 }
@@ -137,6 +138,7 @@ pub fn relocate_bindings<'a, F: FnMut(&'a str, BindingType, Option<u32>, u32) ->
             let mut prop_func = |t: BindingType| {
                 if let Some(attr) = &v.inner.pattr {
                     if let Attribute::Order(slot) = attr {
+                        v.explicit.set(true);
                         return func(&v.inner.pname, t, Some(*slot), v.slot.get());
                     }
                 }
