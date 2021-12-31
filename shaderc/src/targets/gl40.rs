@@ -49,16 +49,16 @@ pub fn build(args: Args) -> Result<(), Error>
     gl_relocate_bindings(&mut stages);
     info!("Testing binding relocations...");
     gl_test_bindings(&stages)?;
-    rglslang::main(|| {
+    let res = rglslang::main(|| {
         let env = EnvInfo {
             gl_version_int: 400,
             gl_version_str: "4.0",
             explicit_bindings: false
         };
         info!("Compiling shaders...");
-        let output = compile_stages(&env, &args, stages).unwrap(); //We have a problem rust does not allow passing the error back to the build function
+        let output = compile_stages(&env, &args, stages)?; //We have a problem rust does not allow passing the error back to the build function
         info!("Linking shaders...");
-        link_shaders(&args, output).unwrap();
+        link_shaders(&args, output)
     });
     todo!()
 }

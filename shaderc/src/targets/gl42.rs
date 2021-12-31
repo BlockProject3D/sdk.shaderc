@@ -26,10 +26,23 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fs::File;
+use std::io::BufWriter;
+use std::path::Path;
+use bpx::shader::{ShaderPackBuilder, Target, Type};
 use log::info;
 use crate::options::{Args, Error};
 use crate::targets::basic::{decompose_pass, merge_stages, test_symbols};
-use crate::targets::gl::{compile_stages, EnvInfo, gl_relocate_bindings, gl_test_bindings, link_shaders};
+use crate::targets::gl::{compile_stages, EnvInfo, gl_relocate_bindings, gl_test_bindings, link_shaders, ShaderData1, Symbols};
+
+fn write_bpx(path: &Path, syms: Symbols, shaders: Vec<ShaderData1>) -> Result<(), Error>
+{
+    let mut bpx = ShaderPackBuilder::new()
+        .with_type(Type::Pipeline)
+        .with_target(Target::GL42)
+        .build(BufWriter::new(File::create(path)?))?;
+    todo!()
+}
 
 pub fn build(args: Args) -> Result<(), Error>
 {
@@ -43,16 +56,18 @@ pub fn build(args: Args) -> Result<(), Error>
     gl_relocate_bindings(&mut stages);
     info!("Testing binding relocations...");
     gl_test_bindings(&stages)?;
-    rglslang::main(|| {
+    let (syms, shaders) = rglslang::main(|| {
         let env = EnvInfo {
             gl_version_int: 420,
             gl_version_str: "4.2",
             explicit_bindings: true
         };
         info!("Compiling shaders...");
-        let output = compile_stages(&env, &args, stages).unwrap(); //We have a problem rust does not allow passing the error back to the build function
+        let output = compile_stages(&env, &args, stages)?; //We have a problem rust does not allow passing the error back to the build function
         info!("Linking shaders...");
-        link_shaders(&args, output).unwrap();
-    });
+        link_shaders(&args, output)
+    })?;
+    info!("Writing {}...", args.output.display());
+    write_bpx(args.output, syms, shaders)?;
     todo!()
 }
