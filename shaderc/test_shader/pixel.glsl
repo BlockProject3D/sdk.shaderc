@@ -5,6 +5,18 @@ in vec2 tex_coords;
 #sal
 output vec4f FragColor : ORDER_0;
 
+const struct Light : Pack
+{
+    vec4f Color;
+    float Attenuation;
+}
+
+const struct Lighting : ORDER_2
+{
+    uint Count;
+    Light[32] Lights;
+}
+
 const struct Material
 {
     vec4f BaseColor;
@@ -16,7 +28,7 @@ const struct Material
 const Sampler BaseSampler;
 const Texture2D:vec4f BaseTexture : BaseSampler;
 
-const vec3f CamPos;
+const mat4f ModelView;
 #sal
 
 void main()
