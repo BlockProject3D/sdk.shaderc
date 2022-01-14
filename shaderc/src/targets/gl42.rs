@@ -176,6 +176,7 @@ fn write_bpx(path: &Path, syms: Symbols, shaders: Vec<ShaderData1>, args: &Args)
                                          .target(shader::Target::GL42));
     write_objects(&mut bpx, syms.objects, args.debug)?;
     write_cbuffers(&mut bpx, syms.cbuffers, args.debug)?;
+    bpx.save()?;
     todo!()
 }
 
