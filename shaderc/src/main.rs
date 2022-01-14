@@ -66,26 +66,26 @@ fn main()
         .version("1.0.0")
         .args([
             Arg::new("verbose").short('v').long("verbose").multiple_occurrences(true)
-                .about("Enable verbose output"),
+                .help("Enable verbose output"),
             Arg::new("target").short('t').long("--target").takes_value(true).required_unless_present("print_targets")
-                .about("Specify the shader package target"),
+                .help("Specify the shader package target"),
             Arg::new("print_targets").long("--targets")
-                .about("Print all available shader package targets"),
+                .help("Print all available shader package targets"),
             Arg::new("output").short('o').long("output").takes_value(true)
-                .about("Output shader package file name"),
+                .help("Output shader package file name"),
             Arg::new("lib").short('l').long("lib").takes_value(true).multiple_occurrences(true)
-                .about("Specify one or more shader libs to use"),
+                .help("Specify one or more shader libs to use"),
             Arg::new("injection").short('i').long("inject").takes_value(true).multiple_occurrences(true)
-                .about("Inject a shader contained in one of the linked libs such that it will always be included in the compilation"),
+                .help("Inject a shader contained in one of the linked libs such that it will always be included in the compilation"),
             Arg::new("threads").short('n').long("threads").takes_value(true)
-                .about("Specify the maximum number of threads to use when processing shaders"),
+                .help("Specify the maximum number of threads to use when processing shaders"),
             Arg::new("minify").short('m').long("minify")
-                .about("Allows minification of source code in targets that do not support actual compilation (ex: GL targets)"),
+                .help("Allows minification of source code in targets that do not support actual compilation (ex: GL targets)"),
             Arg::new("debug").short('d').long("debug")
-                .about("For supported targets, builds shaders with debug info"),
+                .help("For supported targets, builds shaders with debug info"),
             Arg::new("optimize").short('O').long("optimize")
-                .about("For supported targets, builds shaders with optimizations"),
-            Arg::new("shader").multiple_values(true).about("List of shader files to process")
+                .help("For supported targets, builds shaders with optimizations"),
+            Arg::new("shader").multiple_values(true).help("List of shader files to process")
         ]).get_matches();
     let verbosity = matches.occurrences_of("verbose");
     match verbosity {
