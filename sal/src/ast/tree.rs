@@ -27,13 +27,14 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::fmt::{Display, Formatter};
+use serde::{Serialize, Deserialize};
 
 pub trait VarlistStatement
 {
     fn new(name: String) -> Self;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub enum BaseType
 {
     Int,
@@ -68,14 +69,14 @@ impl BaseType
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub struct VectorType
 {
     pub item: BaseType,
     pub size: u8
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub enum TextureType
 {
     Scalar(BaseType),

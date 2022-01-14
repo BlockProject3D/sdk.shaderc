@@ -48,13 +48,49 @@ pub struct EnvInfo
     pub explicit_bindings: bool
 }
 
+pub struct Object<T>
+{
+    pub inner: Slot<T>,
+    pub stage_vertex: bool,
+    pub stage_hull: bool,
+    pub stage_domain: bool,
+    pub stage_geometry: bool,
+    pub stage_pixel: bool
+}
+
+impl<T> Object<T>
+{
+    pub fn new(inner: Slot<T>) -> Object<T>
+    {
+        Object {
+            inner,
+            stage_vertex: false,
+            stage_hull: false,
+            stage_domain: false,
+            stage_geometry: false,
+            stage_pixel: false
+        }
+    }
+
+    pub fn mark_stage(&mut self, s: Stage)
+    {
+        match s {
+            Stage::Vertex => self.stage_vertex = true,
+            Stage::Hull => self.stage_hull = true,
+            Stage::Domain => self.stage_domain = true,
+            Stage::Geometry => self.stage_geometry = true,
+            Stage::Pixel => self.stage_pixel = true
+        }
+    }
+}
+
 pub struct Symbols
 {
     pub root_constant_layout: StructOffset,
     pub packed_structs: Vec<StructOffset>,
-    pub cbuffers: Vec<Slot<StructOffset>>,
+    pub cbuffers: Vec<Object<StructOffset>>,
     pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
-    pub objects: Vec<Slot<Property>>, //Samplers and textures
+    pub objects: Vec<Object<Property>>, //Samplers and textures
     pub pipeline: Option<PipelineStatement>,
     pub blendfuncs: Vec<BlendfuncStatement>
 }
@@ -213,56 +249,56 @@ fn merge_symbols(output: CompileOutput) -> (Symbols, Vec<ShaderData>)
         flag
     };
     let mut shaders = Vec::new();
-    let mut cbuffers = Vec::new();
+    let mut cbuffers = HashMap::new(); // Well rust wants to be slow
+    // If rust lifetime system wasn't broken &str or &String would have worked!
     let mut outputs = Vec::new();
-    let mut objects = Vec::new();
+    let mut objects = HashMap::new(); // Well rust wants to be slow
+    // If rust lifetime system wasn't broken &str or &String would have worked!
     let mut pipeline = None;
     let mut blendfuncs = Vec::new();
     let mut packed_structs = Vec::new();
-    for v in output.stages {
-        for v in v.objects {
-            if !check_insert_symbol(&v.inner.pname, v.slot.get()) {
-                objects.push(v);
-            }
+    for stage in output.stages {
+        for v in stage.objects {
+            let obj = objects.entry(v.inner.pname.clone()).or_insert_with(|| Object::new(v));
+            obj.mark_stage(stage.stage);
         }
-        for v in v.outputs {
+        for v in stage.outputs {
             if !check_insert_symbol(&v.inner.pname, v.slot.get()) {
                 outputs.push(v);
             }
         }
-        for v in v.cbuffers {
-            if !check_insert_symbol(&v.inner.name, v.slot.get()) {
-                cbuffers.push(v);
-            }
+        for v in stage.cbuffers {
+            let obj = cbuffers.entry(v.inner.name.clone()).or_insert_with(|| Object::new(v));
+            obj.mark_stage(stage.stage);
         }
-        for (i, v) in v.blendfuncs.into_iter().enumerate() {
+        for (i, v) in stage.blendfuncs.into_iter().enumerate() {
             if !check_insert_symbol(&v.name, i as u32) {
                 blendfuncs.push(v);
             }
         }
-        if let Some(p) = v.pipeline {
+        if let Some(p) = stage.pipeline {
             if pipeline.is_some() {
                 warn!("Duplicate symbol name '{}'", p.name)
             } else {
                 pipeline = Some(p);
             }
         }
-        for (i, (_, v)) in v.packed_structs.into_iter().enumerate() {
+        for (i, (_, v)) in stage.packed_structs.into_iter().enumerate() {
             if !check_insert_symbol(&v.name, i as u32) {
                 packed_structs.push(v);
             }
         }
         shaders.push(ShaderData {
-            shader: v.shader,
-            stage: v.stage,
-            strings: v.strings
+            shader: stage.shader,
+            stage: stage.stage,
+            strings: stage.strings
         });
     }
     let syms = Symbols {
-        cbuffers,
+        cbuffers: cbuffers.into_iter().map(|(_, v)| v).collect(),
         packed_structs,
         outputs,
-        objects,
+        objects: objects.into_iter().map(|(_, v)| v).collect(),
         pipeline,
         blendfuncs,
         root_constant_layout: output.root_constant_layout

@@ -61,14 +61,15 @@ dependencies = [
 
 [[package]]
 name = "bpx"
-version = "4.0.0-preview3"
+version = "4.0.0-beta-1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f8ece1d98ab4c9bfd64447b18e4126f4f9bfc15853567364c0a9930187968eb"
+checksum = "c8791979208dae77d2b97f21b90c8e7e05b56a14d48ecdb0443d802ba0e04530"
 dependencies = [
  "byteorder",
  "libz-sys",
  "lzma-sys",
  "num_cpus",
+ "serde",
  "tempfile",
 ]
 
@@ -640,6 +641,7 @@ dependencies = [
  "phf",
  "proptest",
  "regex",
+ "serde",
 ]
 
 [[package]]
@@ -647,6 +649,26 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+
+[[package]]
+name = "serde"
+version = "1.0.133"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97565067517b60e2d1ea8b268e59ce036de907ac523ad83a0475da04e818989a"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.133"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed201699328568d8d08208fdd080e3ff594e6c422e438b6705905da01005d537"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "shaderc"
@@ -661,6 +683,7 @@ dependencies = [
  "regex",
  "rglslang",
  "sal",
+ "serde",
  "simple_logger",
 ]
 
