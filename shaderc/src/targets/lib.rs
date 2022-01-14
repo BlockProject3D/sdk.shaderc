@@ -28,7 +28,9 @@
 
 use std::{fs::File, io::BufWriter};
 
-use bpx::package::{utils::pack_file_vname, Architecture, PackageBuilder, Platform};
+use bpx::package;
+use bpx::package::Package;
+use bpx::package::utils::pack_file_vname;
 use log::warn;
 
 use crate::{
@@ -40,11 +42,11 @@ use crate::options::Args;
 pub fn build(args: Args) -> Result<(), Error>
 {
     let mut libs: Vec<ShaderLib> = args.libs.iter().map(|v| ShaderLib::new(*v)).collect();
-    let mut bpxp = PackageBuilder::new()
-        .with_type(*b"SL") //SL for ShaderLib
-        .with_architecture(Architecture::Any)
-        .with_platform(Platform::Any)
-        .build(BufWriter::new(File::create(args.output)?))?;
+    let mut bpxp = Package::create(BufWriter::new(File::create(args.output)?),
+                                   package::Builder::new()
+                                       .type_code(*b"SL") //SL for ShaderLib
+                                       .architecture(package::Architecture::Any)
+                                       .platform(package::Platform::Any))?;
     for unit in args.units {
         match unit {
             ShaderUnit::Path(path) => {
@@ -69,7 +71,7 @@ pub fn build(args: Args) -> Result<(), Error>
             ShaderUnit::Injected(vname) => {
                 for v in &mut libs {
                     if let Some(data) = v.try_load(vname)? {
-                        bpxp.pack_object(vname, data.as_slice())?;
+                        bpxp.pack(vname, data.as_slice())?;
                     }
                 }
             },

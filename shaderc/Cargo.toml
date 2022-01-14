@@ -7,12 +7,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = "3.0.0-beta.5"
+clap = "3.0.7"
 regex = "1.4.5"
 rglslang = { path = "../rglslang" }
 sal = { path = "../sal" }
 phf = { version = "0.8", features = ["macros"] }
-bpx = { version = "3.2.0", path = "../../bpx-rs", features = ["package", "shader"] }
+bpx = { version = "4.0.0-beta-1", features = ["package", "shader"] }
 log = "0.4.14"
 simple_logger = "1.13.0"
 crossbeam = "0.8.1"

@@ -29,7 +29,8 @@
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
-use bpx::shader::{ShaderPackBuilder, Target, Type};
+use bpx::shader;
+use bpx::shader::ShaderPack;
 use log::info;
 use crate::options::{Args, Error};
 use crate::targets::basic::{decompose_pass, merge_stages, test_symbols};
@@ -37,10 +38,10 @@ use crate::targets::gl::{compile_stages, EnvInfo, gl_relocate_bindings, gl_test_
 
 fn write_bpx(path: &Path, syms: Symbols, shaders: Vec<ShaderData1>) -> Result<(), Error>
 {
-    let mut bpx = ShaderPackBuilder::new()
-        .with_type(Type::Pipeline)
-        .with_target(Target::GL42)
-        .build(BufWriter::new(File::create(path)?))?;
+    let mut bpx = ShaderPack::create(BufWriter::new(File::create(path)?),
+                                     shader::Builder::new()
+                                         .ty(shader::Type::Pipeline)
+                                         .target(shader::Target::GL42));
     todo!()
 }
 

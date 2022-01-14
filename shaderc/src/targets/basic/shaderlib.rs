@@ -33,11 +33,9 @@ use std::{
     path::Path
 };
 
-use bpx::{
-    macros::impl_err_conversion,
-    package::{object::ObjectHeader, utils::unpack_memory, PackageDecoder},
-    table::ItemTable
-};
+use bpx::macros::impl_err_conversion;
+use bpx::package::Package;
+use bpx::utils::OptionExtension;
 
 #[derive(Debug)]
 pub enum Error
@@ -69,16 +67,24 @@ impl Display for Error
 
 struct ShaderLibDecoder
 {
-    decoder: PackageDecoder<BufReader<File>>,
-    items: ItemTable<ObjectHeader>
+    package: Package<BufReader<File>>
 }
 
 impl ShaderLibDecoder
 {
+    pub fn new(path: &Path) -> Result<ShaderLibDecoder, Error>
+    {
+        let file = File::open(path)?;
+        let package = Package::open(BufReader::new(file))?;
+        Ok(ShaderLibDecoder {
+            package
+        })
+    }
+
     pub fn try_load(&mut self, name: &str) -> Result<Option<Vec<u8>>, Error>
     {
-        if let Some(obj) = self.items.lookup(name) {
-            let data = unpack_memory(&mut self.decoder, obj)?;
+        let mut data = Vec::new();
+        if let Some(_) = self.package.unpack(name, &mut data)? {
             Ok(Some(data))
         } else {
             Ok(None)
@@ -101,12 +107,7 @@ impl<'a> ShaderLib<'a>
 
     pub fn try_load(&mut self, name: &str) -> Result<Option<Vec<u8>>, Error>
     {
-        if self.decoder.is_none() {
-            let mut decoder = PackageDecoder::new(BufReader::new(File::open(self.path)?))?;
-            let (mut items, mut names) = decoder.read_object_table()?;
-            items.build_lookup_table(&mut names)?;
-            self.decoder = Some(ShaderLibDecoder { decoder, items });
-        }
-        self.decoder.as_mut().unwrap().try_load(name)
+        let val = self.decoder.get_or_insert_with_err(|| ShaderLibDecoder::new(self.path))?;
+        val.try_load(name)
     }
 }
