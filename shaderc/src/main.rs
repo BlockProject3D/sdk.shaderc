@@ -59,7 +59,7 @@ fn transform_output(path: &Path) -> Cow<Path>
 fn main()
 {
     //Log everything
-    SimpleLogger::new().init().unwrap();
+    SimpleLogger::new().with_utc_timestamps().init().unwrap();
     let matches = App::new("shaderc")
         .author("BlockProject 3D")
         .about("BlockProject 3D SDK - Shader Compiler")

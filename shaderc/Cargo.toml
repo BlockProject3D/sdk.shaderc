@@ -12,8 +12,7 @@ regex = "1.4.5"
 rglslang = { path = "../rglslang" }
 sal = { path = "../sal" }
 phf = { version = "0.8", features = ["macros"] }
-# Cargo is broken it believes preview3 is more up-to-date than beta-1; well that's absolute bull****!!!
-bpx = { version = "=4.0.0-beta-1", features = ["package", "shader", "serde"] }
+bpx = { version = "4.0.0-beta-1", features = ["package", "shader", "serde"] }
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4.14"
 simple_logger = "1.13.0"
