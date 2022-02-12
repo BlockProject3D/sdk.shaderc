@@ -34,7 +34,6 @@ use std::{borrow::Cow, path::Path};
 use clap::{App, Arg};
 use log::{debug, error, info, LevelFilter};
 use phf::phf_map;
-use simple_logger::SimpleLogger;
 
 static TARGETS: phf::Map<&'static str, options::TargetFunc> = phf_map! {
     "LIB" => targets::lib::build,
@@ -58,8 +57,12 @@ fn transform_output(path: &Path) -> Cow<Path>
 
 fn main()
 {
-    //Log everything
-    SimpleLogger::new().init().unwrap();
+    //Initialize bp3d-logger
+    bp3d_logger::disable_log_buffer();
+    let mut logger = bp3d_logger::Logger::new();
+    logger.add_stdout();
+    logger.add_file("bp3d-sdk");
+    bp3d_logger::init(logger);
     let matches = App::new("shaderc")
         .author("BlockProject 3D")
         .about("BlockProject 3D SDK - Shader Compiler")
