@@ -26,38 +26,21 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
-use bpx::sd::serde::EnumSize;
 use bpx::shader;
 use bpx::shader::{ShaderPack, Stage};
-use log::{error, info, warn};
-use sal::ast::tree::{Property, PropertyType, TextureType};
+use log::{debug, error, info, warn};
+use sal::ast::tree::{Property, PropertyType};
 use crate::options::{Args, Error};
 use crate::targets::basic::{decompose_pass, merge_stages, test_symbols};
 use crate::targets::gl::{compile_stages, EnvInfo, gl_relocate_bindings, gl_test_bindings, link_shaders, Object, ShaderData1, Symbols};
-use serde::Deserialize;
-use serde::Serialize;
 use crate::targets::layout140::StructOffset;
+use crate::targets::basic::ext_data::{SymbolWriter, ToObject};
 
-#[derive(Deserialize, Serialize)]
-enum TextureObjectType
-{
-    T3D,
-    T2D,
-    T2DArray,
-    TCube
-}
-
-#[derive(Deserialize, Serialize)]
-struct TextureObject
-{
-    pub ty: TextureObjectType,
-    pub value: TextureType
-}
-
-pub fn write_objects(bpx: &mut ShaderPack<BufWriter<File>>, objects: Vec<Object<Property>>, debug: bool) -> Result<(), Error>
+pub fn write_objects(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<Property>>, debug: bool) -> Result<(), Error>
 {
     for sym in objects {
         let mut builder = shader::symbol::Builder::new(sym.inner.inner.pname);
@@ -78,60 +61,41 @@ pub fn write_objects(bpx: &mut ShaderPack<BufWriter<File>>, objects: Vec<Object<
                 return Err(Error::new("unsupported object type"));
             }
         };
-        let st = match sym.inner.inner.ptype {
-            PropertyType::Texture2D(value) => Some(TextureObject {
-                ty: TextureObjectType::T2D,
-                value
-            }),
-            PropertyType::Texture3D(value) => Some(TextureObject {
-                ty: TextureObjectType::T3D,
-                value
-            }),
-            PropertyType::Texture2DArray(value) => Some(TextureObject {
-                ty: TextureObjectType::T2DArray,
-                value
-            }),
-            PropertyType::TextureCube(value) => Some(TextureObject {
-                ty: TextureObjectType::TCube,
-                value
-            }),
-            _ => None
-        };
-        if let Some(st) = st {
-            let val: bpx::sd::Object = st.serialize(bpx::sd::serde::Serializer::new(EnumSize::U8, debug))?.try_into().unwrap();
+        if let Some(val) = sym.inner.inner.ptype.to_bpx_object(debug, &())? {
             builder.extended_data(val);
         }
         if sym.inner.explicit.get() {
-            builder.external();
+            builder.external(); //Global binding (goes in the global descriptor set)
         } else {
-            builder.internal();
+            builder.internal(); //Local binding (goes in the local descriptor set)
         }
-        //More code duplication, well say thanks to rust move semantics, you want performance, then code duplication!
-        //TODO: If there's any workaround...
-        if sym.stage_pixel {
-            builder.stage(Stage::Pixel);
-        }
-        if sym.stage_domain {
-            builder.stage(Stage::Domain);
-        }
-        if sym.stage_hull {
-            builder.stage(Stage::Hull);
-        }
-        if sym.stage_vertex {
-            builder.stage(Stage::Vertex);
-        }
-        if sym.stage_geometry {
-            builder.stage(Stage::Geometry);
-        }
-        bpx.add_symbol(builder)?;
+        crate::targets::basic::ext_data::append_stages!(sym > builder);
+        bpx.write(builder)?;
     }
     Ok(())
 }
 
-pub fn write_cbuffers(bpx: &mut ShaderPack<BufWriter<File>>, objects: Vec<Object<StructOffset>>, debug: bool) -> Result<(), Error>
+pub fn write_packed_structs(bpx: &mut SymbolWriter<BufWriter<File>>, structs: Vec<StructOffset>, debug: bool) -> Result<(), Error>
+{
+    for sym in structs {
+        //Unfortunately we must clone because rust is unable to see that sym.name is not used by
+        // to_bpx_object...
+        let mut builder = shader::symbol::Builder::new(sym.name.clone());
+        builder.ty(shader::symbol::Type::ConstantBuffer).internal();
+        if let Some(obj) = sym.to_bpx_object(debug, bpx)? {
+            builder.extended_data(obj);
+        }
+        bpx.write(builder)?;
+    }
+    Ok(())
+}
+
+pub fn write_cbuffers(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<StructOffset>>, debug: bool) -> Result<(), Error>
 {
     for sym in objects {
-        let mut builder = shader::symbol::Builder::new(sym.inner.inner.name);
+        //Unfortunately we must clone because rust is unable to see that sym.inner.inner.name is
+        // not used by to_bpx_object...
+        let mut builder = shader::symbol::Builder::new(sym.inner.inner.name.clone());
         let slot = sym.inner.slot.get();
         if slot > 32 {
             error!("OpenGL limits texture/sampler bindings to 32, got a binding at register {}", slot);
@@ -139,31 +103,17 @@ pub fn write_cbuffers(bpx: &mut ShaderPack<BufWriter<File>>, objects: Vec<Object
         } else if slot > 16 {
             warn!("This shader needs more than 16 bindings, this may not work on all hardware");
         }
-        builder.register(slot as _);
+        builder.register(slot as _).ty(shader::symbol::Type::ConstantBuffer);
         if sym.inner.explicit.get() {
             builder.external();
         } else {
             builder.internal();
         }
-        //TODO: generate extended data for constant buffers
-        //More code duplication, well say thanks to rust move semantics, you want performance, then code duplication!
-        //TODO: If there's any workaround...
-        if sym.stage_pixel {
-            builder.stage(Stage::Pixel);
+        if let Some(obj) = sym.inner.inner.to_bpx_object(debug, bpx)? {
+            builder.extended_data(obj);
         }
-        if sym.stage_domain {
-            builder.stage(Stage::Domain);
-        }
-        if sym.stage_hull {
-            builder.stage(Stage::Hull);
-        }
-        if sym.stage_vertex {
-            builder.stage(Stage::Vertex);
-        }
-        if sym.stage_geometry {
-            builder.stage(Stage::Geometry);
-        }
-        bpx.add_symbol(builder)?;
+        crate::targets::basic::ext_data::append_stages!(sym > builder);
+        bpx.write(builder)?;
     }
     Ok(())
 }
@@ -174,8 +124,11 @@ fn write_bpx(path: &Path, syms: Symbols, shaders: Vec<ShaderData1>, args: &Args)
                                      shader::Builder::new()
                                          .ty(shader::Type::Pipeline)
                                          .target(shader::Target::GL42));
-    write_objects(&mut bpx, syms.objects, args.debug)?;
-    write_cbuffers(&mut bpx, syms.cbuffers, args.debug)?;
+    let mut writer = SymbolWriter::new(bpx);
+    write_objects(&mut writer, syms.objects, args.debug)?;
+    write_packed_structs(&mut writer, syms.packed_structs, args.debug)?;
+    write_cbuffers(&mut writer, syms.cbuffers, args.debug)?;
+    bpx = writer.into_inner();
     bpx.save()?;
     todo!()
 }
