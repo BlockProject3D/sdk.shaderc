@@ -26,12 +26,51 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod preprocessor;
-pub mod shaderlib;
-pub mod useresolver;
-pub mod ext_data;
-mod shader_to_sal;
-mod sal_compiler;
+use serde::Deserialize;
+use serde::Serialize;
+use super::ToObject;
+use sal::ast::tree::{PropertyType, TextureType};
 
-pub use shader_to_sal::*;
-pub use sal_compiler::*;
+#[derive(Deserialize, Serialize)]
+pub enum TextureObjectType
+{
+    T3D,
+    T2D,
+    T2DArray,
+    TCube
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct TextureObject
+{
+    pub ty: TextureObjectType,
+    pub value: TextureType
+}
+
+impl ToObject for PropertyType
+{
+    type Object = TextureObject;
+    type Context = ();
+
+    fn to_object(self, _: &()) -> Option<Self::Object> {
+        match self {
+            PropertyType::Texture2D(value) => Some(TextureObject {
+                ty: TextureObjectType::T2D,
+                value
+            }),
+            PropertyType::Texture3D(value) => Some(TextureObject {
+                ty: TextureObjectType::T3D,
+                value
+            }),
+            PropertyType::Texture2DArray(value) => Some(TextureObject {
+                ty: TextureObjectType::T2DArray,
+                value
+            }),
+            PropertyType::TextureCube(value) => Some(TextureObject {
+                ty: TextureObjectType::TCube,
+                value
+            }),
+            _ => None
+        }
+    }
+}
