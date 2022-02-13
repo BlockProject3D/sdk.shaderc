@@ -32,7 +32,7 @@ use bpx::shader::Stage;
 use log::{debug, error, info, trace, warn};
 use rglslang::environment::{Client, Environment};
 use rglslang::shader::{Messages, Profile, Shader};
-use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property};
+use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, Struct};
 use crate::options::{Args, Error};
 use crate::targets::basic::{BindingType, get_root_constants_layout, relocate_bindings, ShaderStage, Slot, test_bindings};
 use crate::targets::layout140::{compile_packed_structs, compile_struct, StructOffset};
@@ -92,6 +92,7 @@ pub struct Symbols
     pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
     pub objects: Vec<Object<Property>>, //Samplers and textures
     pub pipeline: Option<PipelineStatement>,
+    pub vformat: Option<Struct>,
     pub blendfuncs: Vec<BlendfuncStatement>
 }
 
@@ -115,6 +116,7 @@ pub struct CompiledShaderStage
     pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
     pub objects: Vec<Slot<Property>>, //Samplers and textures
     pub pipeline: Option<PipelineStatement>,
+    pub vformat: Option<Struct>,
     pub blendfuncs: Vec<BlendfuncStatement>,
     pub strings: Vec<rglslang::shader::Part>,
     pub shader: Shader,
@@ -203,6 +205,7 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
                     objects: shader.statements.objects,
                     pipeline: shader.statements.pipeline,
                     blendfuncs: shader.statements.blendfuncs,
+                    vformat: shader.statements.vformat,
                     strings: shader.strings,
                     shader: rshader,
                     stage
@@ -255,6 +258,7 @@ fn merge_symbols(output: CompileOutput) -> (Symbols, Vec<ShaderData>)
     let mut objects = HashMap::new(); // Well rust wants to be slow
     // If rust lifetime system wasn't broken &str or &String would have worked!
     let mut pipeline = None;
+    let mut vformat = None;
     let mut blendfuncs = Vec::new();
     let mut packed_structs = Vec::new();
     for stage in output.stages {
@@ -278,9 +282,16 @@ fn merge_symbols(output: CompileOutput) -> (Symbols, Vec<ShaderData>)
         }
         if let Some(p) = stage.pipeline {
             if pipeline.is_some() {
-                warn!("Duplicate symbol name '{}'", p.name)
+                warn!("Ignoring duplicate pipeline with name '{}'", p.name)
             } else {
                 pipeline = Some(p);
+            }
+        }
+        if let Some(v) = stage.vformat {
+            if vformat.is_some() {
+                warn!("Ignoring duplicate vertex format with name '{}'", v.name)
+            } else {
+                vformat = Some(v);
             }
         }
         for (i, (_, v)) in stage.packed_structs.into_iter().enumerate() {
@@ -300,6 +311,7 @@ fn merge_symbols(output: CompileOutput) -> (Symbols, Vec<ShaderData>)
         outputs,
         objects: objects.into_iter().map(|(_, v)| v).collect(),
         pipeline,
+        vformat,
         blendfuncs,
         root_constant_layout: output.root_constant_layout
     };
