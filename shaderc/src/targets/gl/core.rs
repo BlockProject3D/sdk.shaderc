@@ -26,7 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
 use log::{debug, error, info, trace, warn};
@@ -34,7 +34,7 @@ use rglslang::environment::{Client, Environment};
 use rglslang::shader::{Messages, Profile, Shader};
 use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, Struct};
 use crate::options::{Args, Error};
-use crate::targets::basic::{BindingType, get_root_constants_layout, relocate_bindings, ShaderStage, Slot, test_bindings};
+use crate::targets::basic::{get_root_constants_layout, ShaderStage, Slot};
 use crate::targets::layout140::{compile_packed_structs, compile_struct, StructOffset};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
 
@@ -90,8 +90,8 @@ pub struct Symbols
     pub packed_structs: Vec<StructOffset>,
     pub cbuffers: Vec<Object<StructOffset>>,
     pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
-    pub objects: Vec<Object<Property>>, //Samplers and textures
-    pub pipeline: Option<PipelineStatement>,
+pub objects: Vec<Object<Property>>, //Samplers and textures
+pub pipeline: Option<PipelineStatement>,
     pub vformat: Option<Struct>,
     pub blendfuncs: Vec<BlendfuncStatement>
 }
@@ -114,8 +114,8 @@ pub struct CompiledShaderStage
     pub packed_structs: HashMap<String, StructOffset>,
     pub cbuffers: Vec<Slot<StructOffset>>,
     pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
-    pub objects: Vec<Slot<Property>>, //Samplers and textures
-    pub pipeline: Option<PipelineStatement>,
+pub objects: Vec<Slot<Property>>, //Samplers and textures
+pub pipeline: Option<PipelineStatement>,
     pub vformat: Option<Struct>,
     pub blendfuncs: Vec<BlendfuncStatement>,
     pub strings: Vec<rglslang::shader::Part>,
@@ -189,7 +189,7 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
                     let inner = compile_struct(v.inner, &packed_structs)?;
                     debug!("Size of constant buffer '{}' is {} bytes", inner.name, inner.size);
                     if inner.size > MAX_CBUFFER_SIZE { // Check if UBO exceeds maximum size
-                        error!("The size of a constant buffer cannot exceed 65536 bytes after alignment, however constant buffer '{}' takes {} bytes after alignment", inner.name, inner.size);
+                    error!("The size of a constant buffer cannot exceed 65536 bytes after alignment, however constant buffer '{}' takes {} bytes after alignment", inner.name, inner.size);
                         return Err(Error::new("constant buffer size overload"));
                     }
                     cbuffers.push(Slot {
@@ -341,136 +341,4 @@ pub fn link_shaders(args: &Args, output: CompileOutput) -> Result<(Symbols, Vec<
     info!("Shader log: \n{}", prog.get_info_log());
     info!("Shader debug log: \n{}", prog.get_info_debug_log());
     Ok((syms, shaders1))
-}
-
-//TODO: In VK target ensure that all bindings are unique across all types of bindings
-pub fn gl_relocate_bindings(stages: &mut BTreeMap<Stage, ShaderStage>)
-{
-    let mut cbufs = HashSet::new();
-    let mut textures = HashSet::new();
-    let mut samplers = HashSet::new();
-    let mut cbufs_name = HashMap::new();
-    let mut samplers_name = HashMap::new();
-    let mut textures_name = HashMap::new();
-    let mut cbuf_counter: u32 = 1;
-    let mut sampler_counter: u32 = 0;
-    let mut texture_counter: u32 = 0;
-    let mut insert_texture = |name, slot| {
-        if !textures.insert(slot) {
-            warn!("Possible duplicate of texture slot {}", slot);
-        }
-        textures_name.insert(slot, name);
-    };
-    let mut insert_sampler = |name, slot| {
-        if !samplers.insert(slot) {
-            warn!("Possible duplicate of sampler slot {}", slot);
-        }
-        samplers_name.insert(slot, name);
-    };
-    let mut insert_cbuffer = |name, slot| {
-        if !cbufs.insert(slot) {
-            warn!("Possible duplicate of constant buffer slot {}", slot);
-        }
-        cbufs_name.insert(slot, name);
-    };
-    relocate_bindings(stages, |name, t, existing, _| {
-        match t {
-            BindingType::Texture => {
-                let slot = existing.map(|slot| {
-                    texture_counter = slot + 1;
-                    slot
-                }).unwrap_or_else(|| {
-                    texture_counter += 1;
-                    texture_counter - 1
-                });
-                insert_texture(name, slot);
-                slot
-            },
-            BindingType::Sampler => {
-                let slot = existing.map(|slot| {
-                    sampler_counter = slot + 1;
-                    slot
-                }).unwrap_or_else(|| {
-                    sampler_counter += 1;
-                    sampler_counter - 1
-                });
-                insert_sampler(name, slot);
-                slot
-            },
-            BindingType::CBuf => {
-                let slot = existing.map(|slot| {
-                    cbuf_counter = slot + 1;
-                    slot
-                }).unwrap_or_else(|| {
-                    cbuf_counter += 1;
-                    cbuf_counter - 1
-                });
-                insert_cbuffer(name, slot);
-                slot
-            }
-        }
-    });
-    relocate_bindings(stages, |name, t, existing, mut current| {
-        match t {
-            BindingType::Texture => {
-                if let Some(slot) = existing {
-                    slot
-                } else {
-                    if let Some(name1) = textures_name.get(&current) {
-                        if name1 == &name {
-                            return current
-                        }
-                    }
-                    while textures.contains(&current) {
-                        current += 1;
-                    }
-                    current
-                }
-            },
-            BindingType::Sampler => {
-                if let Some(slot) = existing {
-                    slot
-                } else {
-                    if let Some(name1) = samplers_name.get(&current) {
-                        if name1 == &name {
-                            return current
-                        }
-                    }
-                    while samplers.contains(&current) {
-                        current += 1;
-                    }
-                    current
-                }
-            },
-            BindingType::CBuf => {
-                if let Some(slot) = existing {
-                    slot
-                } else {
-                    if let Some(name1) = cbufs_name.get(&current) {
-                        if name1 == &name {
-                            return current
-                        }
-                    }
-                    while cbufs.contains(&current) {
-                        current += 1;
-                    }
-                    current
-                }
-            }
-        }
-    });
-}
-
-pub fn gl_test_bindings(stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
-{
-    let mut cbufs = HashSet::new();
-    let mut textures = HashSet::new();
-    let mut samplers = HashSet::new();
-    test_bindings(stages, |t, slot| {
-        match t {
-            BindingType::Texture => textures.insert(slot),
-            BindingType::Sampler => samplers.insert(slot),
-            BindingType::CBuf => cbufs.insert(slot),
-        }
-    })
 }
