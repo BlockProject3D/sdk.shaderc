@@ -36,7 +36,7 @@ use crate::options::Error;
 // https://www.khronos.org/registry/OpenGL/specs/gl/glspec46.core.pdf
 // Section 7.6.2.2
 
-fn size_of_base_type(t: BaseType) -> usize
+pub fn size_of_base_type(t: BaseType) -> usize
 {
     match t {
         BaseType::Int => 4,
