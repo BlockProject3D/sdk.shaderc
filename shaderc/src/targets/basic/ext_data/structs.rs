@@ -28,9 +28,9 @@
 
 use serde::Deserialize;
 use serde::Serialize;
-use sal::ast::tree::{BaseType, PropertyType, VectorType};
+use sal::ast::tree::{BaseType, PropertyType, Struct, VectorType};
 use crate::targets::basic::ext_data::SymbolWriter;
-use crate::targets::layout140::StructOffset;
+use crate::targets::layout140::{size_of_base_type, StructOffset};
 use super::ToObject;
 
 #[derive(Serialize, Deserialize)]
@@ -56,6 +56,17 @@ pub enum PropType
 
 impl PropType
 {
+    pub fn get_size(&self) -> u32 //Returns an estimated size of the property for use
+    // with vertex formats.
+    {
+        match self {
+            PropType::Scalar(v) => size_of_base_type(*v) as u32,
+            PropType::Vector(v) => size_of_base_type(v.item) as u32 * v.size as u32,
+            PropType::Matrix(v) => size_of_base_type(v.item) as u32 * v.size as u32 * v.size as u32,
+            _ => 0
+        }
+    }
+
     fn new<T: std::io::Seek + std::io::Write>(prop: PropertyType, syms: &SymbolWriter<T>) -> PropType
     {
         match prop {
@@ -76,13 +87,23 @@ impl PropType
             // which forbids constant buffers with samplers and similar types
         }
     }
+
+    fn new_simple(prop: PropertyType) -> PropType
+    {
+        match prop {
+            PropertyType::Scalar(v) => PropType::Scalar(v),
+            PropertyType::Vector(v) => PropType::Vector(v),
+            PropertyType::Matrix(v) => PropType::Matrix(v),
+            _ => panic!("Attempted to allocate a broken PropType")
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct PropObject
 {
     pub name: String,
-    pub aligned_offset: u32,
+    pub offset: u32,
     pub ty: PropType
 }
 
@@ -103,9 +124,33 @@ impl<T: std::io::Write + std::io::Seek> ToObject<T> for StructOffset
             size: self.size as _,
             props: self.props.into_iter().map(|v| PropObject {
                 name: v.inner.pname,
-                aligned_offset: v.aligned_offset as _,
+                offset: v.aligned_offset as _,
                 ty: PropType::new(v.inner.ptype, ctx)
             }).collect()
         })
+    }
+}
+
+impl ToObject for Struct
+{
+    type Object = StructObject;
+    type Context = ();
+
+    fn to_object(self, _: &()) -> Option<Self::Object> {
+        let mut st = StructObject {
+            size: 0,
+            props: Vec::new()
+        };
+        for prop in self.props {
+            let ty = PropType::new_simple(prop.ptype);
+            let size = ty.get_size();
+            st.props.push(PropObject {
+                name: prop.pname,
+                ty,
+                offset: st.size
+            });
+            st.size += size;
+        }
+        Some(st)
     }
 }

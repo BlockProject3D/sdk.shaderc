@@ -106,6 +106,8 @@ pub(crate) use append_stages;
 
 mod objects;
 mod structs;
+mod pipeline;
 
 pub use objects::*;
 pub use structs::*;
+pub use pipeline::*;

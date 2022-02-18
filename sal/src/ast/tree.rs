@@ -186,7 +186,7 @@ pub struct Struct
     pub props: Vec<Property>
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RenderMode
 {
     Triangles,
@@ -194,7 +194,7 @@ pub enum RenderMode
     Patches
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CullingMode
 {
     BackFace,
@@ -228,7 +228,7 @@ impl VarlistStatement for PipelineStatement
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BlendFactor
 {
     Zero,
@@ -248,7 +248,7 @@ pub enum BlendFactor
     OneMinusSrc1Alpha
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BlendOperator
 {
     Add,
