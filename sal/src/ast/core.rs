@@ -179,7 +179,7 @@ fn parse_prop(p: tree::Property) -> Result<ast::Property, TypeError>
     })
 }
 
-fn parse_struct(s: tree::Struct) -> Result<ast::Struct, TypeError>
+fn parse_struct<F: Fn(&ast::PropertyType) -> bool>(s: tree::Struct, is_further_banned: F) -> Result<ast::Struct, TypeError>
 {
     let mut plist = Vec::new();
 
@@ -193,6 +193,9 @@ fn parse_struct(s: tree::Struct) -> Result<ast::Struct, TypeError>
             | ast::PropertyType::TextureCube(_) => return Err(TypeError::Banned(p.ptype)),
             _ => ()
         };
+        if is_further_banned(&p.ptype) {
+            return Err(TypeError::Banned(p.ptype));
+        }
         plist.push(p);
     }
     Ok(ast::Struct {
@@ -357,7 +360,7 @@ fn gen_item<Resolver: UseResolver>(
             Ok(ast::Statement::Constant(prop))
         },
         tree::Root::ConstantBuffer(s) => {
-            let st = parse_struct(s)?;
+            let st = parse_struct(s, |_| false)?;
             Ok(ast::Statement::ConstantBuffer(st))
         },
         tree::Root::Output(c) => {
@@ -374,7 +377,14 @@ fn gen_item<Resolver: UseResolver>(
             Ok(ast::Statement::Output(prop))
         },
         tree::Root::VertexFormat(s) => {
-            let st = parse_struct(s)?;
+            let st = parse_struct(s, |v| {
+                match v {
+                    ast::PropertyType::Matrix(_) |
+                    ast::PropertyType::Vector(_) |
+                    ast::PropertyType::Scalar(_) => false,
+                    _ => true
+                }
+            })?;
             Ok(ast::Statement::VertexFormat(st))
         },
         tree::Root::Pipeline(v) => {
