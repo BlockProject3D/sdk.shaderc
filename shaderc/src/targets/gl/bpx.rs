@@ -177,7 +177,7 @@ fn write_outputs(bpx: &mut SymbolWriter<BufWriter<File>>, outputs: Vec<Slot<Prop
     let funcs = build_blendfunc_lookup_map(blendfuncs);
     for sym in outputs {
         let output = OutputObject {
-            blendfunc: funcs.get(&sym.inner.pname).map(|v| v.clone()).map(|v| *v),
+            blendfunc: funcs.get(&sym.inner.pname).map(|v| v.clone()),
             ty: match sym.inner.ptype {
                 PropertyType::Scalar(v) => OutputPropType::Scalar(v),
                 PropertyType::Vector(v) => OutputPropType::Vector(v),

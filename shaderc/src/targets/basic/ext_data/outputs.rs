@@ -31,7 +31,7 @@ use serde::Serialize;
 use serde::Deserialize;
 use crate::targets::basic::ext_data::ToObject;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct BlendfuncObject
 {
     pub src_color: BlendFactor,
