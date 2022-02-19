@@ -90,8 +90,8 @@ pub struct Symbols
     pub packed_structs: Vec<StructOffset>,
     pub cbuffers: Vec<Object<StructOffset>>,
     pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
-pub objects: Vec<Object<Property>>, //Samplers and textures
-pub pipeline: Option<PipelineStatement>,
+    pub objects: Vec<Object<Property>>, //Samplers and textures
+    pub pipeline: Option<PipelineStatement>,
     pub vformat: Option<Struct>,
     pub blendfuncs: Vec<BlendfuncStatement>
 }
@@ -114,8 +114,8 @@ pub struct CompiledShaderStage
     pub packed_structs: HashMap<String, StructOffset>,
     pub cbuffers: Vec<Slot<StructOffset>>,
     pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
-pub objects: Vec<Slot<Property>>, //Samplers and textures
-pub pipeline: Option<PipelineStatement>,
+    pub objects: Vec<Slot<Property>>, //Samplers and textures
+    pub pipeline: Option<PipelineStatement>,
     pub vformat: Option<Struct>,
     pub blendfuncs: Vec<BlendfuncStatement>,
     pub strings: Vec<rglslang::shader::Part>,

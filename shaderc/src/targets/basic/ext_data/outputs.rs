@@ -1,4 +1,4 @@
-// Copyright (c) 2021, BlockProject 3D
+// Copyright (c) 2022, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -26,32 +26,41 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use serde::{Serialize, Deserialize};
-use sal::ast::tree::{BlendFactor, BlendOperator, CullingMode, PipelineStatement, RenderMode};
+use sal::ast::tree::{BaseType, BlendFactor, BlendfuncStatement, BlendOperator, VectorType};
+use serde::Serialize;
+use serde::Deserialize;
 use crate::targets::basic::ext_data::ToObject;
 
 #[derive(Serialize, Deserialize)]
-pub struct PipelineObject
+pub struct BlendfuncObject
 {
-    pub depth_enable: bool,
-    pub depth_write_enable: bool,
-    pub scissor_enable: bool,
-    pub render_mode: RenderMode,
-    pub culling_mode: CullingMode
+    pub src_color: BlendFactor,
+    pub dst_color: BlendFactor,
+    pub src_alpha: BlendFactor,
+    pub dst_alpha: BlendFactor,
+    pub color_op: BlendOperator,
+    pub alpha_op: BlendOperator
 }
 
-impl ToObject for PipelineStatement
+#[derive(Serialize, Deserialize)]
+pub enum OutputPropType
 {
-    type Object = PipelineObject;
+    Vector(VectorType),
+    Scalar(BaseType)
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct OutputObject
+{
+    pub blendfunc: Option<BlendfuncObject>,
+    pub ty: OutputPropType
+}
+
+impl ToObject for OutputObject {
+    type Object = Self;
     type Context = ();
 
     fn to_object(self, _: &Self::Context) -> Option<Self::Object> {
-        Some(PipelineObject {
-            depth_enable: self.depth_enable,
-            depth_write_enable: self.depth_write_enable,
-            scissor_enable: self.scissor_enable,
-            render_mode: self.render_mode,
-            culling_mode: self.culling_mode
-        })
+        Some(self)
     }
 }

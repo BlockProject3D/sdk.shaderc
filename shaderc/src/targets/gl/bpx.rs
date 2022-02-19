@@ -26,16 +26,18 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
-use sal::ast::tree::{PipelineStatement, Property, PropertyType, Struct};
+use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, PropertyType, Struct};
 use crate::options::{Args, Error};
-use crate::targets::basic::ext_data::{SymbolWriter, ToObject};
+use crate::targets::basic::ext_data::{BlendfuncObject, ConstantObject, ConstPropType, OutputObject, OutputPropType, SymbolWriter, ToObject};
 use crate::targets::gl::core::{Object, ShaderData1, Symbols};
 use bpx::shader;
 use bpx::shader::{ShaderPack, Stage};
 use log::{error, warn};
+use crate::targets::basic::Slot;
 use crate::targets::layout140::StructOffset;
 
 fn write_objects(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<Property>>, debug: bool) -> Result<(), Error>
@@ -136,9 +138,83 @@ fn write_vformat(bpx: &mut SymbolWriter<BufWriter<File>>, vformat: Option<Struct
 fn write_pipeline(bpx: &mut SymbolWriter<BufWriter<File>>, pipeline: Option<PipelineStatement>, debug: bool) -> Result<(), Error>
 {
     if let Some(sym) = pipeline {
-
+        //Unfortunately we must clone because rust is unable to see that sym.name is
+        // not used by to_bpx_object...
+        let mut builder = shader::symbol::Builder::new(sym.name.clone());
+        builder.internal().ty(shader::symbol::Type::Pipeline);
+        if let Some(obj) = sym.to_bpx_object(debug, &())? {
+            builder.extended_data(obj);
+        }
+        bpx.write(builder)?;
     } else {
         warn!("No pipeline was found in shader pack build");
+    }
+    Ok(())
+}
+
+fn build_blendfunc_lookup_map(blendfuncs: Vec<BlendfuncStatement>) -> HashMap<String, BlendfuncObject>
+{
+    let mut map = HashMap::new();
+    for fnc in blendfuncs {
+        map.insert(fnc.name, BlendfuncObject {
+            alpha_op: fnc.alpha_op,
+            src_color: fnc.src_color,
+            dst_color: fnc.dst_color,
+            src_alpha: fnc.src_alpha,
+            dst_alpha: fnc.dst_alpha,
+            color_op: fnc.color_op
+        });
+    }
+    map
+}
+
+fn write_outputs(bpx: &mut SymbolWriter<BufWriter<File>>, outputs: Vec<Slot<Property>>, blendfuncs: Vec<BlendfuncStatement>, debug: bool) -> Result<(), Error>
+{
+    if outputs.len() <= 0 {
+        warn!("No render target outputs was found in shader pack build");
+        return Ok(());
+    }
+    let funcs = build_blendfunc_lookup_map(blendfuncs);
+    for sym in outputs {
+        let output = OutputObject {
+            blendfunc: funcs.get(&sym.inner.pname).map(|v| v.clone()).map(|v| *v),
+            ty: match sym.inner.ptype {
+                PropertyType::Scalar(v) => OutputPropType::Scalar(v),
+                PropertyType::Vector(v) => OutputPropType::Vector(v),
+                s => {
+                    error!("Requested type '{}' for a render target which isn't supported in OpenGL", s);
+                    return Err(Error::new("illegal render target output type"));
+                }
+            }
+        };
+        let mut builder = shader::symbol::Builder::new(sym.inner.pname);
+        builder.internal().ty(shader::symbol::Type::Output).register(sym.slot.get() as _);
+        builder.extended_data(output.to_bpx_object(debug, &())?.unwrap());
+        bpx.write(builder)?;
+    }
+    Ok(())
+}
+
+fn write_root_constants(bpx: &mut SymbolWriter<BufWriter<File>>, root_constants_layout: StructOffset, debug: bool) -> Result<(), Error>
+{
+    for sym in root_constants_layout.props {
+        let mut builder = shader::symbol::Builder::new(sym.inner.pname);
+        builder.ty(shader::symbol::Type::Constant).external();
+        let obj = ConstantObject {
+            size: sym.size as _,
+            offset: sym.aligned_offset as _,
+            ty: match sym.inner.ptype {
+                PropertyType::Scalar(v) => ConstPropType::Scalar(v),
+                PropertyType::Vector(v) => ConstPropType::Vector(v),
+                PropertyType::Matrix(v) => ConstPropType::Matrix(v),
+                s => {
+                    error!("Requested type '{}' for a constant which isn't supported in OpenGL", s);
+                    return Err(Error::new("illegal constant type"));
+                }
+            }
+        };
+        builder.extended_data(obj.to_bpx_object(debug, &())?.unwrap());
+        bpx.write(builder)?;
     }
     Ok(())
 }
@@ -154,7 +230,11 @@ pub fn write_bpx(path: &Path, syms: Symbols, shaders: Vec<ShaderData1>, args: &A
     write_packed_structs(&mut writer, syms.packed_structs, args.debug)?;
     write_cbuffers(&mut writer, syms.cbuffers, args.debug)?;
     write_vformat(&mut writer, syms.vformat, args.debug)?;
+    write_pipeline(&mut writer, syms.pipeline, args.debug)?;
+    write_outputs(&mut writer, syms.outputs, syms.blendfuncs, args.debug)?;
+    write_root_constants(&mut writer, syms.root_constant_layout, args.debug)?;
     bpx = writer.into_inner();
+
     bpx.save()?;
     todo!()
 }

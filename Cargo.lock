@@ -186,9 +186,9 @@ dependencies = [
 
 [[package]]
 name = "bpx"
-version = "4.0.0-beta-1"
+version = "4.0.0-beta-2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8791979208dae77d2b97f21b90c8e7e05b56a14d48ecdb0443d802ba0e04530"
+checksum = "851316892613dd9ec398a567813461a00fbf95211e1030831db16d451ec39b28"
 dependencies = [
  "byteorder",
  "libz-sys",
