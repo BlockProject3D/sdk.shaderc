@@ -103,9 +103,9 @@ pub struct ShaderData
     stage: Stage
 }
 
-pub struct ShaderData1
+pub struct ShaderBytes
 {
-    pub strings: Vec<rglslang::shader::Part>,
+    pub data: Vec<u8>,
     pub stage: Stage
 }
 
@@ -318,7 +318,9 @@ fn merge_symbols(output: CompileOutput) -> (Symbols, Vec<ShaderData>)
     (syms, shaders)
 }
 
-pub fn link_shaders(args: &Args, output: CompileOutput) -> Result<(Symbols, Vec<ShaderData1>), Error>
+/// This function links shaders only for pure OpenGL targets; vulkan and SpvCross based targets
+/// aren't supported by this function.
+pub fn gl_link_shaders(args: &Args, output: CompileOutput) -> Result<(Symbols, Vec<ShaderBytes>), Error>
 {
     let (syms, shaders) = merge_symbols(output);
     let mut shaders1 = Vec::with_capacity(shaders.len());
@@ -326,8 +328,9 @@ pub fn link_shaders(args: &Args, output: CompileOutput) -> Result<(Symbols, Vec<
     let mut builder = rglslang::program::Builder::new()
         .messages(msgs);
     for v in shaders {
-        shaders1.push(ShaderData1 {
-            strings: v.strings,
+        let data = v.strings.into_iter().map(|v| v.into_code()).collect::<Vec<_>>().join("");
+        shaders1.push(ShaderBytes {
+            data: data.into_bytes(),
             stage: v.stage
         });
         builder = builder.add_shader(v.shader);

@@ -33,7 +33,7 @@ use std::path::Path;
 use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, PropertyType, Struct};
 use crate::options::{Args, Error};
 use crate::targets::basic::ext_data::{BlendfuncObject, ConstantObject, ConstPropType, OutputObject, OutputPropType, SymbolWriter, ToObject};
-use crate::targets::gl::core::{Object, ShaderData1, Symbols};
+use crate::targets::gl::core::{Object, ShaderBytes, Symbols};
 use bpx::shader;
 use bpx::shader::{ShaderPack, Stage};
 use log::{error, warn};
@@ -219,7 +219,7 @@ fn write_root_constants(bpx: &mut SymbolWriter<BufWriter<File>>, root_constants_
     Ok(())
 }
 
-pub fn write_bpx(path: &Path, syms: Symbols, shaders: Vec<ShaderData1>, args: &Args) -> Result<(), Error>
+pub fn write_bpx(path: &Path, syms: Symbols, shaders: Vec<ShaderBytes>, args: &Args) -> Result<(), Error>
 {
     let mut bpx = ShaderPack::create(BufWriter::new(File::create(path)?),
                                      shader::Builder::new()
@@ -234,7 +234,12 @@ pub fn write_bpx(path: &Path, syms: Symbols, shaders: Vec<ShaderData1>, args: &A
     write_outputs(&mut writer, syms.outputs, syms.blendfuncs, args.debug)?;
     write_root_constants(&mut writer, syms.root_constant_layout, args.debug)?;
     bpx = writer.into_inner();
-
+    for stage in shaders {
+        bpx.add_shader(shader::Shader {
+            stage: stage.stage,
+            data: stage.data
+        })?;
+    }
     bpx.save()?;
-    todo!()
+    Ok(())
 }
