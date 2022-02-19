@@ -138,6 +138,11 @@ pub struct Part
 
 impl Part
 {
+    /// Returns this shader part as GLSL code.
+    pub fn into_code(self) -> String {
+        self.code
+    }
+
     pub fn new<T: AsRef<str>>(code: T) -> Part
     {
         return Part {
