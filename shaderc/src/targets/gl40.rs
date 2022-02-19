@@ -29,7 +29,9 @@
 use log::info;
 use crate::options::{Args, Error};
 use crate::targets::basic::{decompose_pass, merge_stages, test_symbols};
-use crate::targets::gl::{compile_stages, EnvInfo, gl_relocate_bindings, gl_test_bindings, link_shaders};
+use crate::targets::gl::bindings::{gl_relocate_bindings, gl_test_bindings};
+use crate::targets::gl::bpx::write_bpx;
+use crate::targets::gl::core::{compile_stages, EnvInfo, gl_link_shaders};
 
 //TODO: At shader initialization, procedure for each binding:
 // - glUseProgram(prog)
@@ -49,7 +51,7 @@ pub fn build(args: Args) -> Result<(), Error>
     gl_relocate_bindings(&mut stages);
     info!("Testing binding relocations...");
     gl_test_bindings(&stages)?;
-    let res = rglslang::main(|| {
+    let (syms, shaders) = rglslang::main(|| {
         let env = EnvInfo {
             gl_version_int: 400,
             gl_version_str: "4.0",
@@ -58,7 +60,10 @@ pub fn build(args: Args) -> Result<(), Error>
         info!("Compiling shaders...");
         let output = compile_stages(&env, &args, stages)?; //We have a problem rust does not allow passing the error back to the build function
         info!("Linking shaders...");
-        link_shaders(&args, output)
-    });
-    todo!()
+        gl_link_shaders(&args, output)
+    })?;
+    info!("Writing {}...", args.output.display());
+    write_bpx(args.output, syms, shaders, &args)?;
+    info!("Shader pack built: {}", args.output.display());
+    Ok(())
 }
