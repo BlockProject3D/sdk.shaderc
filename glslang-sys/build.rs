@@ -157,7 +157,6 @@ fn build_spirv(proj: &Path, builder: &mut Build)
         "SpvBuilder.cpp",
         "SpvPostProcess.cpp",
         "doc.cpp",
-        "SpvTools.cpp",
         "disassemble.cpp",
         "CInterface/spirv_c_interface.cpp"
     ];
