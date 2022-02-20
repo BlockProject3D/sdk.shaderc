@@ -18,4 +18,3 @@ log = "0.4.14"
 bp3d-logger = { path = "../../logger" }
 crossbeam = "0.8.1"
 bp3d-threads = "1.0.0"
-

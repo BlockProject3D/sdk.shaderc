@@ -29,5 +29,7 @@
 mod core;
 pub mod error;
 pub mod tree;
+mod visitor;
 
 pub use self::core::Parser;
+pub use visitor::*;

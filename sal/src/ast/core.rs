@@ -38,7 +38,8 @@ use crate::{
     },
     parser::tree
 };
-use crate::ast::tree::ArrayType;
+use crate::ast::tree::{ArrayType, Statement};
+use crate::parser::tree::{Property, Struct, Use, VariableList};
 
 fn parse_vec_base(ptype: &str) -> Result<ast::VectorType, TypeError>
 {
@@ -349,71 +350,89 @@ fn parse_varlist<T: ast::VarlistStatement>(
     Ok(obj)
 }
 
-fn gen_item<Resolver: UseResolver>(
-    elem: tree::Root,
-    mut resolver: Resolver
-) -> Result<ast::Statement, Error<Resolver::Error>>
+pub struct AstBuilder<R: UseResolver>
 {
-    match elem {
-        tree::Root::Constant(c) => {
-            let prop = parse_prop(c)?;
-            Ok(ast::Statement::Constant(prop))
-        },
-        tree::Root::ConstantBuffer(s) => {
-            let st = parse_struct(s, |_| false)?;
-            Ok(ast::Statement::ConstantBuffer(st))
-        },
-        tree::Root::Output(c) => {
-            let prop = parse_prop(c)?;
-            match prop.ptype {
-                ast::PropertyType::Sampler
-                | ast::PropertyType::Texture2D(_)
-                | ast::PropertyType::Texture3D(_)
-                | ast::PropertyType::Texture2DArray(_)
-                | ast::PropertyType::TextureCube(_)
-                | ast::PropertyType::Matrix(_) => return Err(Error::Type(TypeError::Banned(prop.ptype))),
-                _ => ()
-            };
-            Ok(ast::Statement::Output(prop))
-        },
-        tree::Root::VertexFormat(s) => {
-            let st = parse_struct(s, |v| {
-                match v {
-                    ast::PropertyType::Matrix(_) |
-                    ast::PropertyType::Vector(_) |
-                    ast::PropertyType::Scalar(_) => false,
-                    _ => true
-                }
-            })?;
-            Ok(ast::Statement::VertexFormat(st))
-        },
-        tree::Root::Pipeline(v) => {
-            let vl = parse_varlist(v, &VARLIST_PIPELINE)?;
-            Ok(ast::Statement::Pipeline(vl))
-        },
-        tree::Root::Blendfunc(v) => {
-            let vl = parse_varlist(v, &VARLIST_BLENDFUNC)?;
-            Ok(ast::Statement::Blendfunc(vl))
-        },
-        tree::Root::Use(u) => {
-            let stmt = resolver.resolve(u).map_err(Error::UnresolvedUse)?;
-            Ok(stmt)
+    statements: Vec<Statement>,
+    resolver: R
+}
+
+impl<R: UseResolver> AstBuilder<R>
+{
+    pub fn new(resolver: R) -> AstBuilder<R>
+    {
+        AstBuilder {
+            statements: Vec::new(),
+            resolver
         }
+    }
+
+    pub fn into_inner(self) -> Vec<Statement>
+    {
+        self.statements
     }
 }
 
-pub fn build_ast<Resolver: UseResolver>(
-    elems: Vec<tree::Root>,
-    mut resolver: Resolver
-) -> Result<Vec<ast::Statement>, Error<Resolver::Error>>
+impl<R: UseResolver> crate::parser::Visitor for AstBuilder<R>
 {
-    let mut stvec = Vec::new();
+    type Error = Error<R::Error>;
 
-    for v in elems {
-        let item = gen_item(v, &mut resolver)?;
-        stvec.push(item);
+    fn visit_constant(&mut self, val: Property) -> Result<(), Self::Error> {
+        let prop = parse_prop(val)?;
+        self.statements.push(ast::Statement::Constant(prop));
+        Ok(())
     }
-    Ok(stvec)
+
+    fn visit_constant_buffer(&mut self, val: Struct) -> Result<(), Self::Error> {
+        let st = parse_struct(val, |_| false)?;
+        self.statements.push(ast::Statement::ConstantBuffer(st));
+        Ok(())
+    }
+
+    fn visit_output(&mut self, val: Property) -> Result<(), Self::Error> {
+        let prop = parse_prop(val)?;
+        match prop.ptype {
+            ast::PropertyType::Sampler
+            | ast::PropertyType::Texture2D(_)
+            | ast::PropertyType::Texture3D(_)
+            | ast::PropertyType::Texture2DArray(_)
+            | ast::PropertyType::TextureCube(_)
+            | ast::PropertyType::Matrix(_) => return Err(Error::Type(TypeError::Banned(prop.ptype))),
+            _ => ()
+        };
+        self.statements.push(ast::Statement::Output(prop));
+        Ok(())
+    }
+
+    fn visit_vertex_format(&mut self, val: Struct) -> Result<(), Self::Error> {
+        let st = parse_struct(val, |v| {
+            match v {
+                ast::PropertyType::Matrix(_) |
+                ast::PropertyType::Vector(_) |
+                ast::PropertyType::Scalar(_) => false,
+                _ => true
+            }
+        })?;
+        self.statements.push(ast::Statement::VertexFormat(st));
+        Ok(())
+    }
+
+    fn visit_use(&mut self, val: Use) -> Result<(), Self::Error> {
+        let stmt = self.resolver.resolve(val).map_err(Error::UnresolvedUse)?;
+        self.statements.push(stmt);
+        Ok(())
+    }
+
+    fn visit_pipeline(&mut self, val: VariableList) -> Result<(), Self::Error> {
+        let vl = parse_varlist(val, &VARLIST_PIPELINE)?;
+        self.statements.push(ast::Statement::Pipeline(vl));
+        Ok(())
+    }
+
+    fn visit_blendfunc(&mut self, val: VariableList) -> Result<(), Self::Error> {
+        let vl = parse_varlist(val, &VARLIST_BLENDFUNC)?;
+        self.statements.push(ast::Statement::Blendfunc(vl));
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -461,8 +480,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
-        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
+        let ast = parser.parse(AstBuilder::new(IgnoreUseResolver {})).unwrap().into_inner();
         let expected_ast = vec![
             Statement::Constant(Property {
                 pname: "DeltaTime".into(),
@@ -530,8 +548,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
-        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
+        let ast = parser.parse(AstBuilder::new(IgnoreUseResolver {})).unwrap().into_inner();
         let expected_ast = vec![
             Statement::Constant(Property {
                 pname: "BaseSampler".into(),
@@ -589,8 +606,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
-        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
+        let ast = parser.parse(AstBuilder::new(IgnoreUseResolver {})).unwrap().into_inner();
         let expected_ast = vec![
             Statement::ConstantBuffer(Struct {
                 name: "Light".into(),
@@ -643,8 +659,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
-        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
+        let ast = parser.parse(AstBuilder::new(IgnoreUseResolver {})).unwrap().into_inner();
         let expected_ast = vec![Statement::Output(Property {
             pname: "FragColor".into(),
             ptype: PropertyType::Vector(VectorType {
@@ -668,8 +683,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
-        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
+        let ast = parser.parse(AstBuilder::new(IgnoreUseResolver {})).unwrap().into_inner();
         let expected_ast = vec![Statement::VertexFormat(Struct {
             name: "Vertex".into(),
             attr: None,
@@ -701,8 +715,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
-        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
+        let ast = parser.parse(AstBuilder::new(IgnoreUseResolver {})).unwrap().into_inner();
         let expected_ast = vec![Statement::Pipeline(PipelineStatement {
             name: "Test".into(),
             depth_enable: true,
@@ -733,8 +746,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
-        let ast = build_ast(roots, IgnoreUseResolver {}).unwrap();
+        let ast = parser.parse(AstBuilder::new(IgnoreUseResolver {})).unwrap().into_inner();
         let expected_ast = vec![
             Statement::Output(Property {
                 pname: "FragColor".into(),

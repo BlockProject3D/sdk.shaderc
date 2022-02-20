@@ -29,20 +29,22 @@
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::{
-    ast::{build_ast, tree::Statement, UseResolver},
+    ast::{tree::Statement, UseResolver},
     lexer::Lexer,
     parser::Parser
 };
+use crate::ast::AstBuilder;
+use crate::parser::error::ParserOrVisitor;
 
 #[derive(Debug)]
-pub enum AutoError<ResolverError: Debug>
+pub enum AutoError<T: Debug>
 {
     Lexer(crate::lexer::error::Error),
     Parser(crate::parser::error::Error),
-    Ast(crate::ast::error::Error<ResolverError>)
+    Ast(crate::ast::error::Error<T>)
 }
 
-impl<ResolverError: Debug> Display for AutoError<ResolverError>
+impl<T: Debug> Display for AutoError<T>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
     {
@@ -54,27 +56,13 @@ impl<ResolverError: Debug> Display for AutoError<ResolverError>
     }
 }
 
-impl<ResolverError: Debug> From<crate::lexer::error::Error> for AutoError<ResolverError>
+impl<T: Debug> From<crate::parser::error::ParserOrVisitor<crate::ast::error::Error<T>>> for AutoError<T>
 {
-    fn from(e: crate::lexer::error::Error) -> Self
-    {
-        Self::Lexer(e)
-    }
-}
-
-impl<ResolverError: Debug> From<crate::parser::error::Error> for AutoError<ResolverError>
-{
-    fn from(e: crate::parser::error::Error) -> Self
-    {
-        Self::Parser(e)
-    }
-}
-
-impl<ResolverError: Debug> From<crate::ast::error::Error<ResolverError>> for AutoError<ResolverError>
-{
-    fn from(e: crate::ast::error::Error<ResolverError>) -> Self
-    {
-        Self::Ast(e)
+    fn from(e: ParserOrVisitor<crate::ast::error::Error<T>>) -> Self {
+        match e {
+            ParserOrVisitor::Visitor(e) => AutoError::Ast(e),
+            ParserOrVisitor::Parser(e) => AutoError::Parser(e)
+        }
     }
 }
 
@@ -84,7 +72,7 @@ pub fn auto_lexer_parser<T: AsRef<[u8]>, Resolver: UseResolver>(
 ) -> Result<Vec<Statement>, AutoError<Resolver::Error>>
 {
     let mut lexer = Lexer::new();
-    lexer.process(buf.as_ref())?;
+    lexer.process(buf.as_ref()).map_err(AutoError::Lexer)?;
     auto_parser(lexer, resolver)
 }
 
@@ -94,7 +82,6 @@ pub fn auto_parser<Resolver: UseResolver>(
 ) -> Result<Vec<Statement>, AutoError<Resolver::Error>>
 {
     let mut parser = Parser::new(lexer);
-    let roots = parser.parse()?;
-    let ast = build_ast(roots, resolver)?;
+    let ast = parser.parse(AstBuilder::new(resolver))?.into_inner();
     Ok(ast)
 }

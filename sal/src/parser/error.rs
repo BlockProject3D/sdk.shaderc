@@ -33,7 +33,7 @@ pub struct UnexpectedToken
     pub expected: Token
 }*/
 
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use crate::lexer::token::{Token, Type as TokenType};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -84,4 +84,11 @@ impl Display for Error
     {
         write!(f, "{}:{} {}", self.line, self.col, self.etype)
     }
+}
+
+#[derive(Debug)]
+pub enum ParserOrVisitor<T: Debug>
+{
+    Parser(Error),
+    Visitor(T)
 }

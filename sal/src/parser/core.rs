@@ -39,6 +39,8 @@ use crate::{
         tree
     }
 };
+use crate::parser::error::ParserOrVisitor;
+use crate::parser::Visitor;
 
 pub struct Parser
 {
@@ -87,7 +89,7 @@ impl Parser
         }
     }
 
-    fn try_parse_use(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
+    fn try_parse_use(&mut self, token: &Token) -> Result<Option<tree::Use>, Error>
     {
         if token == &Token::Use {
             let token = self.pop_expect(TokenType::Identifier)?;
@@ -97,7 +99,7 @@ impl Parser
             let token = self.pop_expect(TokenType::Identifier)?;
             let member = token.identifier().unwrap(); // SAFETY: we have tested for identifier in pop_expect so no panic possible here!
             self.pop_expect(TokenType::Break)?;
-            Ok(Some(tree::Root::Use(tree::Use { module, member })))
+            Ok(Some(tree::Use { module, member }))
         } else {
             Ok(None)
         }
@@ -177,11 +179,11 @@ impl Parser
         })
     }
 
-    fn try_parse_output(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
+    fn try_parse_output(&mut self, token: &Token) -> Result<Option<tree::Property>, Error>
     {
         if token == &Token::Output {
             let prop = self.parse_property()?;
-            return Ok(Some(tree::Root::Output(prop)));
+            return Ok(Some(prop));
         }
         Ok(None)
     }
@@ -248,11 +250,11 @@ impl Parser
         Ok(None)
     }
 
-    fn try_parse_vformat(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
+    fn try_parse_vformat(&mut self, token: &Token) -> Result<Option<tree::Struct>, Error>
     {
         if token == &Token::Vformat {
             let st = self.parse_struct()?;
-            return Ok(Some(tree::Root::VertexFormat(st)));
+            return Ok(Some(st));
         }
         Ok(None)
     }
@@ -336,46 +338,49 @@ impl Parser
         Ok(tree::VariableList { name, vars })
     }
 
-    fn try_parse_pipeline(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
+    fn try_parse_pipeline(&mut self, token: &Token) -> Result<Option<tree::VariableList>, Error>
     {
         if token == &Token::Pipeline {
             let varlist = self.parse_varlist()?;
-            return Ok(Some(tree::Root::Pipeline(varlist)));
+            return Ok(Some(varlist));
         }
         Ok(None)
     }
 
-    fn try_parse_blendfunc(&mut self, token: &Token) -> Result<Option<tree::Root>, Error>
+    fn try_parse_blendfunc(&mut self, token: &Token) -> Result<Option<tree::VariableList>, Error>
     {
         if token == &Token::Blendfunc {
             let varlist = self.parse_varlist()?;
-            return Ok(Some(tree::Root::Blendfunc(varlist)));
+            return Ok(Some(varlist));
         }
         Ok(None)
     }
 
-    pub fn parse(&mut self) -> Result<Vec<tree::Root>, Error>
+    pub fn parse<V: Visitor>(&mut self, mut visitor: V) -> Result<V, ParserOrVisitor<V::Error>>
     {
-        let mut dfj = Vec::new();
-
         while let Some(v) = self.tokens.pop_front() {
-            if let Some(elem) = self.try_parse_use(&v.token)? {
-                dfj.push(elem);
-            } else if let Some(elem) = self.try_parse_output(&v.token)? {
-                dfj.push(elem);
-            } else if let Some(elem) = self.try_parse_vformat(&v.token)? {
-                dfj.push(elem);
-            } else if let Some(elem) = self.try_parse_pipeline(&v.token)? {
-                dfj.push(elem);
-            } else if let Some(elem) = self.try_parse_blendfunc(&v.token)? {
-                dfj.push(elem);
-            } else if let Some(elem) = self.try_parse_const(&v.token)? {
-                dfj.push(elem);
+            if let Some(elem) = self.try_parse_use(&v.token).map_err(ParserOrVisitor::Parser)? {
+                visitor.visit_use(elem).map_err(ParserOrVisitor::Visitor)?;
+            } else if let Some(elem) = self.try_parse_output(&v.token).map_err(ParserOrVisitor::Parser)? {
+                visitor.visit_output(elem).map_err(ParserOrVisitor::Visitor)?;
+            } else if let Some(elem) = self.try_parse_vformat(&v.token).map_err(ParserOrVisitor::Parser)? {
+                visitor.visit_vertex_format(elem).map_err(ParserOrVisitor::Visitor)?;
+            } else if let Some(elem) = self.try_parse_pipeline(&v.token).map_err(ParserOrVisitor::Parser)? {
+                visitor.visit_pipeline(elem).map_err(ParserOrVisitor::Visitor)?;
+            } else if let Some(elem) = self.try_parse_blendfunc(&v.token).map_err(ParserOrVisitor::Parser)? {
+                visitor.visit_blendfunc(elem).map_err(ParserOrVisitor::Visitor)?;
+            } else if let Some(elem) = self.try_parse_const(&v.token).map_err(ParserOrVisitor::Parser)? {
+                match elem {
+                    tree::Root::Constant(elem) => visitor.visit_constant(elem),
+                    tree::Root::ConstantBuffer(elem) => visitor.visit_constant_buffer(elem),
+                    //SAFETY: this can't be reached as try_parse_const returns either constant or constant buffer
+                    _ => unsafe { std::hint::unreachable_unchecked() }
+                }.map_err(ParserOrVisitor::Visitor)?;
             } else {
-                return Err(Error::new(v.line, v.col, Type::UnknownToken(v.token)));
+                return Err(ParserOrVisitor::Parser(Error::new(v.line, v.col, Type::UnknownToken(v.token))));
             }
         }
-        Ok(dfj)
+        Ok(visitor)
     }
 }
 
@@ -384,6 +389,7 @@ mod tests
 {
     use super::*;
     use crate::parser::tree::{Property, Root, Struct, Use, Value, Variable, VariableList};
+    use crate::parser::VecVisitor;
 
     #[test]
     fn basic_parser()
@@ -402,7 +408,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
+        let roots = parser.parse(VecVisitor::new()).unwrap().into_inner();
         let expected_roots = vec![
             Root::Constant(Property {
                 pname: "DeltaTime".into(),
@@ -474,7 +480,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
+        let roots = parser.parse(VecVisitor::new()).unwrap().into_inner();
         let expected_roots = vec![
             Root::Constant(Property {
                 pname: "BaseSampler".into(),
@@ -539,7 +545,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
+        let roots = parser.parse(VecVisitor::new()).unwrap().into_inner();
         let expected_roots = vec![
             Root::ConstantBuffer(Struct {
                 name: "Light".into(),
@@ -595,7 +601,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
+        let roots = parser.parse(VecVisitor::new()).unwrap().into_inner();
         let expected_roots = vec![Root::Output(Property {
             pname: "FragColor".into(),
             ptype: "vec4f".into(),
@@ -619,7 +625,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
+        let roots = parser.parse(VecVisitor::new()).unwrap().into_inner();
         let expected_roots = vec![Root::VertexFormat(Struct {
             name: "Vertex".into(),
             attr: None,
@@ -644,7 +650,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
+        let roots = parser.parse(VecVisitor::new()).unwrap().into_inner();
         let expected_roots = vec![Root::Use(Use {
             member: "test".into(),
             module: "module".into()
@@ -668,7 +674,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
+        let roots = parser.parse(VecVisitor::new()).unwrap().into_inner();
         let expected_roots = vec![Root::Pipeline(VariableList {
             name: "Test".into(),
             vars: vec![
@@ -712,7 +718,7 @@ mod tests
         let mut lexer = Lexer::new();
         lexer.process(source_code).unwrap();
         let mut parser = Parser::new(lexer);
-        let roots = parser.parse().unwrap();
+        let roots = parser.parse(VecVisitor::new()).unwrap().into_inner();
         let expected_roots = vec![Root::Pipeline(VariableList {
             name: "Test".into(),
             vars: vec![

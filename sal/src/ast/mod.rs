@@ -33,4 +33,4 @@ pub mod tree;
 
 pub use interface::*;
 
-pub use self::core::build_ast;
+pub use self::core::AstBuilder;

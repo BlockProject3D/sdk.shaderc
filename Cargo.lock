@@ -1187,6 +1187,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "shaderd"
+version = "0.1.0"
+dependencies = [
+ "bpx",
+]
+
+[[package]]
 name = "shaderl"
 version = "0.1.0"
 
