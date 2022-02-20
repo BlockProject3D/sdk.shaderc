@@ -26,7 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use sal::ast::tree::{BaseType, BlendFactor, BlendfuncStatement, BlendOperator, VectorType};
+use sal::ast::tree::{BaseType, BlendFactor, BlendOperator, VectorType};
 use serde::Serialize;
 use serde::Deserialize;
 use crate::targets::basic::ext_data::ToObject;

@@ -26,15 +26,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//TODO: Write the function to compile constant buffers and optimize layout for std140
-
 use std::borrow::Cow;
 use std::collections::HashSet;
 use log::{debug, error};
 use sal::ast::tree::{ArrayItemType, Property, PropertyType, Struct, VectorType};
 use crate::options::Error;
 use crate::targets::basic::{Slot, StmtDecomposition};
-use crate::targets::layout140::{offset_of, size_of};
 
 fn get_char(v: VectorType) -> char
 {
@@ -147,7 +144,6 @@ fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct
     } else {
         str = String::from("layout (std140) uniform __Root {");
     }
-    let mut last_offset: usize = 0;
     let last_used_prop = root_constants_layout.props.iter().rfind(|p| {
         if consts.iter().any(|v| &v.inner == *p) {
             true
@@ -156,23 +152,12 @@ fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct
         }
     }).unwrap(); //SAFETY: unwrap cannot fail otherwise their exists no constants in the root constant buffer
     // but in this case the very first if block in this function would have triggered
-    for (i, v) in root_constants_layout.props.iter().enumerate() {
+    for v in root_constants_layout.props.iter() {
         str.push_str(&translate_property(v));
         //No more root constants in the root constants layout are used in the shader: stop generation
         if v == last_used_prop {
             break;
         }
-        /*if consts.iter().any(|p| p.inner.pname == v.pname) {
-            let offset = offset_of(v, root_constants_layout);
-            let size = size_of(&v.ptype);
-            let padding_size = (offset - last_offset) / 16; //obtain number of vec4f to pad
-            debug!("Property '{}': offset = {}, size = {}", v.pname, offset, size);
-            if padding_size > 0 {
-                str.push_str(&format!("vec4 __padding{}__[{}];", i, padding_size));
-            }
-            last_offset = offset + size;
-            str.push_str(&translate_property(v));
-        }*/
     }
     str.push_str("};");
     str

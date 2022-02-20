@@ -97,27 +97,6 @@ pub fn array_size_of(p: &ArrayItemType) -> usize
     }
 }
 
-pub fn offset_of(c: &Property, layout: &Struct) -> usize
-{
-    let mut flag = false;
-    let mut offset: usize = 0;
-    for v in &layout.props {
-        let size = size_of(&v.ptype);
-        if size == 0 {
-            warn!("Property '{}' in layout '{}' is zero-sized!", c.pname, layout.name);
-        }
-        if v.pname == c.pname {
-            flag = true;
-            break;
-        }
-        offset += size;
-    }
-    if !flag {
-        warn!("Unable to locate property '{}' in layout '{}'", c.pname, layout.name);
-    }
-    offset
-}
-
 pub struct Offset<T>
 {
     pub inner: T,

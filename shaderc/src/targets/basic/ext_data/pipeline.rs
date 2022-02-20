@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use serde::{Serialize, Deserialize};
-use sal::ast::tree::{BlendFactor, BlendOperator, CullingMode, PipelineStatement, RenderMode};
+use sal::ast::tree::{CullingMode, PipelineStatement, RenderMode};
 use crate::targets::basic::ext_data::ToObject;
 
 #[derive(Serialize, Deserialize)]
