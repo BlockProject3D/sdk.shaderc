@@ -31,7 +31,7 @@ mod targets;
 
 use std::{borrow::Cow, path::Path};
 
-use clap::{App, Arg};
+use clap::{Arg, Command};
 use log::{debug, error, info, LevelFilter};
 use phf::phf_map;
 
@@ -58,12 +58,9 @@ fn transform_output(path: &Path) -> Cow<Path>
 fn main()
 {
     //Initialize bp3d-logger
-    bp3d_logger::disable_log_buffer();
-    let mut logger = bp3d_logger::Logger::new();
-    logger.add_stdout();
-    logger.add_file("bp3d-sdk");
-    bp3d_logger::init(logger);
-    let matches = App::new("shaderc")
+    let guard = bp3d_logger::Logger::new().add_stdout().add_file("bp3d-sdk").build();
+    guard.start();
+    let matches = Command::new("shaderc")
         .author("BlockProject 3D")
         .about("BlockProject 3D SDK - Shader Compiler")
         .version("1.0.0")
@@ -75,9 +72,9 @@ fn main()
             Arg::new("print_targets").long("--targets")
                 .help("Print all available shader package targets"),
             Arg::new("output").short('o').long("output").takes_value(true)
-                .help("Output shader package file name"),
+                .allow_invalid_utf8(true).help("Output shader package file name"),
             Arg::new("lib").short('l').long("lib").takes_value(true).multiple_occurrences(true)
-                .help("Specify one or more shader libs to use"),
+                .allow_invalid_utf8(true).help("Specify one or more shader libs to use"),
             Arg::new("injection").short('i').long("inject").takes_value(true).multiple_occurrences(true)
                 .help("Inject a shader contained in one of the linked libs such that it will always be included in the compilation"),
             Arg::new("threads").short('n').long("threads").takes_value(true)
@@ -88,7 +85,8 @@ fn main()
                 .help("For supported targets, builds shaders with debug info"),
             Arg::new("optimize").short('O').long("optimize")
                 .help("For supported targets, builds shaders with optimizations"),
-            Arg::new("shader").multiple_values(true).help("List of shader files to process")
+            Arg::new("shader").multiple_values(true).allow_invalid_utf8(true)
+                .help("List of shader files to process")
         ]).get_matches();
     let verbosity = matches.occurrences_of("verbose");
     match verbosity {
