@@ -186,14 +186,16 @@ dependencies = [
 
 [[package]]
 name = "bpx"
-version = "4.0.0-beta-2"
+version = "4.0.0-beta-5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "851316892613dd9ec398a567813461a00fbf95211e1030831db16d451ec39b28"
+checksum = "cf2a0a669b8723f38ac139b946635447e1eb20fa70869cbb32e10b154d697d9a"
 dependencies = [
  "byteorder",
+ "elsa",
  "libz-sys",
  "lzma-sys",
  "num_cpus",
+ "once_cell",
  "serde",
  "tempfile",
 ]
@@ -339,6 +341,15 @@ name = "easy-parallel"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6907e25393cdcc1f4f3f513d9aac1e840eb1cc341a0fccb01171f7d14d10b946"
+
+[[package]]
+name = "elsa"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "348b451f939db7ec8fb01068d419a2354d76386596d5e4e025ab50bdd9e5c480"
+dependencies = [
+ "stable_deref_trait",
+]
 
 [[package]]
 name = "enumflags2"
@@ -1133,6 +1144,7 @@ name = "shaderd"
 version = "0.1.0"
 dependencies = [
  "bpx",
+ "clap",
 ]
 
 [[package]]
@@ -1160,6 +1172,12 @@ dependencies = [
  "libc",
  "winapi",
 ]
+
+[[package]]
+name = "stable_deref_trait"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "static_assertions"
