@@ -35,21 +35,18 @@ use std::{
 
 use bpx::macros::impl_err_conversion;
 use bpx::package::Package;
-use bpx::utils::OptionExtension;
 
 #[derive(Debug)]
 pub enum Error
 {
     Io(std::io::Error),
-    Bpx(bpx::package::error::ReadError),
-    Strings(bpx::strings::ReadError)
+    Bpx(bpx::package::error::Error)
 }
 
 impl_err_conversion!(
     Error {
         std::io::Error => Io,
-        bpx::package::error::ReadError => Bpx,
-        bpx::strings::ReadError => Strings
+        bpx::package::error::Error => Bpx
     }
 );
 
@@ -59,8 +56,8 @@ impl Display for Error
     {
         match self {
             Error::Io(e) => write!(f, "io error: {}", e),
-            Error::Bpx(e) => write!(f, "bpx error: {}", e),
-            Error::Strings(e) => write!(f, "strings error: {}", e)
+            Error::Bpx(e) => write!(f, "bpx error: {}", e)//,
+            //Error::Strings(e) => write!(f, "strings error: {}", e)
         }
     }
 }
@@ -81,10 +78,12 @@ impl ShaderLibDecoder
         })
     }
 
-    pub fn try_load(&mut self, name: &str) -> Result<Option<Vec<u8>>, Error>
+    pub fn try_load(&self, name: &str) -> Result<Option<Vec<u8>>, Error>
     {
         let mut data = Vec::new();
-        if let Some(_) = self.package.unpack(name, &mut data)? {
+        let objects = self.package.objects()?;
+        if let Some(obj) = objects.find(name)? {
+            objects.load(obj, &mut data)?;
             Ok(Some(data))
         } else {
             Ok(None)
@@ -107,7 +106,10 @@ impl<'a> ShaderLib<'a>
 
     pub fn try_load(&mut self, name: &str) -> Result<Option<Vec<u8>>, Error>
     {
-        let val = self.decoder.get_or_insert_with_err(|| ShaderLibDecoder::new(self.path))?;
+        if self.decoder.is_none() {
+            self.decoder = Some(ShaderLibDecoder::new(self.path)?);
+        }
+        let val = unsafe { self.decoder.as_ref().unwrap_unchecked() };
         val.try_load(name)
     }
 }

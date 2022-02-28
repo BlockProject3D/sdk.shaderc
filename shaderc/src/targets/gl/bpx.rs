@@ -234,8 +234,9 @@ pub fn write_bpx(path: &Path, syms: Symbols, shaders: Vec<ShaderBytes>, args: &A
     write_outputs(&mut writer, syms.outputs, syms.blendfuncs, args.debug)?;
     write_root_constants(&mut writer, syms.root_constant_layout, args.debug)?;
     bpx = writer.into_inner();
+    let mut tbl = bpx.shaders_mut();
     for stage in shaders {
-        bpx.add_shader(shader::Shader {
+        tbl.create(shader::Shader {
             stage: stage.stage,
             data: stage.data
         })?;

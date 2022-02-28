@@ -69,9 +69,11 @@ pub fn build(args: Args) -> Result<(), Error>
                 }
             },
             ShaderUnit::Injected(vname) => {
+                let mut objects = bpxp.objects_mut()
+                    .ok_or(bpx::package::error::Error::Open(bpx::core::error::OpenError::SectionNotLoaded))?;
                 for v in &mut libs {
                     if let Some(data) = v.try_load(vname)? {
-                        bpxp.pack(vname, data.as_slice())?;
+                        objects.create(vname, data.as_slice())?;
                     }
                 }
             },

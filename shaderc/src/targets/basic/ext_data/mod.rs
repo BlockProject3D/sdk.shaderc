@@ -65,10 +65,13 @@ impl<T: std::io::Write + std::io::Seek> SymbolWriter<T> {
         }
     }
 
-    pub fn write(&mut self, builder: bpx::shader::symbol::Builder) -> Result<(), bpx::shader::error::WriteError> {
+    pub fn write(&mut self, builder: bpx::shader::symbol::Builder) -> bpx::shader::Result<()> {
         let s = builder.build();
-        self.map.insert(s.name.clone(), self.inner.get_symbol_count());
-        self.inner.add_symbol(s)?;
+        let name = s.name.clone();
+        let mut symbols = self.inner.symbols_mut()
+            .ok_or(bpx::shader::error::Error::Open(bpx::core::error::OpenError::SectionNotLoaded))?;
+        let index = symbols.create(s)?;
+        self.map.insert(name, index as _);
         Ok(())
     }
 
