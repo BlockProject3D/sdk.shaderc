@@ -29,9 +29,8 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufWriter;
-use std::path::Path;
 use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, PropertyType, Struct};
-use crate::options::{Args, Error};
+use crate::options::Error;
 use crate::targets::basic::ext_data::{BlendfuncObject, ConstantObject, ConstPropType, OutputObject, OutputPropType, SymbolWriter, ToObject};
 use crate::targets::gl::core::{Object, ShaderBytes, Symbols};
 use bpx::shader;
@@ -219,21 +218,21 @@ fn write_root_constants(bpx: &mut SymbolWriter<BufWriter<File>>, root_constants_
     Ok(())
 }
 
-pub fn write_bpx(path: &Path, syms: Symbols, shaders: Vec<ShaderBytes>, args: &Args) -> Result<(), Error>
+pub fn write_bpx(bpx: ShaderPack<BufWriter<File>>, syms: Symbols, shaders: Vec<ShaderBytes>, debug: bool) -> Result<(), Error>
 {
-    let mut bpx = ShaderPack::create(BufWriter::new(File::create(path)?),
+    /*let mut bpx = ShaderPack::create(BufWriter::new(File::create(path)?),
                                      shader::Builder::new()
                                          .ty(shader::Type::Pipeline)
-                                         .target(shader::Target::GL42));
+                                         .target(tg));*/
     let mut writer = SymbolWriter::new(bpx);
-    write_objects(&mut writer, syms.objects, args.debug)?;
-    write_packed_structs(&mut writer, syms.packed_structs, args.debug)?;
-    write_cbuffers(&mut writer, syms.cbuffers, args.debug)?;
-    write_vformat(&mut writer, syms.vformat, args.debug)?;
-    write_pipeline(&mut writer, syms.pipeline, args.debug)?;
-    write_outputs(&mut writer, syms.outputs, syms.blendfuncs, args.debug)?;
-    write_root_constants(&mut writer, syms.root_constant_layout, args.debug)?;
-    bpx = writer.into_inner();
+    write_objects(&mut writer, syms.objects, debug)?;
+    write_packed_structs(&mut writer, syms.packed_structs, debug)?;
+    write_cbuffers(&mut writer, syms.cbuffers, debug)?;
+    write_vformat(&mut writer, syms.vformat, debug)?;
+    write_pipeline(&mut writer, syms.pipeline, debug)?;
+    write_outputs(&mut writer, syms.outputs, syms.blendfuncs, debug)?;
+    write_root_constants(&mut writer, syms.root_constant_layout, debug)?;
+    let mut bpx = writer.into_inner();
     let mut tbl = bpx.shaders_mut();
     for stage in shaders {
         tbl.create(shader::Shader {

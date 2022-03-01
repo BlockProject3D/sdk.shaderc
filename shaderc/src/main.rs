@@ -143,6 +143,7 @@ fn main()
         let target = matches.value_of("target").unwrap();
         debug!("Target chosen: {}", target);
         if let Some(func) = TARGETS.get(target) {
+            info!("Building for target: {}...", target);
             if let Err(e) = func(args) {
                 error!("{}", e.into_inner());
                 std::process::exit(1);

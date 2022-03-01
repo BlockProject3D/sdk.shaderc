@@ -33,5 +33,47 @@ pub mod ext_data;
 mod shader_to_sal;
 mod sal_compiler;
 
+use std::collections::BTreeMap;
+use bpx::shader::Stage;
+use log::info;
 pub use shader_to_sal::*;
 pub use sal_compiler::*;
+use crate::options::{Args, Error};
+
+pub trait Target
+{
+    type CompileOutput;
+
+    fn pre_process(&self, args: &Args) -> Result<BTreeMap<Stage, ShaderStage>, Error> {
+        info!("Running initial shader decomposition phase...");
+        let shaders = decompose_pass(&args)?;
+        info!("Merging shader stages");
+        let stages = merge_stages(shaders)?;
+        info!("Testing SAL symbols...");
+        test_symbols(&stages)?;
+        Ok(stages)
+    }
+
+    fn relocate_bindings(&self, stages: &mut BTreeMap<Stage, ShaderStage>) -> Result<(), Error>;
+
+    fn test_bindings(&self, stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error>;
+
+    fn compile_link(&self, args: &Args, stages: BTreeMap<Stage, ShaderStage>) -> Result<Self::CompileOutput, Error>;
+
+    fn write_finish(&self, args: &Args, out: Self::CompileOutput) -> Result<(), Error>;
+
+    fn run(&self, args: &Args) -> Result<(), Error> {
+        info!("Applying pre-processor...");
+        let mut stages = self.pre_process(args)?;
+        info!("Applying binding relocations...");
+        self.relocate_bindings(&mut stages)?;
+        info!("Testing binding relocations...");
+        self.test_bindings(&stages)?;
+        info!("Compiling and linking...");
+        let out = self.compile_link(args, stages)?;
+        info!("Writing {}...", args.output.display());
+        self.write_finish(args, out)?;
+        info!("Shader pack built: {}", args.output.display());
+        Ok(())
+    }
+}

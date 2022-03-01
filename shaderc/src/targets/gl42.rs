@@ -26,38 +26,17 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use log::info;
+use bpx::shader::Target::GL42;
 use crate::options::{Args, Error};
-use crate::targets::basic::{decompose_pass, merge_stages, test_symbols};
-use crate::targets::gl::bindings::{gl_relocate_bindings, gl_test_bindings};
-use crate::targets::gl::bpx::write_bpx;
-use crate::targets::gl::core::{compile_stages, EnvInfo, gl_link_shaders};
+use crate::targets::basic::Target;
+use crate::targets::gl::{EnvInfo, GlTarget};
 
 pub fn build(args: Args) -> Result<(), Error>
 {
-    info!("Running initial shader decomposition phase...");
-    let shaders = decompose_pass(&args)?;
-    info!("Merging shader stages");
-    let mut stages = merge_stages(shaders)?;
-    info!("Testing SAL symbols...");
-    test_symbols(&stages)?;
-    info!("Applying binding relocations...");
-    gl_relocate_bindings(&mut stages);
-    info!("Testing binding relocations...");
-    gl_test_bindings(&stages)?;
-    let (syms, shaders) = rglslang::main(|| {
-        let env = EnvInfo {
-            gl_version_int: 420,
-            gl_version_str: "4.2",
-            explicit_bindings: true
-        };
-        info!("Compiling shaders...");
-        let output = compile_stages(&env, &args, stages)?; //We have a problem rust does not allow passing the error back to the build function
-        info!("Linking shaders...");
-        gl_link_shaders(&args, output)
-    })?;
-    info!("Writing {}...", args.output.display());
-    write_bpx(args.output, syms, shaders, &args)?;
-    info!("Shader pack built: {}", args.output.display());
-    Ok(())
+    let target = GlTarget::new(EnvInfo {
+        gl_version_int: 420,
+        gl_version_str: "4.2",
+        explicit_bindings: true
+    }, GL42);
+    target.run(&args)
 }

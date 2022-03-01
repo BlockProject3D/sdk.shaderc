@@ -26,6 +26,68 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod core;
-pub mod bindings;
-pub mod bpx;
+mod core;
+mod bindings;
+mod bpx;
+
+pub use self::core::EnvInfo;
+
+use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::BufWriter;
+use ::bpx::shader::{ShaderPack, Stage};
+use log::info;
+use crate::options::{Args, Error};
+use crate::targets::basic::{ShaderStage, Target};
+use crate::targets::gl::bindings::{gl_relocate_bindings, gl_test_bindings};
+use crate::targets::gl::core::ShaderBytes;
+
+use self::core::Symbols;
+use self::core::compile_stages;
+use self::core::gl_link_shaders;
+use self::bpx::write_bpx;
+
+pub struct GlTarget
+{
+    env: EnvInfo,
+    bpx_target: ::bpx::shader::Target
+}
+
+impl GlTarget {
+    pub fn new(env: EnvInfo, bpx_target: ::bpx::shader::Target) -> GlTarget {
+        GlTarget {
+            env,
+            bpx_target
+        }
+    }
+}
+
+impl Target for GlTarget {
+    type CompileOutput = (Symbols, Vec<ShaderBytes>);
+
+    fn relocate_bindings(&self, stages: &mut BTreeMap<Stage, ShaderStage>) -> Result<(), Error> {
+        gl_relocate_bindings(stages);
+        Ok(())
+    }
+
+    fn test_bindings(&self, stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error> {
+        gl_test_bindings(stages)
+    }
+
+    fn compile_link(&self, args: &Args, stages: BTreeMap<Stage, ShaderStage>) -> Result<Self::CompileOutput, Error> {
+        rglslang::main(|| {
+            info!("Compiling shaders...");
+            let output = compile_stages(&self.env, &args, stages)?;
+            info!("Linking shaders...");
+            gl_link_shaders(&args, output)
+        })
+    }
+
+    fn write_finish(&self, args: &Args, (symbols, shaders): Self::CompileOutput) -> Result<(), Error> {
+        let bpx = ShaderPack::create(BufWriter::new(File::create(args.output)?),
+                                         ::bpx::shader::Builder::new()
+                                             .ty(::bpx::shader::Type::Pipeline)
+                                             .target(self.bpx_target));
+        write_bpx(bpx, symbols, shaders, args.debug)
+    }
+}

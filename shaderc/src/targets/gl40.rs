@@ -26,12 +26,11 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use log::info;
+use bpx::shader::Target::GL40;
 use crate::options::{Args, Error};
-use crate::targets::basic::{decompose_pass, merge_stages, test_symbols};
-use crate::targets::gl::bindings::{gl_relocate_bindings, gl_test_bindings};
-use crate::targets::gl::bpx::write_bpx;
-use crate::targets::gl::core::{compile_stages, EnvInfo, gl_link_shaders};
+use crate::targets::basic::Target;
+use crate::targets::gl::EnvInfo;
+use crate::targets::gl::GlTarget;
 
 //TODO: At shader initialization, procedure for each binding:
 // - glUseProgram(prog)
@@ -41,29 +40,10 @@ use crate::targets::gl::core::{compile_stages, EnvInfo, gl_link_shaders};
 
 pub fn build(args: Args) -> Result<(), Error>
 {
-    info!("Running initial shader decomposition phase...");
-    let shaders = decompose_pass(&args)?;
-    info!("Merging shader stages");
-    let mut stages = merge_stages(shaders)?;
-    info!("Testing SAL symbols...");
-    test_symbols(&stages)?;
-    info!("Applying binding relocations...");
-    gl_relocate_bindings(&mut stages);
-    info!("Testing binding relocations...");
-    gl_test_bindings(&stages)?;
-    let (syms, shaders) = rglslang::main(|| {
-        let env = EnvInfo {
-            gl_version_int: 400,
-            gl_version_str: "4.0",
-            explicit_bindings: false
-        };
-        info!("Compiling shaders...");
-        let output = compile_stages(&env, &args, stages)?; //We have a problem rust does not allow passing the error back to the build function
-        info!("Linking shaders...");
-        gl_link_shaders(&args, output)
-    })?;
-    info!("Writing {}...", args.output.display());
-    write_bpx(args.output, syms, shaders, &args)?;
-    info!("Shader pack built: {}", args.output.display());
-    Ok(())
+    let target = GlTarget::new(EnvInfo {
+        gl_version_int: 400,
+        gl_version_str: "4.0",
+        explicit_bindings: false
+    }, GL40);
+    target.run(&args)
 }
