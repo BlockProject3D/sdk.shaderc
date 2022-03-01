@@ -26,32 +26,42 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use serde::{Serialize, Deserialize};
-use sal::ast::tree::{CullingMode, PipelineStatement, RenderMode};
-use crate::targets::basic::ext_data::ToObject;
+use serde::Deserialize;
+use serde::Serialize;
+use bp3d_sal::ast::tree::{BaseType, Struct, VectorType};
 
 #[derive(Serialize, Deserialize)]
-pub struct PipelineObject
+pub enum ArrayItemType
 {
-    pub depth_enable: bool,
-    pub depth_write_enable: bool,
-    pub scissor_enable: bool,
-    pub render_mode: RenderMode,
-    pub culling_mode: CullingMode
+    Vector(VectorType),
+    Matrix(VectorType),
+    StructRef(u16), //Index of referenced symbol in symbol table.
 }
 
-impl ToObject for PipelineStatement
+#[derive(Serialize, Deserialize)]
+pub enum PropType
 {
-    type Object = PipelineObject;
-    type Context = ();
-
-    fn to_object(self, _: &Self::Context) -> Option<Self::Object> {
-        Some(PipelineObject {
-            depth_enable: self.depth_enable,
-            depth_write_enable: self.depth_write_enable,
-            scissor_enable: self.scissor_enable,
-            render_mode: self.render_mode,
-            culling_mode: self.culling_mode
-        })
+    Scalar(BaseType),
+    Vector(VectorType),
+    Matrix(VectorType),
+    StructRef(u16), //Index of referenced symbol in symbol table.
+    Array {
+        size: u32,
+        ty: ArrayItemType
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PropObject
+{
+    pub name: String,
+    pub offset: u32,
+    pub ty: PropType
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct StructObject
+{
+    pub size: u32,
+    pub props: Vec<PropObject>
 }

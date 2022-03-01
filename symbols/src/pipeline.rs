@@ -26,51 +26,15 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use serde::Deserialize;
-use serde::Serialize;
-use super::ToObject;
-use sal::ast::tree::{PropertyType, TextureType};
+use serde::{Serialize, Deserialize};
+use bp3d_sal::ast::tree::{CullingMode, RenderMode};
 
-#[derive(Deserialize, Serialize)]
-pub enum TextureObjectType
+#[derive(Serialize, Deserialize)]
+pub struct PipelineObject
 {
-    T3D,
-    T2D,
-    T2DArray,
-    TCube
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct TextureObject
-{
-    pub ty: TextureObjectType,
-    pub value: TextureType
-}
-
-impl ToObject for PropertyType
-{
-    type Object = TextureObject;
-    type Context = ();
-
-    fn to_object(self, _: &()) -> Option<Self::Object> {
-        match self {
-            PropertyType::Texture2D(value) => Some(TextureObject {
-                ty: TextureObjectType::T2D,
-                value
-            }),
-            PropertyType::Texture3D(value) => Some(TextureObject {
-                ty: TextureObjectType::T3D,
-                value
-            }),
-            PropertyType::Texture2DArray(value) => Some(TextureObject {
-                ty: TextureObjectType::T2DArray,
-                value
-            }),
-            PropertyType::TextureCube(value) => Some(TextureObject {
-                ty: TextureObjectType::TCube,
-                value
-            }),
-            _ => None
-        }
-    }
+    pub depth_enable: bool,
+    pub depth_write_enable: bool,
+    pub scissor_enable: bool,
+    pub render_mode: RenderMode,
+    pub culling_mode: CullingMode
 }

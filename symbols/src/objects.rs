@@ -1,4 +1,4 @@
-// Copyright (c) 2022, BlockProject 3D
+// Copyright (c) 2021, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -26,32 +26,22 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use sal::ast::tree::{BaseType, VectorType};
-use serde::Serialize;
 use serde::Deserialize;
-use crate::targets::basic::ext_data::ToObject;
+use serde::Serialize;
+use bp3d_sal::ast::tree::TextureType;
 
-#[derive(Serialize, Deserialize)]
-pub enum ConstPropType
+#[derive(Deserialize, Serialize)]
+pub enum TextureObjectType
 {
-    Vector(VectorType),
-    Scalar(BaseType),
-    Matrix(VectorType)
+    T3D,
+    T2D,
+    T2DArray,
+    TCube
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct ConstantObject
+#[derive(Deserialize, Serialize)]
+pub struct TextureObject
 {
-    pub ty: ConstPropType,
-    pub offset: u32,
-    pub size: u32
-}
-
-impl ToObject for ConstantObject {
-    type Object = Self;
-    type Context = ();
-
-    fn to_object(self, _: &Self::Context) -> Option<Self::Object> {
-        Some(self)
-    }
+    pub ty: TextureObjectType,
+    pub value: TextureType
 }

@@ -26,41 +26,22 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use sal::ast::tree::{BaseType, BlendFactor, BlendOperator, VectorType};
 use serde::Serialize;
 use serde::Deserialize;
-use crate::targets::basic::ext_data::ToObject;
-
-#[derive(Clone, Serialize, Deserialize)]
-pub struct BlendfuncObject
-{
-    pub src_color: BlendFactor,
-    pub dst_color: BlendFactor,
-    pub src_alpha: BlendFactor,
-    pub dst_alpha: BlendFactor,
-    pub color_op: BlendOperator,
-    pub alpha_op: BlendOperator
-}
+use bp3d_sal::ast::tree::{BaseType, VectorType};
 
 #[derive(Serialize, Deserialize)]
-pub enum OutputPropType
+pub enum ConstPropType
 {
     Vector(VectorType),
-    Scalar(BaseType)
+    Scalar(BaseType),
+    Matrix(VectorType)
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct OutputObject
+pub struct ConstantObject
 {
-    pub blendfunc: Option<BlendfuncObject>,
-    pub ty: OutputPropType
-}
-
-impl ToObject for OutputObject {
-    type Object = Self;
-    type Context = ();
-
-    fn to_object(self, _: &Self::Context) -> Option<Self::Object> {
-        Some(self)
-    }
+    pub ty: ConstPropType,
+    pub offset: u32,
+    pub size: u32
 }
