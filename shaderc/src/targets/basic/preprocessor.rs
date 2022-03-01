@@ -31,7 +31,7 @@ use std::fmt::{Display, Formatter};
 
 use bpx::{macros::impl_err_conversion, shader::Stage};
 use log::{debug, trace};
-use sal::preprocessor::Handler;
+use bp3d_sal::preprocessor::Handler;
 
 use crate::targets::basic::shaderlib::ShaderLib;
 

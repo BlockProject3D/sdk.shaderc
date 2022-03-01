@@ -30,7 +30,7 @@ use std::{collections::HashMap, path::Path};
 
 use bpx::macros::impl_err_conversion;
 use log::debug;
-use sal::{
+use bp3d_sal::{
     ast::{tree::Statement, IgnoreUseResolver, UseResolver},
     utils::{auto_lexer_parser, AutoError}
 };
@@ -74,7 +74,7 @@ impl<'a> UseResolver for BasicUseResolver<'a>
 {
     type Error = Error;
 
-    fn resolve(&mut self, item: sal::parser::tree::Use) -> Result<Statement, Self::Error>
+    fn resolve(&mut self, item: bp3d_sal::parser::tree::Use) -> Result<Statement, Self::Error>
     {
         if !self.modules.contains_key(&item.module) {
             let mut flag = false;

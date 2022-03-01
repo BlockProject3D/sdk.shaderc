@@ -28,7 +28,7 @@
 
 use serde::Deserialize;
 use serde::Serialize;
-use bp3d_sal::ast::tree::{BaseType, Struct, VectorType};
+use bp3d_sal::ast::tree::{BaseType, VectorType};
 
 #[derive(Serialize, Deserialize)]
 pub enum ArrayItemType

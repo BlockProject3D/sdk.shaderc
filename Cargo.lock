@@ -187,6 +187,11 @@ dependencies = [
 [[package]]
 name = "bp3d-symbols"
 version = "0.1.0"
+dependencies = [
+ "bp3d-sal",
+ "bpx",
+ "serde",
+]
 
 [[package]]
 name = "bp3d-threads"
@@ -1132,6 +1137,7 @@ version = "0.1.0"
 dependencies = [
  "bp3d-logger",
  "bp3d-sal",
+ "bp3d-symbols",
  "bp3d-threads",
  "bpx",
  "clap",

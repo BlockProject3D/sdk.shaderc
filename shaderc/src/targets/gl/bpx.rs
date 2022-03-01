@@ -29,14 +29,15 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufWriter;
-use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, PropertyType, Struct};
+use bp3d_sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, PropertyType, Struct};
 use crate::options::Error;
-use crate::targets::basic::ext_data::{BlendfuncObject, ConstantObject, ConstPropType, OutputObject, OutputPropType, SymbolWriter, ToObject};
+use bp3d_symbols::{BlendfuncObject, ConstantObject, ConstPropType, OutputObject, OutputPropType};
 use crate::targets::gl::core::{Object, ShaderBytes, Symbols};
 use bpx::shader;
 use bpx::shader::{ShaderPack, Stage};
 use log::{error, warn};
 use crate::targets::basic::Slot;
+use crate::targets::gl::ext_data::{SymbolWriter, ToObject};
 use crate::targets::layout140::StructOffset;
 
 fn write_objects(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<Property>>, debug: bool) -> Result<(), Error>
@@ -68,7 +69,7 @@ fn write_objects(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<Pr
         } else {
             builder.internal(); //Local binding (goes in the local descriptor set)
         }
-        crate::targets::basic::ext_data::append_stages!(sym > builder);
+        crate::targets::gl::ext_data::append_stages!(sym > builder);
         bpx.write(builder)?;
     }
     Ok(())
@@ -111,7 +112,7 @@ fn write_cbuffers(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<S
         if let Some(obj) = sym.inner.inner.to_bpx_object(debug, bpx)? {
             builder.extended_data(obj);
         }
-        crate::targets::basic::ext_data::append_stages!(sym > builder);
+        crate::targets::gl::ext_data::append_stages!(sym > builder);
         bpx.write(builder)?;
     }
     Ok(())

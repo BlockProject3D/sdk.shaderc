@@ -29,7 +29,7 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 use log::{debug, error};
-use sal::ast::tree::{ArrayItemType, Property, PropertyType, Struct, VectorType};
+use bp3d_sal::ast::tree::{ArrayItemType, Property, PropertyType, Struct, VectorType};
 use crate::options::Error;
 use crate::targets::basic::{Slot, StmtDecomposition};
 

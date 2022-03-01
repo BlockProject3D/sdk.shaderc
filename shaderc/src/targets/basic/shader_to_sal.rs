@@ -32,13 +32,13 @@ use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use bpx::shader::Stage;
 use log::warn;
-use sal::ast::tree::{Attribute, BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
-use sal::utils::auto_lexer_parser;
+use bp3d_sal::ast::tree::{Attribute, BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
+use bp3d_sal::utils::auto_lexer_parser;
 use crate::options::{Args, Error, ShaderUnit};
 use crate::targets::basic::preprocessor::BasicPreprocessor;
 use crate::targets::basic::shaderlib::ShaderLib;
 use crate::targets::basic::useresolver::BasicUseResolver;
-use sal::preprocessor;
+use bp3d_sal::preprocessor;
 
 pub struct ShaderToSal
 {

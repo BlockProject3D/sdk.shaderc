@@ -32,7 +32,7 @@ use bpx::shader::Stage;
 use log::{debug, error, info, trace, warn};
 use rglslang::environment::{Client, Environment};
 use rglslang::shader::{Messages, Profile, Shader};
-use sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, Struct};
+use bp3d_sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, Struct};
 use crate::options::{Args, Error};
 use crate::targets::basic::{get_root_constants_layout, ShaderStage, Slot};
 use crate::targets::layout140::{compile_packed_structs, compile_struct, StructOffset};

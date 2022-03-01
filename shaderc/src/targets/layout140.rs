@@ -29,7 +29,7 @@
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use log::{error, warn};
-use sal::ast::tree::{ArrayItemType, Attribute, BaseType, Property, PropertyType, Struct};
+use bp3d_sal::ast::tree::{ArrayItemType, Attribute, BaseType, Property, PropertyType, Struct};
 use crate::options::Error;
 
 // STD140 layout rules for paddings

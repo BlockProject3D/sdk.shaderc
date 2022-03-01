@@ -30,7 +30,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
 use log::{debug, error, info, warn};
-use sal::ast::tree::{Attribute, PropertyType, Struct};
+use bp3d_sal::ast::tree::{Attribute, PropertyType, Struct};
 use crate::options::{Args, Error};
 use crate::targets::basic::{decompose_statements, load_shader_to_sal, StmtDecomposition};
 

@@ -29,6 +29,7 @@
 mod core;
 mod bindings;
 mod bpx;
+mod ext_data;
 
 pub use self::core::EnvInfo;
 
