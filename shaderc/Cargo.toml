@@ -10,7 +10,7 @@ edition = "2021"
 clap = "3.1.0"
 regex = "1.4.5"
 rglslang = { path = "../rglslang" }
-sal = { path = "../sal" }
+bp3d-sal = { path = "../sal" }
 phf = { version = "0.8", features = ["macros"] }
 bpx = { version = "4.0.0-beta-6.0.1", features = ["package", "shader", "serde"] }
 serde = { version = "1.0", features = ["derive"] }

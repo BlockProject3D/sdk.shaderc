@@ -1,7 +1,14 @@
 [package]
-name = "sal"
+name = "bp3d-sal"
 version = "0.1.0"
+authors = ["Yuri Edward <yuri6037@outlook.com>"]
 edition = "2021"
+description = "Shader annotation language lexer and parser."
+license = "BSD-3-Clause"
+repository = "https://gitlab.com/bp3d/sdk/shader-compiler"
+readme = "./README.MD"
+keywords = ["bp3d", "sal"]
+categories = ["game-engines", "game-development"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

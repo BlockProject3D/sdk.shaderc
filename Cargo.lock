@@ -175,6 +175,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "bp3d-sal"
+version = "0.1.0"
+dependencies = [
+ "phf 0.8.0",
+ "proptest",
+ "regex",
+ "serde",
+]
+
+[[package]]
+name = "bp3d-symbols"
+version = "0.1.0"
+
+[[package]]
 name = "bp3d-threads"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1049,16 +1063,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sal"
-version = "0.1.0"
-dependencies = [
- "phf 0.8.0",
- "proptest",
- "regex",
- "serde",
-]
-
-[[package]]
 name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1127,6 +1131,7 @@ name = "shaderc"
 version = "0.1.0"
 dependencies = [
  "bp3d-logger",
+ "bp3d-sal",
  "bp3d-threads",
  "bpx",
  "clap",
@@ -1135,7 +1140,6 @@ dependencies = [
  "phf 0.8.0",
  "regex",
  "rglslang",
- "sal",
  "serde",
 ]
 
