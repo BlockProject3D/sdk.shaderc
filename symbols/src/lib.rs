@@ -32,8 +32,27 @@ mod pipeline;
 mod outputs;
 mod constants;
 
+use bpx::sd::serde::EnumSize;
+use serde::{Deserialize, Serialize};
 pub use objects::*;
 pub use structs::*;
 pub use pipeline::*;
 pub use outputs::*;
 pub use constants::*;
+
+pub trait ToBpx
+    where Self: Serialize
+{
+    fn to_bpx(&self, debug: bool) -> Result<bpx::sd::Value, bpx::sd::serde::Error> {
+        self.serialize(bpx::sd::serde::Serializer::new(EnumSize::U8, debug))
+    }
+}
+
+pub trait FromBpx
+    where Self: Deserialize<'static>
+{
+    fn from_bpx(val: &bpx::sd::Value) -> Result<Self, bpx::sd::serde::Error> {
+        let deserializer = bpx::sd::serde::Deserializer::new_borrowed(EnumSize::U8, val);
+        Self::deserialize(deserializer)
+    }
+}

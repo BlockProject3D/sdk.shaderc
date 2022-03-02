@@ -29,6 +29,7 @@
 use bp3d_sal::ast::tree::{BaseType, BlendFactor, BlendOperator, VectorType};
 use serde::Serialize;
 use serde::Deserialize;
+use crate::ToBpx;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct BlendfuncObject
@@ -55,3 +56,4 @@ pub struct OutputObject
     pub ty: OutputPropType
 }
 
+impl ToBpx for OutputObject {}

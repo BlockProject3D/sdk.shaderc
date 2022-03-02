@@ -29,6 +29,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 use bp3d_sal::ast::tree::{BaseType, VectorType};
+use crate::ToBpx;
 
 #[derive(Serialize, Deserialize)]
 pub enum ArrayItemType
@@ -65,3 +66,5 @@ pub struct StructObject
     pub size: u32,
     pub props: Vec<PropObject>
 }
+
+impl ToBpx for StructObject {}

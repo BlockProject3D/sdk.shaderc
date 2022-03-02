@@ -28,6 +28,7 @@
 
 use serde::{Serialize, Deserialize};
 use bp3d_sal::ast::tree::{CullingMode, RenderMode};
+use crate::ToBpx;
 
 #[derive(Serialize, Deserialize)]
 pub struct PipelineObject
@@ -38,3 +39,5 @@ pub struct PipelineObject
     pub render_mode: RenderMode,
     pub culling_mode: CullingMode
 }
+
+impl ToBpx for PipelineObject {}

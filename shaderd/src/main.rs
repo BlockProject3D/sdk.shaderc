@@ -88,8 +88,8 @@ fn show_symbol(path: &Path, name: &str) -> Result<(), Error>
             if sym.flags & FLAG_EXTENDED_DATA != 0 {
                 println!();
                 println!("==> Extended data <==");
-                let obj = symbols.load_extended_data(sym).map_err(Error::Bpx)?;
-                println!("{}", obj.format(IndentType::Spaces, 4));
+                let val = symbols.load_extended_data(sym).map_err(Error::Bpx)?;
+                println!("{}", val.as_object().unwrap().format(IndentType::Spaces, 4));
             }
             return Ok(())
         }

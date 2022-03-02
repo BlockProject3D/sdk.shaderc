@@ -29,6 +29,7 @@
 use serde::Serialize;
 use serde::Deserialize;
 use bp3d_sal::ast::tree::{BaseType, VectorType};
+use crate::ToBpx;
 
 #[derive(Serialize, Deserialize)]
 pub enum ConstPropType
@@ -45,3 +46,5 @@ pub struct ConstantObject
     pub offset: u32,
     pub size: u32
 }
+
+impl ToBpx for ConstantObject {}

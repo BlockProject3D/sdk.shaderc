@@ -61,9 +61,7 @@ fn write_objects(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<Pr
                 return Err(Error::new("unsupported object type"));
             }
         };
-        if let Some(val) = sym.inner.inner.ptype.to_bpx_object(debug, &())? {
-            builder.extended_data(val);
-        }
+        builder.extended_data(sym.inner.inner.ptype.to_bpx_object(debug, &())?);
         if sym.inner.explicit.get() {
             builder.external(); //Global binding (goes in the global descriptor set)
         } else {
@@ -81,10 +79,10 @@ fn write_packed_structs(bpx: &mut SymbolWriter<BufWriter<File>>, structs: Vec<St
         //Unfortunately we must clone because rust is unable to see that sym.name is not used by
         // to_bpx_object...
         let mut builder = shader::symbol::Builder::new(sym.name.clone());
-        builder.ty(shader::symbol::Type::ConstantBuffer).internal();
-        if let Some(obj) = sym.to_bpx_object(debug, bpx)? {
-            builder.extended_data(obj);
-        }
+        builder
+            .ty(shader::symbol::Type::ConstantBuffer)
+            .internal()
+            .extended_data(sym.to_bpx_object(debug, bpx)?);
         bpx.write(builder)?;
     }
     Ok(())
@@ -103,14 +101,14 @@ fn write_cbuffers(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<S
         } else if slot > 16 {
             warn!("This shader needs more than 16 bindings, this may not work on all hardware");
         }
-        builder.register(slot as _).ty(shader::symbol::Type::ConstantBuffer);
+        builder
+            .register(slot as _)
+            .ty(shader::symbol::Type::ConstantBuffer)
+            .extended_data(sym.inner.inner.to_bpx_object(debug, bpx)?);
         if sym.inner.explicit.get() {
             builder.external();
         } else {
             builder.internal();
-        }
-        if let Some(obj) = sym.inner.inner.to_bpx_object(debug, bpx)? {
-            builder.extended_data(obj);
         }
         crate::targets::gl::ext_data::append_stages!(sym > builder);
         bpx.write(builder)?;
@@ -124,10 +122,10 @@ fn write_vformat(bpx: &mut SymbolWriter<BufWriter<File>>, vformat: Option<Struct
         //Unfortunately we must clone because rust is unable to see that sym.name is
         // not used by to_bpx_object...
         let mut builder = shader::symbol::Builder::new(sym.name.clone());
-        builder.external().ty(shader::symbol::Type::VertexFormat);
-        if let Some(obj) = sym.to_bpx_object(debug, &())? {
-            builder.extended_data(obj);
-        }
+        builder
+            .external()
+            .ty(shader::symbol::Type::VertexFormat)
+            .extended_data(sym.to_bpx_object(debug, &())?);
         bpx.write(builder)?;
     } else {
         warn!("No vertex format was found in shader pack build");
@@ -141,10 +139,10 @@ fn write_pipeline(bpx: &mut SymbolWriter<BufWriter<File>>, pipeline: Option<Pipe
         //Unfortunately we must clone because rust is unable to see that sym.name is
         // not used by to_bpx_object...
         let mut builder = shader::symbol::Builder::new(sym.name.clone());
-        builder.internal().ty(shader::symbol::Type::Pipeline);
-        if let Some(obj) = sym.to_bpx_object(debug, &())? {
-            builder.extended_data(obj);
-        }
+        builder
+            .internal()
+            .ty(shader::symbol::Type::Pipeline)
+            .extended_data(sym.to_bpx_object(debug, &())?);
         bpx.write(builder)?;
     } else {
         warn!("No pipeline was found in shader pack build");
@@ -188,8 +186,11 @@ fn write_outputs(bpx: &mut SymbolWriter<BufWriter<File>>, outputs: Vec<Slot<Prop
             }
         };
         let mut builder = shader::symbol::Builder::new(sym.inner.pname);
-        builder.internal().ty(shader::symbol::Type::Output).register(sym.slot.get() as _);
-        builder.extended_data(output.to_bpx_object(debug, &())?.unwrap());
+        builder
+            .internal()
+            .ty(shader::symbol::Type::Output)
+            .register(sym.slot.get() as _)
+            .extended_data(output.to_bpx_object(debug, &())?);
         bpx.write(builder)?;
     }
     Ok(())
@@ -213,7 +214,7 @@ fn write_root_constants(bpx: &mut SymbolWriter<BufWriter<File>>, root_constants_
                 }
             }
         };
-        builder.extended_data(obj.to_bpx_object(debug, &())?.unwrap());
+        builder.extended_data(obj.to_bpx_object(debug, &())?);
         bpx.write(builder)?;
     }
     Ok(())

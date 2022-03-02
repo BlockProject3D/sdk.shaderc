@@ -27,9 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashMap;
-use bpx::sd::serde::EnumSize;
 use bpx::shader::ShaderPack;
-use serde::Serialize;
 
 pub struct SymbolWriter<T: std::io::Write + std::io::Seek>
 {
@@ -93,20 +91,17 @@ use crate::targets::layout140::{size_of_base_type, StructOffset};
 
 pub trait ToObject<T = ()> where Self: Sized
 {
-    type Object: Serialize;
+    type Object: bp3d_symbols::ToBpx;
     type Context;
 
     fn to_object(self, ctx: &Self::Context) -> Option<Self::Object>;
 
-    fn to_bpx_object(self, debug: bool, ctx: &Self::Context) -> Result<Option<bpx::sd::Object>, bpx::sd::serde::Error>
-    {
-        let obj = self.to_object(ctx);
-        let res = obj.map(|v| v.serialize(bpx::sd::serde::Serializer::new(EnumSize::U8, debug)));
-        let res = match res {
-            Some(v) => Some(v?.try_into().unwrap()),
-            None => None
-        };
-        Ok(res)
+    fn to_bpx_object(self, debug: bool, ctx: &Self::Context) -> Result<bpx::sd::Value, bpx::sd::serde::Error> {
+        use bp3d_symbols::ToBpx;
+        match self.to_object(ctx) {
+            None => Ok(bpx::sd::Value::Null),
+            Some(v) => v.to_bpx(debug)
+        }
     }
 }
 
