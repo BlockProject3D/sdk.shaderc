@@ -55,11 +55,8 @@ fn transform_output(path: &Path) -> Cow<Path>
     }
 }
 
-fn main()
+fn run() -> i32
 {
-    //Initialize bp3d-logger
-    let guard = bp3d_logger::Logger::new().add_stdout().add_file("bp3d-sdk").build();
-    guard.start();
     let matches = Command::new("shaderc")
         .author("BlockProject 3D")
         .about("BlockProject 3D SDK - Shader Compiler")
@@ -107,6 +104,7 @@ fn main()
             }
         }
         println!();
+        0
     } else {
         let mut units: Vec<options::ShaderUnit> = matches
             .values_of_os("shader")
@@ -146,11 +144,20 @@ fn main()
             info!("Building for target: {}...", target);
             if let Err(e) = func(args) {
                 error!("{}", e.into_inner());
-                std::process::exit(1);
+                1
+            } else {
+                0
             }
         } else {
             error!("Target not found: {}", target);
-            std::process::exit(3);
+            3
         }
     }
+}
+
+fn main()
+{
+    //Initialize bp3d-logger
+    let code = bp3d_logger::Logger::new().add_stdout().add_file("bp3d-sdk").run(run);
+    std::process::exit(code);
 }

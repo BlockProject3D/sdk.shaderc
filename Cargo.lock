@@ -150,13 +150,15 @@ checksum = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 [[package]]
 name = "bp3d-fs"
 version = "1.0.0"
-source = "git+https://gitlab.com/bp3d/fs.git#1006096ca8a83c11f53e25388c6c2170e538f840"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b676ba7b2332b27f81acc0aed5808a587dfe0198d28307c100d750aac6d5b106"
 dependencies = [
  "cfg-if",
  "dunce",
  "libc",
  "objc",
  "objc-foundation",
+ "once_cell",
  "os_str_bytes",
  "windows-sys 0.30.0",
  "zbus",
@@ -164,12 +166,26 @@ dependencies = [
 
 [[package]]
 name = "bp3d-logger"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bp3d-fs",
  "crossbeam-channel",
- "lazy_static",
  "log",
+ "once_cell",
+ "time",
+ "time-tz",
+]
+
+[[package]]
+name = "bp3d-logger"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6e29aeca0d60a4543139c3b9e6148481c8f6992337c0b637775cc851176a33b"
+dependencies = [
+ "bp3d-fs",
+ "crossbeam-channel",
+ "log",
+ "once_cell",
  "time",
  "time-tz",
 ]
@@ -690,9 +706,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.9.0"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
+checksum = "87f3e037eac156d1775da914196f0f37741a274155e34a0b7e427c35d2a2ecb9"
 
 [[package]]
 name = "ordered-stream"
@@ -1135,7 +1151,7 @@ checksum = "ae1a47186c03a32177042e55dbc5fd5aee900b8e0069a8d70fba96a9375cd012"
 name = "shaderc"
 version = "0.1.0"
 dependencies = [
- "bp3d-logger",
+ "bp3d-logger 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bp3d-sal",
  "bp3d-symbols",
  "bp3d-threads",
@@ -1160,6 +1176,11 @@ dependencies = [
 [[package]]
 name = "shaderl"
 version = "0.1.0"
+dependencies = [
+ "bp3d-logger 1.0.0",
+ "bp3d-symbols",
+ "bpx",
+]
 
 [[package]]
 name = "siphasher"
