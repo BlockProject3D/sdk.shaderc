@@ -35,6 +35,9 @@ use clap::{Arg, Command};
 use log::{debug, error, info, LevelFilter};
 use phf::phf_map;
 
+const PROG_NAME: &str = env!("CARGO_PKG_NAME");
+const PROG_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 static TARGETS: phf::Map<&'static str, options::TargetFunc> = phf_map! {
     "LIB" => targets::lib::build,
     "GL40" => targets::gl40::build,
@@ -57,10 +60,10 @@ fn transform_output(path: &Path) -> Cow<Path>
 
 fn run() -> i32
 {
-    let matches = Command::new("shaderc")
+    let matches = Command::new(PROG_NAME)
         .author("BlockProject 3D")
         .about("BlockProject 3D SDK - Shader Compiler")
-        .version("1.0.0")
+        .version(PROG_VERSION)
         .args([
             Arg::new("verbose").short('v').long("verbose").multiple_occurrences(true)
                 .help("Enable verbose output"),
