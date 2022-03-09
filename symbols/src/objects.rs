@@ -29,7 +29,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 use bp3d_sal::ast::tree::TextureType;
-use crate::ToBpx;
+use crate::{FromBpx, ToBpx};
 
 #[derive(Deserialize, Serialize)]
 pub enum TextureObjectType
@@ -48,3 +48,4 @@ pub struct TextureObject
 }
 
 impl ToBpx for TextureObject {}
+impl FromBpx for TextureObject {}
