@@ -26,13 +26,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::Debug;
 use crate::parser::tree::{Property, Struct, Use, VariableList};
 use super::tree;
 
 pub trait Visitor
 {
-    type Error: Debug;
+    type Error;
     fn visit_constant(&mut self, val: tree::Property) -> Result<(), Self::Error>;
     fn visit_constant_buffer(&mut self, val: tree::Struct) -> Result<(), Self::Error>;
     fn visit_output(&mut self, val: tree::Property) -> Result<(), Self::Error>;

@@ -56,17 +56,17 @@ impl Display for ValueType
 }
 
 #[derive(Clone, Debug)]
-pub enum TypeError
+pub enum TypeError<T>
 {
     AttributeOrder(ParseIntError),
     VectorSize(ParseIntError),
     UnknownVector(String),
     UnknownTexture(String),
     Unknown(String),
-    Banned(ast::PropertyType)
+    Banned(ast::PropertyType<T>)
 }
 
-impl Display for TypeError
+impl<T: Display> Display for TypeError<T>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
     {
@@ -106,22 +106,22 @@ impl Display for ValueError
 }
 
 #[derive(Clone, Debug)]
-pub enum Error<ResolverError: Debug>
+pub enum Error<T, E>
 {
-    Type(TypeError),
+    Type(TypeError<T>),
     Value(ValueError),
-    UnresolvedUse(ResolverError)
+    Visitor(E)
 }
 
-impl<ResolverError: Debug> From<TypeError> for Error<ResolverError>
+impl<T, E> From<TypeError<T>> for Error<T, E>
 {
-    fn from(e: TypeError) -> Self
+    fn from(e: TypeError<T>) -> Self
     {
         Self::Type(e)
     }
 }
 
-impl<ResolverError: Debug> From<ValueError> for Error<ResolverError>
+impl<T, E> From<ValueError> for Error<T, E>
 {
     fn from(e: ValueError) -> Self
     {
@@ -129,14 +129,14 @@ impl<ResolverError: Debug> From<ValueError> for Error<ResolverError>
     }
 }
 
-impl<ResolverError: Debug> Display for Error<ResolverError>
+impl<T: Display, E: Debug> Display for Error<T, E>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
     {
         match self {
             Error::Type(e) => write!(f, "type error: {}", e),
             Error::Value(e) => write!(f, "value error: {}", e),
-            Error::UnresolvedUse(e) => write!(f, "resolver error: {:?}", e),
+            Error::Visitor(e) => write!(f, "visitor error: {:?}", e)
         }
     }
 }

@@ -87,7 +87,7 @@ impl Display for Error
 }
 
 #[derive(Debug)]
-pub enum ParserOrVisitor<T: Debug>
+pub enum ParserOrVisitor<T>
 {
     Parser(Error),
     Visitor(T)

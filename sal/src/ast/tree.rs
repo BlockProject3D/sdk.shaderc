@@ -84,14 +84,16 @@ pub enum TextureType
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ArrayItemType
+pub enum ArrayItemType<T>
 {
     Vector(VectorType),
     Matrix(VectorType),
-    StructRef(String)
+    StructRef(T)
 }
 
-impl Display for ArrayItemType
+impl<T: Copy> Copy for ArrayItemType<T> {}
+
+impl<T: Display> Display for ArrayItemType<T>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
     {
@@ -104,14 +106,16 @@ impl Display for ArrayItemType
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ArrayType
+pub struct ArrayType<T>
 {
     pub size: u32,
-    pub item: ArrayItemType
+    pub item: ArrayItemType<T>
 }
 
+impl<T: Copy> Copy for ArrayType<T> {}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PropertyType
+pub enum PropertyType<T>
 {
     Scalar(BaseType),
     Vector(VectorType),
@@ -121,11 +125,13 @@ pub enum PropertyType
     Texture3D(TextureType),
     Texture2DArray(TextureType),
     TextureCube(TextureType),
-    StructRef(String),
-    Array(ArrayType)
+    StructRef(T),
+    Array(ArrayType<T>)
 }
 
-impl Display for PropertyType
+impl<T: Copy> Copy for PropertyType<T> {}
+
+impl<T: Display> Display for PropertyType<T>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
     {
@@ -171,19 +177,19 @@ impl Attribute
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Property
+pub struct Property<T = String>
 {
-    pub ptype: PropertyType,
+    pub ptype: PropertyType<T>,
     pub pname: String,
     pub pattr: Option<Attribute>
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Struct
+pub struct Struct<T = String>
 {
     pub name: String,
     pub attr: Option<Attribute>,
-    pub props: Vec<Property>
+    pub props: Vec<Property<T>>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -287,18 +293,18 @@ impl VarlistStatement for BlendfuncStatement
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Statement
+pub enum Statement<T = String>
 {
-    Constant(Property),
-    ConstantBuffer(Struct),
-    Output(Property),
-    VertexFormat(Struct),
+    Constant(Property<T>),
+    ConstantBuffer(Struct<T>),
+    Output(Property<T>),
+    VertexFormat(Struct<T>),
     Pipeline(PipelineStatement),
     Blendfunc(BlendfuncStatement),
     Noop // Used to represent a statement to ignore in the parse tree
 }
 
-impl Statement
+impl<T> Statement<T>
 {
     pub fn get_name(&self) -> Option<&str>
     {

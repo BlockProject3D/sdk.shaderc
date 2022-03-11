@@ -26,37 +26,21 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::Debug;
+use crate::ast::tree::{BlendfuncStatement, PipelineStatement, Property, Struct};
 
-use crate::{ast::tree::Statement, parser::tree::Use};
-
-pub trait UseResolver
-{
-    type Error: Debug;
-
-    fn resolve(&mut self, item: Use) -> Result<Statement, Self::Error>;
+pub trait RefResolver {
+    type Key;
+    fn resolve_struct_ref(&self, name: &str) -> Option<Self::Key>;
 }
 
-impl<T> UseResolver for &mut T
-where
-    T: UseResolver
-{
-    type Error = T::Error;
-
-    fn resolve(&mut self, item: Use) -> Result<Statement, Self::Error>
-    {
-        (**self).resolve(item)
-    }
-}
-
-pub struct IgnoreUseResolver {}
-
-impl UseResolver for IgnoreUseResolver
-{
-    type Error = ();
-
-    fn resolve(&mut self, _: Use) -> Result<Statement, Self::Error>
-    {
-        Ok(Statement::Noop)
-    }
+pub trait Visitor<A: RefResolver> {
+    type Error;
+    fn visit_constant(&mut self, ast: &mut A, val: Property<A::Key>) -> Result<(), Self::Error>;
+    fn visit_output(&mut self, ast: &mut A, val: Property<A::Key>) -> Result<(), Self::Error>;
+    fn visit_constant_buffer(&mut self, ast: &mut A, val: Struct<A::Key>) -> Result<(), Self::Error>;
+    fn visit_vertex_format(&mut self, ast: &mut A, val: Struct<A::Key>) -> Result<(), Self::Error>;
+    fn visit_pipeline(&mut self, ast: &mut A, val: PipelineStatement) -> Result<(), Self::Error>;
+    fn visit_blendfunc(&mut self, ast: &mut A, val: BlendfuncStatement) -> Result<(), Self::Error>;
+    fn visit_noop(&mut self, ast: &mut A) -> Result<(), Self::Error>;
+    fn visit_use(&mut self, ast: &mut A, module: String, member: String) -> Result<(), Self::Error>;
 }
