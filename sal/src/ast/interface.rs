@@ -44,3 +44,39 @@ pub trait Visitor<A: RefResolver> {
     fn visit_noop(&mut self, ast: &mut A) -> Result<(), Self::Error>;
     fn visit_use(&mut self, ast: &mut A, module: String, member: String) -> Result<(), Self::Error>;
 }
+
+impl<'a, A: RefResolver, T: Visitor<A>> Visitor<A> for &'a mut T {
+    type Error = T::Error;
+
+    fn visit_constant(&mut self, ast: &mut A, val: Property<A::Key>) -> Result<(), Self::Error> {
+        (*self).visit_constant(ast, val)
+    }
+
+    fn visit_output(&mut self, ast: &mut A, val: Property<A::Key>) -> Result<(), Self::Error> {
+        (*self).visit_output(ast, val)
+    }
+
+    fn visit_constant_buffer(&mut self, ast: &mut A, val: Struct<A::Key>) -> Result<(), Self::Error> {
+        (*self).visit_constant_buffer(ast, val)
+    }
+
+    fn visit_vertex_format(&mut self, ast: &mut A, val: Struct<A::Key>) -> Result<(), Self::Error> {
+        (*self).visit_vertex_format(ast, val)
+    }
+
+    fn visit_pipeline(&mut self, ast: &mut A, val: PipelineStatement) -> Result<(), Self::Error> {
+        (*self).visit_pipeline(ast, val)
+    }
+
+    fn visit_blendfunc(&mut self, ast: &mut A, val: BlendfuncStatement) -> Result<(), Self::Error> {
+        (*self).visit_blendfunc(ast, val)
+    }
+
+    fn visit_noop(&mut self, ast: &mut A) -> Result<(), Self::Error> {
+        (*self).visit_noop(ast)
+    }
+
+    fn visit_use(&mut self, ast: &mut A, module: String, member: String) -> Result<(), Self::Error> {
+        (*self).visit_use(ast, module, member)
+    }
+}

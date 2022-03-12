@@ -41,6 +41,38 @@ pub trait Visitor
     fn visit_blendfunc(&mut self, val: tree::VariableList) -> Result<(), Self::Error>;
 }
 
+impl<'a, T: Visitor> Visitor for &'a mut T {
+    type Error = T::Error;
+
+    fn visit_constant(&mut self, val: Property) -> Result<(), Self::Error> {
+        (*self).visit_constant(val)
+    }
+
+    fn visit_constant_buffer(&mut self, val: Struct) -> Result<(), Self::Error> {
+        (*self).visit_constant_buffer(val)
+    }
+
+    fn visit_output(&mut self, val: Property) -> Result<(), Self::Error> {
+        (*self).visit_output(val)
+    }
+
+    fn visit_vertex_format(&mut self, val: Struct) -> Result<(), Self::Error> {
+        (*self).visit_vertex_format(val)
+    }
+
+    fn visit_use(&mut self, val: Use) -> Result<(), Self::Error> {
+        (*self).visit_use(val)
+    }
+
+    fn visit_pipeline(&mut self, val: VariableList) -> Result<(), Self::Error> {
+        (*self).visit_pipeline(val)
+    }
+
+    fn visit_blendfunc(&mut self, val: VariableList) -> Result<(), Self::Error> {
+        (*self).visit_blendfunc(val)
+    }
+}
+
 pub struct VecVisitor
 {
     tree: Vec<tree::Root>
