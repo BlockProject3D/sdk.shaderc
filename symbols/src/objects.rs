@@ -31,7 +31,7 @@ use serde::Serialize;
 use bp3d_sal::ast::tree::TextureType;
 use crate::{FromBpx, ToBpx};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Copy, Clone, Deserialize, Serialize)]
 pub enum TextureObjectType
 {
     T3D,
@@ -40,7 +40,7 @@ pub enum TextureObjectType
     TCube
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Copy, Clone, Deserialize, Serialize)]
 pub struct TextureObject
 {
     pub ty: TextureObjectType,

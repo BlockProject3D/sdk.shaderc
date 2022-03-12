@@ -31,7 +31,7 @@ use serde::Serialize;
 use bp3d_sal::ast::tree::{BaseType, VectorType};
 use crate::{FromBpx, ToBpx};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum ArrayItemType
 {
     Vector(VectorType),
@@ -39,7 +39,7 @@ pub enum ArrayItemType
     StructRef(u16), //Index of referenced symbol in symbol table.
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum PropType
 {
     Scalar(BaseType),
@@ -52,7 +52,7 @@ pub enum PropType
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PropObject
 {
     pub name: String,
@@ -60,7 +60,7 @@ pub struct PropObject
     pub ty: PropType
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct StructObject
 {
     pub size: u32,

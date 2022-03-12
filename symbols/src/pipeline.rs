@@ -30,7 +30,7 @@ use serde::{Serialize, Deserialize};
 use bp3d_sal::ast::tree::{CullingMode, RenderMode};
 use crate::{FromBpx, ToBpx};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct PipelineObject
 {
     pub depth_enable: bool,

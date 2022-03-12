@@ -31,7 +31,7 @@ use serde::Deserialize;
 use bp3d_sal::ast::tree::{BaseType, VectorType};
 use crate::{FromBpx, ToBpx};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum ConstPropType
 {
     Vector(VectorType),
@@ -39,7 +39,7 @@ pub enum ConstPropType
     Matrix(VectorType)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct ConstantObject
 {
     pub ty: ConstPropType,

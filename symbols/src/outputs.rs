@@ -31,7 +31,7 @@ use serde::Serialize;
 use serde::Deserialize;
 use crate::{FromBpx, ToBpx};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct BlendfuncObject
 {
     pub src_color: BlendFactor,
@@ -42,14 +42,14 @@ pub struct BlendfuncObject
     pub alpha_op: BlendOperator
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum OutputPropType
 {
     Vector(VectorType),
     Scalar(BaseType)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct OutputObject
 {
     pub blendfunc: Option<BlendfuncObject>,
