@@ -35,18 +35,17 @@ pub use self::core::EnvInfo;
 
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::BufWriter;
-use ::bpx::shader::{ShaderPack, Stage};
+use ::bpx::shader::Stage;
 use log::info;
 use crate::options::{Args, Error};
 use crate::targets::basic::{ShaderStage, Target};
 use crate::targets::gl::bindings::{gl_relocate_bindings, gl_test_bindings};
+use crate::targets::gl::bpx::BpxWriter;
 use crate::targets::gl::core::ShaderBytes;
 
 use self::core::Symbols;
 use self::core::compile_stages;
 use self::core::gl_link_shaders;
-use self::bpx::write_bpx;
 
 pub struct GlTarget
 {
@@ -85,10 +84,10 @@ impl Target for GlTarget {
     }
 
     fn write_finish(&self, args: &Args, (symbols, shaders): Self::CompileOutput) -> Result<(), Error> {
-        let bpx = ShaderPack::create(BufWriter::new(File::create(args.output)?),
-                                         ::bpx::shader::Builder::new()
-                                             .ty(::bpx::shader::Type::Pipeline)
-                                             .target(self.bpx_target));
-        write_bpx(bpx, symbols, shaders, args.debug)
+        let mut bpx = BpxWriter::new(File::create(args.output)?, self.bpx_target, args.debug);
+        bpx.write_symbols(symbols)?;
+        bpx.write_shaders(shaders)?;
+        bpx.save()?;
+        Ok(())
     }
 }
