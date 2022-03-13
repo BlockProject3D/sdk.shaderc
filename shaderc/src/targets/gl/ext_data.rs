@@ -87,6 +87,7 @@ macro_rules! append_stages {
 pub(crate) use append_stages;
 use bp3d_sal::ast::tree::{PipelineStatement, PropertyType, Struct};
 use bp3d_symbols::{ArrayItemType, ConstantObject, OutputObject, PipelineObject, PropObject, PropType, StructObject, TextureObject, TextureObjectType};
+use crate::targets::basic::Slot;
 use crate::targets::layout140::{size_of_base_type, StructOffset};
 
 pub trait ToObject<T = ()> where Self: Sized
@@ -186,19 +187,27 @@ impl PropTypeExt for PropType
     }
 }
 
-fn new_prop_type<T: std::io::Seek + std::io::Write>(prop: PropertyType<usize>, syms: &SymbolWriter<T>, packed_structs: &Vec<StructOffset>) -> PropType
+fn new_prop_type<T: std::io::Seek + std::io::Write>(prop: PropertyType<usize>, syms: &SymbolWriter<T>, packed_structs: &Vec<Slot<StructOffset>>) -> PropType
 {
     match prop {
         PropertyType::Scalar(v) => PropType::Scalar(v),
         PropertyType::Vector(v) => PropType::Vector(v),
         PropertyType::Matrix(v) => PropType::Matrix(v),
-        PropertyType::StructRef(v) => PropType::StructRef(syms.lookup(&packed_structs[v].name)),
+        PropertyType::StructRef(v) => {
+            let st = &packed_structs[v];
+            st.external.set(true);
+            PropType::StructRef(syms.lookup(&st.inner.name))
+        },
         PropertyType::Array(v) => PropType::Array {
             size: v.size,
             ty: match v.item {
                 bp3d_sal::ast::tree::ArrayItemType::Vector(v) => ArrayItemType::Vector(v),
                 bp3d_sal::ast::tree::ArrayItemType::Matrix(v) => ArrayItemType::Matrix(v),
-                bp3d_sal::ast::tree::ArrayItemType::StructRef(v) => ArrayItemType::StructRef(syms.lookup(&packed_structs[v].name))
+                bp3d_sal::ast::tree::ArrayItemType::StructRef(v) => {
+                    let st = &packed_structs[v];
+                    st.external.set(true);
+                    ArrayItemType::StructRef(syms.lookup(&st.inner.name))
+                }
             }
         },
         _ => unsafe { std::hint::unreachable_unchecked() } //That one should never trigger
@@ -221,9 +230,9 @@ fn new_prop_type_simple(prop: PropertyType<usize>) -> PropType
 impl<'a, T: 'a + std::io::Write + std::io::Seek> ToObject<T> for &'a StructOffset
 {
     type Object = StructObject;
-    type Context = (&'a SymbolWriter<T>, &'a Vec<StructOffset>);
+    type Context = (&'a SymbolWriter<T>, &'a Vec<Slot<StructOffset>>);
 
-    fn to_object(self, (syms, packed_structs): &(&'a SymbolWriter<T>, &'a Vec<StructOffset>)) -> Option<Self::Object> {
+    fn to_object(self, (syms, packed_structs): &(&'a SymbolWriter<T>, &'a Vec<Slot<StructOffset>>)) -> Option<Self::Object> {
         Some(StructObject {
             size: self.size as _,
             props: self.props.iter().map(|v| PropObject {

@@ -106,20 +106,24 @@ impl BpxWriter {
         Ok(())
     }
 
-    fn write_packed_structs(&self, bpx: &mut SymbolWriter<BufWriter<File>>, structs: &Vec<StructOffset>) -> Result<(), Error>
+    fn write_packed_structs(&self, bpx: &mut SymbolWriter<BufWriter<File>>, structs: &Vec<Slot<StructOffset>>) -> Result<(), Error>
     {
         for sym in structs {
-            let mut builder = shader::symbol::Builder::new(sym.name.clone());
+            let mut builder = shader::symbol::Builder::new(sym.inner.name.clone());
             builder
                 .ty(shader::symbol::Type::ConstantBuffer)
-                .internal()//TODO: Fixme cannot always be internal; internal only if referencing constant buffer is internal as well, otherwise external.
-                .extended_data(sym.to_bpx_object(self.debug, &(bpx, structs))?);
+                .extended_data(sym.inner.to_bpx_object(self.debug, &(bpx, structs))?);
+            if sym.external.get() {
+                builder.external();
+            } else {
+                builder.internal();
+            }
             bpx.write(builder)?;
         }
         Ok(())
     }
 
-    fn write_cbuffers(&self, bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<StructOffset>>, packed_structs: &Vec<StructOffset>) -> Result<(), Error>
+    fn write_cbuffers(&self, bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<StructOffset>>, packed_structs: &Vec<Slot<StructOffset>>) -> Result<(), Error>
     {
         for sym in objects {
             //Unfortunately we must clone because rust is unable to see that sym.inner.inner.name is
@@ -238,10 +242,11 @@ impl BpxWriter {
     pub fn write_symbols(&mut self, syms: Symbols) -> Result<(), Error> {
         //The unwrap should be fine because bpx is initialized in new.
         // This unwrap may panic if write_symbols panics before putting bpx back.
+        let packed_structs = syms.packed_structs.into_iter().map(Slot::new).collect();
         let mut writer = SymbolWriter::new(self.bpx.take().unwrap());
         self.write_objects(&mut writer, syms.objects)?;
-        self.write_packed_structs(&mut writer, &syms.packed_structs)?;
-        self.write_cbuffers(&mut writer, syms.cbuffers, &syms.packed_structs)?;
+        self.write_packed_structs(&mut writer, &packed_structs)?;
+        self.write_cbuffers(&mut writer, syms.cbuffers, &packed_structs)?;
         self.write_vformat(&mut writer, syms.vformat)?;
         self.write_pipeline(&mut writer, syms.pipeline)?;
         self.write_outputs(&mut writer, syms.outputs, syms.blendfuncs)?;
