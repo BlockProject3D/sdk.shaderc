@@ -32,15 +32,7 @@ use bpx::shader::Stage;
 use log::{debug, error, info, warn};
 use bp3d_sal::ast::tree::{Attribute, PropertyType, Struct};
 use crate::options::{Args, Error};
-use crate::targets::basic::{BasicAst, decompose_statements, load_shader_to_sal, ShaderToSal, StmtDecomposition};
-
-/*pub struct DecomposedShader
-{
-    pub name: String,
-    pub statements: StmtDecomposition,
-    pub strings: Vec<rglslang::shader::Part>,
-    pub stage: Stage
-}*/
+use crate::targets::basic::{BasicAst, load_shader_to_sal, ShaderToSal};
 
 pub struct ShaderStage
 {

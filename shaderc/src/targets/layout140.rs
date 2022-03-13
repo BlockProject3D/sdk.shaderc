@@ -26,12 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use log::{error, warn};
 use bp3d_sal::ast::tree::{ArrayItemType, Attribute, BaseType, Property, PropertyType, Struct};
 use crate::options::Error;
-use crate::targets::basic::BasicAst;
 
 // STD140 layout rules for paddings
 // https://www.khronos.org/registry/OpenGL/specs/gl/glspec46.core.pdf

@@ -35,7 +35,6 @@ use rglslang::shader::{Messages, Profile, Shader};
 use bp3d_sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, Struct};
 use crate::options::{Args, Error};
 use crate::targets::basic::{get_root_constants_layout, ShaderStage, Slot};
-use crate::targets::basic::ast::Ast;
 use crate::targets::layout140::{compile_packed_structs, compile_struct, StructOffset};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
 

@@ -73,7 +73,7 @@ fn write_objects(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<Pr
     Ok(())
 }
 
-fn write_packed_structs(bpx: &mut SymbolWriter<BufWriter<File>>, cbuffers: &Vec<Object<StructOffset>>, structs: &Vec<StructOffset>, debug: bool) -> Result<(), Error>
+fn write_packed_structs(bpx: &mut SymbolWriter<BufWriter<File>>, structs: &Vec<StructOffset>, debug: bool) -> Result<(), Error>
 {
     for sym in structs {
         //Unfortunately we must clone because rust is unable to see that sym.name is not used by
@@ -222,13 +222,9 @@ fn write_root_constants(bpx: &mut SymbolWriter<BufWriter<File>>, root_constants_
 
 pub fn write_bpx(bpx: ShaderPack<BufWriter<File>>, syms: Symbols, shaders: Vec<ShaderBytes>, debug: bool) -> Result<(), Error>
 {
-    /*let mut bpx = ShaderPack::create(BufWriter::new(File::create(path)?),
-                                     shader::Builder::new()
-                                         .ty(shader::Type::Pipeline)
-                                         .target(tg));*/
     let mut writer = SymbolWriter::new(bpx);
     write_objects(&mut writer, syms.objects, debug)?;
-    write_packed_structs(&mut writer, &syms.cbuffers, &syms.packed_structs, debug)?;
+    write_packed_structs(&mut writer, &syms.packed_structs, debug)?;
     write_cbuffers(&mut writer, syms.cbuffers, &syms.packed_structs, debug)?;
     write_vformat(&mut writer, syms.vformat, debug)?;
     write_pipeline(&mut writer, syms.pipeline, debug)?;

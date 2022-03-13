@@ -31,7 +31,7 @@ use std::collections::HashSet;
 use log::{debug, error};
 use bp3d_sal::ast::tree::{ArrayItemType, Property, PropertyType, Struct, VectorType};
 use crate::options::Error;
-use crate::targets::basic::{BasicAst, Slot, StmtDecomposition};
+use crate::targets::basic::{BasicAst, Slot};
 
 fn get_char(v: VectorType) -> char
 {
