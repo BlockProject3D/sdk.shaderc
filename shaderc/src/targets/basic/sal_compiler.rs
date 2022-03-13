@@ -32,19 +32,19 @@ use bpx::shader::Stage;
 use log::{debug, error, info, warn};
 use bp3d_sal::ast::tree::{Attribute, PropertyType, Struct};
 use crate::options::{Args, Error};
-use crate::targets::basic::{decompose_statements, load_shader_to_sal, StmtDecomposition};
+use crate::targets::basic::{BasicAst, decompose_statements, load_shader_to_sal, ShaderToSal, StmtDecomposition};
 
-pub struct DecomposedShader
+/*pub struct DecomposedShader
 {
     pub name: String,
     pub statements: StmtDecomposition,
     pub strings: Vec<rglslang::shader::Part>,
     pub stage: Stage
-}
+}*/
 
 pub struct ShaderStage
 {
-    pub statements: StmtDecomposition,
+    pub statements: BasicAst,
     pub strings: Vec<rglslang::shader::Part>
 }
 
@@ -56,26 +56,17 @@ pub enum BindingType
     CBuf
 }
 
-pub fn decompose_pass(args: &Args) -> Result<Vec<DecomposedShader>, Error>
+pub fn load_pass(args: &Args) -> Result<Vec<ShaderToSal>, Error>
 {
     let root = crossbeam::scope(|scope| {
         let mut root = Vec::new();
         let manager = ScopedThreadManager::new(scope);
-        let mut pool: ThreadPool<ScopedThreadManager, Result<DecomposedShader, Error>> = ThreadPool::new(args.n_threads);
+        let mut pool: ThreadPool<ScopedThreadManager, Result<ShaderToSal, Error>> = ThreadPool::new(args.n_threads);
         info!("Initialized thread pool with {} max thread(s)", args.n_threads);
         for unit in &args.units {
             pool.dispatch(&manager, |_| {
-                debug!("Loading SAL for shader unit {:?}...", *unit);
-                let res = load_shader_to_sal(unit, &args)?;
-                debug!("Decomposing SAL AST for shader unit {:?}...", *unit);
-                let sal = decompose_statements(res.statements)?;
-                let decomposed = DecomposedShader {
-                    name: res.name,
-                    statements: sal,
-                    strings: res.strings,
-                    stage: res.stage
-                };
-                Ok(decomposed)
+                debug!("Loading SAL AST for shader unit {:?}...", *unit);
+                load_shader_to_sal(unit, &args)
             });
             debug!("Dispatch shader unit {:?}", unit);
         }
@@ -92,7 +83,7 @@ pub fn decompose_pass(args: &Args) -> Result<Vec<DecomposedShader>, Error>
     Ok(vec)
 }
 
-pub fn merge_stages(shaders: Vec<DecomposedShader>) -> Result<BTreeMap<Stage, ShaderStage>, Error>
+pub fn merge_stages(shaders: Vec<ShaderToSal>) -> Result<BTreeMap<Stage, ShaderStage>, Error>
 {
     let mut map = BTreeMap::new();
     for v in shaders {
@@ -104,7 +95,7 @@ pub fn merge_stages(shaders: Vec<DecomposedShader>) -> Result<BTreeMap<Stage, Sh
         } else {
             let stage = map.get_mut(&v.stage).unwrap();
             stage.strings.extend(v.strings);
-            stage.statements.extend(v.statements)?;
+            stage.statements.extend(v.statements);
         }
     }
     Ok(map)
@@ -118,7 +109,7 @@ pub fn relocate_bindings<'a, F: FnMut(&'a str, BindingType, Option<u32>, u32) ->
             let mut cbuf_func = || {
                 if let Some(attr) = &v.inner.attr {
                     if let Attribute::Order(slot) = attr {
-                        v.explicit.set(true);
+                        v.external.set(true);
                         return func(&v.inner.name, BindingType::CBuf, Some(*slot), v.slot.get());
                     }
                 }
@@ -138,7 +129,7 @@ pub fn relocate_bindings<'a, F: FnMut(&'a str, BindingType, Option<u32>, u32) ->
             let mut prop_func = |t: BindingType| {
                 if let Some(attr) = &v.inner.pattr {
                     if let Attribute::Order(slot) = attr {
-                        v.explicit.set(true);
+                        v.external.set(true);
                         return func(&v.inner.pname, t, Some(*slot), v.slot.get());
                     }
                 }
@@ -218,7 +209,7 @@ pub fn test_symbols(stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
     Ok(())
 }
 
-pub fn get_root_constants_layout(stages: &mut BTreeMap<Stage, ShaderStage>) -> Result<Struct, Error>
+pub fn get_root_constants_layout(stages: &mut BTreeMap<Stage, ShaderStage>) -> Result<Struct<usize>, Error>
 {
     let root_constants_layout = stages.iter_mut().find(|(_, v)| {
         if let Some(_) = &v.statements.root_constants_layout {

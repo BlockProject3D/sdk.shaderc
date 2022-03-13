@@ -40,7 +40,7 @@ use crate::targets::basic::Slot;
 use crate::targets::gl::ext_data::{SymbolWriter, ToObject};
 use crate::targets::layout140::StructOffset;
 
-fn write_objects(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<Property>>, debug: bool) -> Result<(), Error>
+fn write_objects(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<Property<usize>>>, debug: bool) -> Result<(), Error>
 {
     for sym in objects {
         let mut builder = shader::symbol::Builder::new(sym.inner.inner.pname);
@@ -62,7 +62,7 @@ fn write_objects(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<Pr
             }
         };
         builder.extended_data(sym.inner.inner.ptype.to_bpx_object(debug, &())?);
-        if sym.inner.explicit.get() {
+        if sym.inner.external.get() {
             builder.external(); //Global binding (goes in the global descriptor set)
         } else {
             builder.internal(); //Local binding (goes in the local descriptor set)
@@ -73,7 +73,7 @@ fn write_objects(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<Pr
     Ok(())
 }
 
-fn write_packed_structs(bpx: &mut SymbolWriter<BufWriter<File>>, structs: Vec<StructOffset>, debug: bool) -> Result<(), Error>
+fn write_packed_structs(bpx: &mut SymbolWriter<BufWriter<File>>, cbuffers: &Vec<Object<StructOffset>>, structs: &Vec<StructOffset>, debug: bool) -> Result<(), Error>
 {
     for sym in structs {
         //Unfortunately we must clone because rust is unable to see that sym.name is not used by
@@ -81,14 +81,14 @@ fn write_packed_structs(bpx: &mut SymbolWriter<BufWriter<File>>, structs: Vec<St
         let mut builder = shader::symbol::Builder::new(sym.name.clone());
         builder
             .ty(shader::symbol::Type::ConstantBuffer)
-            .internal()
-            .extended_data(sym.to_bpx_object(debug, bpx)?);
+            .internal()//TODO: Fixme cannot always be internal; internal only if referencing constant buffer is internal as well, otherwise external.
+            .extended_data(sym.to_bpx_object(debug, &(bpx, structs))?);
         bpx.write(builder)?;
     }
     Ok(())
 }
 
-fn write_cbuffers(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<StructOffset>>, debug: bool) -> Result<(), Error>
+fn write_cbuffers(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<StructOffset>>, packed_structs: &Vec<StructOffset>, debug: bool) -> Result<(), Error>
 {
     for sym in objects {
         //Unfortunately we must clone because rust is unable to see that sym.inner.inner.name is
@@ -104,8 +104,8 @@ fn write_cbuffers(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<S
         builder
             .register(slot as _)
             .ty(shader::symbol::Type::ConstantBuffer)
-            .extended_data(sym.inner.inner.to_bpx_object(debug, bpx)?);
-        if sym.inner.explicit.get() {
+            .extended_data(sym.inner.inner.to_bpx_object(debug, &(bpx, packed_structs))?);
+        if sym.inner.external.get() {
             builder.external();
         } else {
             builder.internal();
@@ -116,7 +116,7 @@ fn write_cbuffers(bpx: &mut SymbolWriter<BufWriter<File>>, objects: Vec<Object<S
     Ok(())
 }
 
-fn write_vformat(bpx: &mut SymbolWriter<BufWriter<File>>, vformat: Option<Struct>, debug: bool) -> Result<(), Error>
+fn write_vformat(bpx: &mut SymbolWriter<BufWriter<File>>, vformat: Option<Struct<usize>>, debug: bool) -> Result<(), Error>
 {
     if let Some(sym) = vformat {
         //Unfortunately we must clone because rust is unable to see that sym.name is
@@ -166,7 +166,7 @@ fn build_blendfunc_lookup_map(blendfuncs: Vec<BlendfuncStatement>) -> HashMap<St
     map
 }
 
-fn write_outputs(bpx: &mut SymbolWriter<BufWriter<File>>, outputs: Vec<Slot<Property>>, blendfuncs: Vec<BlendfuncStatement>, debug: bool) -> Result<(), Error>
+fn write_outputs(bpx: &mut SymbolWriter<BufWriter<File>>, outputs: Vec<Slot<Property<usize>>>, blendfuncs: Vec<BlendfuncStatement>, debug: bool) -> Result<(), Error>
 {
     if outputs.len() <= 0 {
         warn!("No render target outputs was found in shader pack build");
@@ -228,8 +228,8 @@ pub fn write_bpx(bpx: ShaderPack<BufWriter<File>>, syms: Symbols, shaders: Vec<S
                                          .target(tg));*/
     let mut writer = SymbolWriter::new(bpx);
     write_objects(&mut writer, syms.objects, debug)?;
-    write_packed_structs(&mut writer, syms.packed_structs, debug)?;
-    write_cbuffers(&mut writer, syms.cbuffers, debug)?;
+    write_packed_structs(&mut writer, &syms.cbuffers, &syms.packed_structs, debug)?;
+    write_cbuffers(&mut writer, syms.cbuffers, &syms.packed_structs, debug)?;
     write_vformat(&mut writer, syms.vformat, debug)?;
     write_pipeline(&mut writer, syms.pipeline, debug)?;
     write_outputs(&mut writer, syms.outputs, syms.blendfuncs, debug)?;

@@ -35,6 +35,7 @@ use rglslang::shader::{Messages, Profile, Shader};
 use bp3d_sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, Struct};
 use crate::options::{Args, Error};
 use crate::targets::basic::{get_root_constants_layout, ShaderStage, Slot};
+use crate::targets::basic::ast::Ast;
 use crate::targets::layout140::{compile_packed_structs, compile_struct, StructOffset};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
 
@@ -89,10 +90,10 @@ pub struct Symbols
     pub root_constant_layout: StructOffset,
     pub packed_structs: Vec<StructOffset>,
     pub cbuffers: Vec<Object<StructOffset>>,
-    pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
-    pub objects: Vec<Object<Property>>, //Samplers and textures
+    pub outputs: Vec<Slot<Property<usize>>>, //Fragment shader outputs/render target outputs
+    pub objects: Vec<Object<Property<usize>>>, //Samplers and textures
     pub pipeline: Option<PipelineStatement>,
-    pub vformat: Option<Struct>,
+    pub vformat: Option<Struct<usize>>,
     pub blendfuncs: Vec<BlendfuncStatement>
 }
 
@@ -111,12 +112,12 @@ pub struct ShaderBytes
 
 pub struct CompiledShaderStage
 {
-    pub packed_structs: HashMap<String, StructOffset>,
+    pub packed_structs: Vec<StructOffset>,
     pub cbuffers: Vec<Slot<StructOffset>>,
-    pub outputs: Vec<Slot<Property>>, //Fragment shader outputs/render target outputs
-    pub objects: Vec<Slot<Property>>, //Samplers and textures
+    pub outputs: Vec<Slot<Property<usize>>>, //Fragment shader outputs/render target outputs
+    pub objects: Vec<Slot<Property<usize>>>, //Samplers and textures
     pub pipeline: Option<PipelineStatement>,
-    pub vformat: Option<Struct>,
+    pub vformat: Option<Struct<usize>>,
     pub blendfuncs: Vec<BlendfuncStatement>,
     pub strings: Vec<rglslang::shader::Part>,
     pub shader: Shader,
@@ -195,7 +196,7 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
                     cbuffers.push(Slot {
                         inner,
                         slot: v.slot,
-                        explicit: v.explicit
+                        external: v.external
                     });
                 }
                 let compiled = CompiledShaderStage {
@@ -220,7 +221,7 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
         }
         root
     }).unwrap();
-    let dummy = HashMap::new();
+    let dummy = Vec::new();
     let compiled_root_constants = compile_struct(root_constants_layout, &dummy)?;
     debug!("Size of root constants layout is {} bytes", compiled_root_constants.size);
     if compiled_root_constants.size > MAX_ROOT_CONSTANTS_SIZE {
@@ -294,7 +295,7 @@ fn merge_symbols(output: CompileOutput) -> (Symbols, Vec<ShaderData>)
                 vformat = Some(v);
             }
         }
-        for (i, (_, v)) in stage.packed_structs.into_iter().enumerate() {
+        for (i, v) in stage.packed_structs.into_iter().enumerate() {
             if !check_insert_symbol(&v.name, i as u32) {
                 packed_structs.push(v);
             }

@@ -114,7 +114,7 @@ impl ToObject for ConstantObject {
     }
 }
 
-impl ToObject for PropertyType
+impl ToObject for PropertyType<usize>
 {
     type Object = TextureObject;
     type Context = ();
@@ -186,19 +186,19 @@ impl PropTypeExt for PropType
     }
 }
 
-fn new_prop_type<T: std::io::Seek + std::io::Write>(prop: PropertyType, syms: &SymbolWriter<T>) -> PropType
+fn new_prop_type<T: std::io::Seek + std::io::Write>(prop: PropertyType<usize>, syms: &SymbolWriter<T>, packed_structs: &Vec<StructOffset>) -> PropType
 {
     match prop {
         PropertyType::Scalar(v) => PropType::Scalar(v),
         PropertyType::Vector(v) => PropType::Vector(v),
         PropertyType::Matrix(v) => PropType::Matrix(v),
-        PropertyType::StructRef(v) => PropType::StructRef(syms.lookup(v)),
+        PropertyType::StructRef(v) => PropType::StructRef(syms.lookup(&packed_structs[v].name)),
         PropertyType::Array(v) => PropType::Array {
             size: v.size,
             ty: match v.item {
                 bp3d_sal::ast::tree::ArrayItemType::Vector(v) => ArrayItemType::Vector(v),
                 bp3d_sal::ast::tree::ArrayItemType::Matrix(v) => ArrayItemType::Matrix(v),
-                bp3d_sal::ast::tree::ArrayItemType::StructRef(v) => ArrayItemType::StructRef(syms.lookup(v))
+                bp3d_sal::ast::tree::ArrayItemType::StructRef(v) => ArrayItemType::StructRef(syms.lookup(&packed_structs[v].name))
             }
         },
         _ => unsafe { std::hint::unreachable_unchecked() } //That one should never trigger
@@ -207,7 +207,7 @@ fn new_prop_type<T: std::io::Seek + std::io::Write>(prop: PropertyType, syms: &S
     }
 }
 
-fn new_prop_type_simple(prop: PropertyType) -> PropType
+fn new_prop_type_simple(prop: PropertyType<usize>) -> PropType
 {
     match prop {
         PropertyType::Scalar(v) => PropType::Scalar(v),
@@ -218,24 +218,24 @@ fn new_prop_type_simple(prop: PropertyType) -> PropType
 }
 
 
-impl<T: std::io::Write + std::io::Seek> ToObject<T> for StructOffset
+impl<'a, T: 'a + std::io::Write + std::io::Seek> ToObject<T> for &'a StructOffset
 {
     type Object = StructObject;
-    type Context = SymbolWriter<T>;
+    type Context = (&'a SymbolWriter<T>, &'a Vec<StructOffset>);
 
-    fn to_object(self, ctx: &SymbolWriter<T>) -> Option<Self::Object> {
+    fn to_object(self, (syms, packed_structs): &(&'a SymbolWriter<T>, &'a Vec<StructOffset>)) -> Option<Self::Object> {
         Some(StructObject {
             size: self.size as _,
-            props: self.props.into_iter().map(|v| PropObject {
-                name: v.inner.pname,
+            props: self.props.iter().map(|v| PropObject {
+                name: v.inner.pname.clone(),
                 offset: v.aligned_offset as _,
-                ty: new_prop_type(v.inner.ptype, ctx)
+                ty: new_prop_type(v.inner.ptype, syms, packed_structs)
             }).collect()
         })
     }
 }
 
-impl ToObject for Struct
+impl ToObject for Struct<usize>
 {
     type Object = StructObject;
     type Context = ();

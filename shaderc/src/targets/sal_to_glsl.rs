@@ -31,7 +31,7 @@ use std::collections::HashSet;
 use log::{debug, error};
 use bp3d_sal::ast::tree::{ArrayItemType, Property, PropertyType, Struct, VectorType};
 use crate::options::Error;
-use crate::targets::basic::{Slot, StmtDecomposition};
+use crate::targets::basic::{BasicAst, Slot, StmtDecomposition};
 
 fn get_char(v: VectorType) -> char
 {
@@ -43,7 +43,7 @@ fn get_char(v: VectorType) -> char
     }
 }
 
-fn translate_property(p: &Property) -> String
+fn translate_property(p: &Property<usize>, ast: &BasicAst) -> String
 {
     let mut array = None;
     let ptype: Cow<str> = match &p.ptype {
@@ -55,12 +55,12 @@ fn translate_property(p: &Property) -> String
         PropertyType::Texture3D(_) => "sampler3D".into(),
         PropertyType::Texture2DArray(_) => "sampler2DArray".into(),
         PropertyType::TextureCube(_) => "samplerCube".into(),
-        PropertyType::StructRef(s) => s.into(),
+        PropertyType::StructRef(s) => (&* ast.get_struct_ref(*s).name).into(),
         PropertyType::Array(a) => {
             let item: Cow<str> = match &a.item {
                 ArrayItemType::Vector(v) => format!("{}vec{}", get_char(*v), v.size).into(),
                 ArrayItemType::Matrix(m) => format!("{}mat{}", get_char(*m), m.size).into(),
-                ArrayItemType::StructRef(s) => s.into()
+                ArrayItemType::StructRef(s) => (&* ast.get_struct_ref(*s).name).into()
             };
             array = Some(a.size);
             format!("{}", item).into()
@@ -76,17 +76,17 @@ fn translate_property(p: &Property) -> String
     }
 }
 
-fn translate_packed_struct(s: &Struct) -> String
+fn translate_packed_struct(s: &Struct<usize>, ast: &BasicAst) -> String
 {
     let mut str= format!("struct {} {{", s.name);
     for v in &s.props {
-        str.push_str(&translate_property(v));
+        str.push_str(&translate_property(v, ast));
     }
     str.push_str("};");
     str
 }
 
-fn translate_cbuffer(explicit_bindings: bool, s: &Slot<Struct>) -> String
+fn translate_cbuffer(explicit_bindings: bool, s: &Slot<Struct<usize>>, ast: &BasicAst) -> String
 {
     let mut str;
     if explicit_bindings {
@@ -100,13 +100,13 @@ fn translate_cbuffer(explicit_bindings: bool, s: &Slot<Struct>) -> String
             pname: [&*s.inner.name, &*v.pname].join("_"),
             ptype: v.ptype.clone()
         };
-        str.push_str(&translate_property(&prop));
+        str.push_str(&translate_property(&prop, ast));
     }
     str.push_str("};");
     str
 }
 
-fn translate_vformat(s: &Struct) -> String
+fn translate_vformat(s: &Struct<usize>, ast: &BasicAst) -> String
 {
     let mut str= String::new();
     for (loc, v) in s.props.iter().enumerate() {
@@ -115,27 +115,27 @@ fn translate_vformat(s: &Struct) -> String
             pname: [&*s.name, &*v.pname].join("_"),
             ptype: v.ptype.clone()
         };
-        str.push_str(&format!("layout (location = {}) in {}", loc, translate_property(&prop)));
+        str.push_str(&format!("layout (location = {}) in {}", loc, translate_property(&prop, ast)));
     }
     str
 }
 
-fn translate_outputs(outputs: &Vec<Slot<Property>>) -> Result<String, Error>
+fn translate_outputs(ast: &BasicAst) -> Result<String, Error>
 {
     let mut str= String::new();
     let mut set = HashSet::new();
-    for v in outputs.iter() {
+    for v in ast.outputs.iter() {
         if !set.insert(v.slot.get()) {
             return Err(Error::from(format!("multiple definition of output slot {}", v.slot.get())))
         }
-        str.push_str(&format!("layout (location = {}) out {}", v.slot.get(), translate_property(&v.inner)));
+        str.push_str(&format!("layout (location = {}) out {}", v.slot.get(), translate_property(&v.inner, ast)));
     }
     Ok(str)
 }
 
-fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct, consts: &Vec<Slot<Property>>) -> String
+fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct<usize>, ast: &BasicAst) -> String
 {
-    if consts.is_empty() {
+    if ast.root_constants.is_empty() {
         return String::default();
     }
     let mut str;
@@ -145,7 +145,7 @@ fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct
         str = String::from("layout (std140) uniform __Root {");
     }
     let last_used_prop = root_constants_layout.props.iter().rfind(|p| {
-        if consts.iter().any(|v| &v.inner == *p) {
+        if ast.root_constants.iter().any(|v| &v.inner == *p) {
             true
         } else {
             false
@@ -153,7 +153,7 @@ fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct
     }).unwrap(); //SAFETY: unwrap cannot fail otherwise their exists no constants in the root constant buffer
     // but in this case the very first if block in this function would have triggered
     for v in root_constants_layout.props.iter() {
-        str.push_str(&translate_property(v));
+        str.push_str(&translate_property(v, ast));
         //No more root constants in the root constants layout are used in the shader: stop generation
         if v == last_used_prop {
             break;
@@ -163,11 +163,11 @@ fn translate_root_consts(explicit_bindings: bool, root_constants_layout: &Struct
     str
 }
 
-fn test_cbuffers_unique_slots(cbuffers: &Vec<Slot<Struct>>) -> Result<(), Error>
+fn test_cbuffers_unique_slots(ast: &BasicAst) -> Result<(), Error>
 {
     let mut set = HashSet::new();
     // Extract duplicate binding slots
-    let flag = cbuffers.iter().any(|s| {
+    let flag = ast.cbuffers.iter().any(|s| {
         if set.contains(&s.slot.get()) {
             error!("Duplicate slot binding {}", s.slot.get());
             return true;
@@ -182,18 +182,18 @@ fn test_cbuffers_unique_slots(cbuffers: &Vec<Slot<Struct>>) -> Result<(), Error>
     Ok(())
 }
 
-pub fn translate_sal_to_glsl(explicit_bindings: bool, root_constants_layout: &Struct, sal: &StmtDecomposition) -> Result<String, Error>
+pub fn translate_sal_to_glsl(explicit_bindings: bool, root_constants_layout: &Struct<usize>, ast: &BasicAst) -> Result<String, Error>
 {
-    let vformat = sal.vformat.as_ref().map(|s| translate_vformat(&s)).unwrap_or_default();
-    let constants = translate_root_consts(explicit_bindings, root_constants_layout, &sal.root_constants);
-    let outputs = translate_outputs(&sal.outputs)?;
-    test_cbuffers_unique_slots(&sal.cbuffers)?;
-    let structs: Vec<String> = sal.packed_structs.iter().map(|s| translate_packed_struct(s)).collect();
+    let vformat = ast.vformat.as_ref().map(|s| translate_vformat(&s, ast)).unwrap_or_default();
+    let constants = translate_root_consts(explicit_bindings, root_constants_layout, ast);
+    let outputs = translate_outputs(ast)?;
+    test_cbuffers_unique_slots(ast)?;
+    let structs: Vec<String> = ast.packed_structs.iter().map(|s| translate_packed_struct(s, ast)).collect();
     let structs = structs.join("\n");
-    let cbuffers: Vec<String> = sal.cbuffers.iter().map(|s| translate_cbuffer(explicit_bindings, s)).collect();
+    let cbuffers: Vec<String> = ast.cbuffers.iter().map(|s| translate_cbuffer(explicit_bindings, s, ast)).collect();
     let cbuffers = cbuffers.join("\n");
-    let objects: Vec<String> = sal.objects.iter().filter_map(|p| {
-        let sji = translate_property(&p.inner);
+    let objects: Vec<String> = ast.objects.iter().filter_map(|p| {
+        let sji = translate_property(&p.inner, ast);
         if !sji.is_empty() {
             if explicit_bindings {
                 Some(format!("layout (binding = {}) uniform {}", p.slot.get(), sji))

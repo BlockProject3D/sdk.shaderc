@@ -31,6 +31,7 @@ use std::ops::{Deref, DerefMut};
 use log::{error, warn};
 use bp3d_sal::ast::tree::{ArrayItemType, Attribute, BaseType, Property, PropertyType, Struct};
 use crate::options::Error;
+use crate::targets::basic::BasicAst;
 
 // STD140 layout rules for paddings
 // https://www.khronos.org/registry/OpenGL/specs/gl/glspec46.core.pdf
@@ -47,7 +48,7 @@ pub fn size_of_base_type(t: BaseType) -> usize
     }
 }
 
-fn base_alignment(p: &PropertyType) -> usize
+fn base_alignment(p: &PropertyType<usize>) -> usize
 {
     match p {
         PropertyType::Scalar(t) => size_of_base_type(*t),
@@ -63,7 +64,7 @@ fn base_alignment(p: &PropertyType) -> usize
     }
 }
 
-fn array_base_alignment(a: &ArrayItemType) -> usize
+fn array_base_alignment(a: &ArrayItemType<usize>) -> usize
 {
     match a {
         ArrayItemType::Vector(v) => 4 * size_of_base_type(v.item),
@@ -72,7 +73,7 @@ fn array_base_alignment(a: &ArrayItemType) -> usize
     }
 }
 
-pub fn size_of(p: &PropertyType) -> usize
+pub fn size_of(p: &PropertyType<usize>) -> usize
 {
     match p {
         PropertyType::Scalar(b) => size_of_base_type(*b),
@@ -85,7 +86,7 @@ pub fn size_of(p: &PropertyType) -> usize
     }
 }
 
-pub fn array_size_of(p: &ArrayItemType) -> usize
+pub fn array_size_of(p: &ArrayItemType<usize>) -> usize
 {
     match p {
         ArrayItemType::Vector(v) => size_of_base_type(v.item) * v.size as usize,
@@ -142,12 +143,26 @@ pub struct StructOffset
 {
     pub name: String,
     pub attr: Option<Attribute>,
-    pub props: Vec<Offset<Property>>,
+    pub props: Vec<Offset<Property<usize>>>,
     pub size: usize,
     pub base_alignment: usize
 }
 
-pub fn compile_struct(st: Struct, packed_structs: &HashMap<String, StructOffset>) -> Result<StructOffset, Error>
+trait MapRes<T> {
+    fn map<T1, E, F: FnMut(T) -> Result<T1, E>>(self, f: F) -> Result<Vec<T1>, E>;
+}
+
+impl<T> MapRes<T> for Vec<T> {
+    fn map<T1, E, F: FnMut(T) -> Result<T1, E>>(self, mut f: F) -> Result<Vec<T1>, E> {
+        let mut res = Vec::new();
+        for v in self {
+            res.push(f(v)?);
+        }
+        Ok(res)
+    }
+}
+
+pub fn compile_struct(st: Struct<usize>, packed_structs: &Vec<StructOffset>) -> Result<StructOffset, Error>
 {
     let mut props = Vec::new();
     let mut cur_size = 0;
@@ -156,7 +171,7 @@ pub fn compile_struct(st: Struct, packed_structs: &HashMap<String, StructOffset>
     for v in st.props {
         let (base_alignment, size) = match &v.ptype {
             PropertyType::StructRef(s) => {
-                let st = packed_structs.get(s).ok_or_else(|| {
+                let st = packed_structs.get(*s).ok_or_else(|| {
                     error!("Couldn't find referenced struct '{}', is it declared in the right order?", s);
                     Error::new("attempt to reference undeclared packed struct")
                 })?;
@@ -165,7 +180,7 @@ pub fn compile_struct(st: Struct, packed_structs: &HashMap<String, StructOffset>
             PropertyType::Array(a) => {
                 match &a.item {
                     ArrayItemType::StructRef(s) => {
-                        let st = packed_structs.get(s).ok_or_else(|| {
+                        let st = packed_structs.get(*s).ok_or_else(|| {
                             error!("Couldn't find referenced struct '{}', is it declared in the right order?", s);
                             Error::new("attempt to reference undeclared packed struct")
                         })?;
@@ -201,21 +216,21 @@ pub fn compile_struct(st: Struct, packed_structs: &HashMap<String, StructOffset>
     })
 }
 
-pub fn compile_packed_structs(mut packed_structs: Vec<Struct>) -> Result<HashMap<String, StructOffset>, Error>
+pub fn compile_packed_structs(mut packed_structs: Vec<Struct<usize>>) -> Result<Vec<StructOffset>, Error>
 {
-    let mut map = HashMap::new();
+    let mut vec = Vec::new();
     while packed_structs.len() > 0 {
         let st = packed_structs.remove(0);
-        let compiled = compile_struct(st, &map)?;
-        map.insert(compiled.name.clone(), compiled);
+        let compiled = compile_struct(st, &vec)?;
+        vec.push(compiled);
     }
-    Ok(map)
+    Ok(vec)
 }
 
 #[cfg(test)]
 mod tests
 {
-    use sal::ast::tree::{ArrayItemType, ArrayType, Attribute, BaseType, Property, PropertyType, Struct, VectorType};
+    use bp3d_sal::ast::tree::{ArrayItemType, ArrayType, Attribute, BaseType, Property, PropertyType, Struct, VectorType};
     use crate::targets::layout140::{compile_packed_structs, compile_struct};
 
     #[test]
@@ -234,7 +249,7 @@ mod tests
                     pname: "Lights".into(),
                     ptype: PropertyType::Array(ArrayType {
                         size: 32,
-                        item: ArrayItemType::StructRef("Light".into())
+                        item: ArrayItemType::StructRef(0)
                     }),
                     pattr: None
                 }
@@ -266,7 +281,7 @@ mod tests
         assert_eq!(compiled.base_alignment, 16);
         let aligned_offsets: Vec<usize> = compiled.props.iter().map(|v| v.aligned_offset).collect();
         assert_eq!(aligned_offsets, vec![0, 16]);
-        let aligned_offsets: Vec<usize> = packed_compiled["Light"].props.iter().map(|v| v.aligned_offset).collect();
+        let aligned_offsets: Vec<usize> = packed_compiled[0].props.iter().map(|v| v.aligned_offset).collect();
         assert_eq!(aligned_offsets, vec![0, 16]);
     }
 }

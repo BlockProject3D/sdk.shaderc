@@ -35,11 +35,15 @@ use std::{
 
 use bpx::macros::impl_err_conversion;
 use bpx::package::Package;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error
 {
+    #[error("io error: {0}")]
     Io(std::io::Error),
+
+    #[error("bpx error: {0}")]
     Bpx(bpx::package::error::Error)
 }
 
@@ -49,18 +53,6 @@ impl_err_conversion!(
         bpx::package::error::Error => Bpx
     }
 );
-
-impl Display for Error
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result
-    {
-        match self {
-            Error::Io(e) => write!(f, "io error: {}", e),
-            Error::Bpx(e) => write!(f, "bpx error: {}", e)//,
-            //Error::Strings(e) => write!(f, "strings error: {}", e)
-        }
-    }
-}
 
 struct ShaderLibDecoder
 {

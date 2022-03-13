@@ -1163,6 +1163,7 @@ dependencies = [
  "regex",
  "rglslang",
  "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -1180,6 +1181,9 @@ dependencies = [
  "bp3d-logger 1.0.0",
  "bp3d-symbols",
  "bpx",
+ "clap",
+ "log",
+ "serde",
 ]
 
 [[package]]
