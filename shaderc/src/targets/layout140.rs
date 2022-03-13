@@ -146,20 +146,6 @@ pub struct StructOffset
     pub base_alignment: usize
 }
 
-trait MapRes<T> {
-    fn map<T1, E, F: FnMut(T) -> Result<T1, E>>(self, f: F) -> Result<Vec<T1>, E>;
-}
-
-impl<T> MapRes<T> for Vec<T> {
-    fn map<T1, E, F: FnMut(T) -> Result<T1, E>>(self, mut f: F) -> Result<Vec<T1>, E> {
-        let mut res = Vec::new();
-        for v in self {
-            res.push(f(v)?);
-        }
-        Ok(res)
-    }
-}
-
 pub fn compile_struct(st: Struct<usize>, packed_structs: &Vec<StructOffset>) -> Result<StructOffset, Error>
 {
     let mut props = Vec::new();
