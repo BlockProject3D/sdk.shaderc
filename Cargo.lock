@@ -211,12 +211,11 @@ dependencies = [
 
 [[package]]
 name = "bp3d-threads"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76438778bdda9e721a8cc3b098bfe52a8bfa4b3d665ec35f656edac46fef93c7"
+checksum = "523e0a90770c5ced52e7bb9db4fa0a6e243c645bea65012151e621cdf52558b7"
 dependencies = [
  "crossbeam",
- "crossbeam-channel",
 ]
 
 [[package]]
@@ -405,6 +404,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "erased-serde"
+version = "0.3.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56047058e1ab118075ca22f9ecd737bcc961aa3566a3019cb71388afa280bd8a"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -1180,8 +1188,11 @@ version = "0.1.0"
 dependencies = [
  "bp3d-logger 1.0.0",
  "bp3d-symbols",
+ "bp3d-threads",
  "bpx",
  "clap",
+ "crossbeam",
+ "erased-serde",
  "log",
  "serde",
 ]

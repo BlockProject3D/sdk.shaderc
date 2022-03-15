@@ -18,5 +18,5 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4.14"
 bp3d-logger = "1.0.0"
 crossbeam = "0.8.1"
-bp3d-threads = "1.0.0"
+bp3d-threads = "1.1.0"
 thiserror = "1.0.30"

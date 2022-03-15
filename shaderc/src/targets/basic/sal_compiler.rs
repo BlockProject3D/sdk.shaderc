@@ -50,29 +50,19 @@ pub enum BindingType
 
 pub fn load_pass(args: &Args) -> Result<Vec<ShaderToSal>, Error>
 {
-    let root = crossbeam::scope(|scope| {
-        let mut root = Vec::new();
+    crossbeam::scope(|scope| {
         let manager = ScopedThreadManager::new(scope);
         let mut pool: ThreadPool<ScopedThreadManager, Result<ShaderToSal, Error>> = ThreadPool::new(args.n_threads);
         info!("Initialized thread pool with {} max thread(s)", args.n_threads);
         for unit in &args.units {
-            pool.dispatch(&manager, |_| {
+            pool.send(&manager, |_| {
                 debug!("Loading SAL AST for shader unit {:?}...", *unit);
                 load_shader_to_sal(unit, &args)
             });
             debug!("Dispatch shader unit {:?}", unit);
         }
-        pool.join().unwrap();
-        while let Some(res) = pool.poll() {
-            root.push(res);
-        }
-        root
-    }).unwrap();
-    let mut vec = Vec::new();
-    for v in root {
-        vec.push(v?);
-    }
-    Ok(vec)
+        pool.reduce().map(|v| v.unwrap()).collect()
+    }).unwrap()
 }
 
 pub fn merge_stages(shaders: Vec<ShaderToSal>) -> Result<BTreeMap<Stage, ShaderStage>, Error>

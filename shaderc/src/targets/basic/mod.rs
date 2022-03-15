@@ -35,7 +35,7 @@ pub mod ast;
 
 use std::collections::BTreeMap;
 use bpx::shader::Stage;
-use log::info;
+use log::{debug, info};
 pub use shader_to_sal::*;
 pub use sal_compiler::*;
 use crate::options::{Args, Error};
@@ -47,6 +47,7 @@ pub trait Target
     fn pre_process(&self, args: &Args) -> Result<BTreeMap<Stage, ShaderStage>, Error> {
         info!("Running initial shader decomposition phase...");
         let shaders = load_pass(&args)?;
+        debug!("Found {} shaders", shaders.len());
         info!("Merging shader stages");
         let stages = merge_stages(shaders)?;
         info!("Testing SAL symbols...");

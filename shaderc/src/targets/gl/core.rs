@@ -143,14 +143,13 @@ fn build_messages(args: &Args) -> Messages
 pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, ShaderStage>) -> Result<CompileOutput, Error>
 {
     let root_constants_layout = get_root_constants_layout(&mut stages)?;
-    let root = crossbeam::scope(|scope| {
-        let mut root = Vec::new();
+    let stages: Result<Vec<CompiledShaderStage>, Error> = crossbeam::scope(|scope| {
         let manager = ScopedThreadManager::new(scope);
         let mut pool: ThreadPool<ScopedThreadManager, Result<CompiledShaderStage, Error>> = ThreadPool::new(args.n_threads);
         info!("Initialized thread pool with {} max thread(s)", args.n_threads);
         let root_constants_layout = &root_constants_layout;
         for (stage, mut shader) in stages {
-            pool.dispatch(&manager, move |_| {
+            pool.send(&manager, move |_| {
                 debug!("Translating SAL AST for stage {:?} to GLSL for OpenGL {}...", stage, env.gl_version_str);
                 let glsl = translate_sal_to_glsl(env.explicit_bindings, &root_constants_layout, &shader.statements)?;
                 info!("Translated GLSL: \n{}", glsl);
@@ -214,11 +213,7 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
             });
             debug!("Dispatch stage {:?}", stage);
         }
-        pool.join().unwrap();
-        while let Some(res) = pool.poll() {
-            root.push(res);
-        }
-        root
+        pool.reduce().map(|v| v.unwrap()).collect()
     }).unwrap();
     let dummy = Vec::new();
     let compiled_root_constants = compile_struct(root_constants_layout, &dummy)?;
@@ -226,13 +221,8 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
     if compiled_root_constants.size > MAX_ROOT_CONSTANTS_SIZE {
         warn!("Root constants layout size ({} bytes) exceeds the recommended limit of 128 bytes after alignment", compiled_root_constants.size);
     }
-    let mut stages = Vec::new();
-    for v in root {
-        let stage = v?;
-        stages.push(stage);
-    }
     Ok(CompileOutput {
-        stages,
+        stages: stages?,
         root_constant_layout: compiled_root_constants
     })
 }
