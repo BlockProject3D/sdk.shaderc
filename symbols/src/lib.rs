@@ -56,3 +56,11 @@ pub trait FromBpx
         Self::deserialize(deserializer)
     }
 }
+
+pub trait Refs {
+    fn list_refs(&self) -> Vec<usize>;
+    fn has_refs(&self) -> bool {
+        !self.list_refs().is_empty()
+    }
+    fn clone_erase_refs(&self) -> Self;
+}

@@ -29,7 +29,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 use bp3d_sal::ast::tree::{BaseType, VectorType};
-use crate::{FromBpx, ToBpx};
+use crate::{FromBpx, Refs, ToBpx};
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum ArrayItemType
@@ -69,3 +69,56 @@ pub struct StructObject
 
 impl ToBpx for StructObject {}
 impl FromBpx for StructObject {}
+
+fn erase_refs(obj: &PropObject) -> PropObject {
+    let mut res = obj.clone();
+    res.ty = match res.ty {
+        PropType::StructRef(v) => PropType::StructRef(0),
+        PropType::Array { size, ty } => match ty {
+            ArrayItemType::StructRef(v) => PropType::Array {
+                size,
+                ty: ArrayItemType::StructRef(0)
+            },
+            _ => PropType::Array { size, ty }
+        },
+        _ => res.ty
+    };
+    res
+}
+
+impl Refs for StructObject {
+    // Code duplication required; cannot be fixed; impl Trait is now broken!
+    // Now causes "captures lifetime that does not appear in bounds".
+    // However it used to work in the past!
+    fn list_refs(&self) -> Vec<usize> {
+        self.props.iter().filter_map(|v| match v.ty {
+            PropType::StructRef(v) => Some(v),
+            PropType::Array { size, ty } => match ty {
+                ArrayItemType::StructRef(v) => Some(v),
+                _ => None
+            },
+            _ => None
+        }).map(|v| v.into()).collect()
+    }
+
+    // Code duplication required; cannot be fixed; impl Trait is now broken!
+    // Now causes "captures lifetime that does not appear in bounds".
+    // However it used to work in the past!
+    fn has_refs(&self) -> bool {
+        self.props.iter().filter_map(|v| match v.ty {
+            PropType::StructRef(v) => Some(v),
+            PropType::Array { size, ty } => match ty {
+                ArrayItemType::StructRef(v) => Some(v),
+                _ => None
+            },
+            _ => None
+        }).count() > 0
+    }
+
+    fn clone_erase_refs(&self) -> Self {
+        StructObject {
+            size: self.size,
+            props: self.props.iter().map(|v| erase_refs(v)).collect()
+        }
+    }
+}
