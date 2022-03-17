@@ -29,11 +29,12 @@
 mod options;
 mod targets;
 
-use std::{borrow::Cow, path::Path};
+use std::path::Path;
 
 use clap::{Arg, Command};
-use log::{debug, error, info, LevelFilter};
+use log::{debug, error, info};
 use phf::phf_map;
+use cli_common::{alloc_verbosity_level, get_out_path, init_bp3d_logger};
 
 const PROG_NAME: &str = env!("CARGO_PKG_NAME");
 const PROG_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -43,20 +44,6 @@ static TARGETS: phf::Map<&'static str, options::TargetFunc> = phf_map! {
     "GL40" => targets::gl40::build,
     "GL42" => targets::gl42::build
 };
-
-fn transform_output(path: &Path) -> Cow<Path>
-{
-    if path.is_dir() {
-        return path.join("a.out.bpx").into();
-    }
-    if path.extension().unwrap_or_default() != "bpx" {
-        let mut path = path.to_owned();
-        path.set_extension("bpx");
-        path.into()
-    } else {
-        path.into()
-    }
-}
 
 fn run() -> i32
 {
@@ -88,14 +75,7 @@ fn run() -> i32
             Arg::new("shader").multiple_values(true).allow_invalid_utf8(true)
                 .help("List of shader files to process")
         ]).get_matches();
-    let verbosity = matches.occurrences_of("verbose");
-    match verbosity {
-        0 => log::set_max_level(LevelFilter::Error),
-        1 => log::set_max_level(LevelFilter::Warn),
-        2 => log::set_max_level(LevelFilter::Info),
-        3 => log::set_max_level(LevelFilter::Debug),
-        _ => log::set_max_level(LevelFilter::Trace),
-    };
+    alloc_verbosity_level(matches.occurrences_of("verbose"));
     info!("Initializing BlockProject 3D Shader Compiler...");
     if matches.is_present("print_targets") {
         print!("Available targets: ");
@@ -123,12 +103,7 @@ fn run() -> i32
         let minify = matches.is_present("minify");
         let optimize = matches.is_present("optimize");
         let debug = matches.is_present("debug");
-        let output = transform_output(
-            matches
-                .value_of_os("output")
-                .map(|v| Path::new(v))
-                .unwrap_or(Path::new("a.out.bpx"))
-        );
+        let output = get_out_path(matches.value_of_os("output"));
         for v in matches.values_of("injection").unwrap_or_default() {
             units.push(options::ShaderUnit::Injected(v));
         }
@@ -158,9 +133,6 @@ fn run() -> i32
     }
 }
 
-fn main()
-{
-    //Initialize bp3d-logger
-    let code = bp3d_logger::Logger::new().add_stdout().add_file("bp3d-sdk").run(run);
-    std::process::exit(code);
+fn main() {
+    init_bp3d_logger(run);
 }
