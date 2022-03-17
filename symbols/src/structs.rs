@@ -73,9 +73,9 @@ impl FromBpx for StructObject {}
 fn erase_refs(obj: &PropObject) -> PropObject {
     let mut res = obj.clone();
     res.ty = match res.ty {
-        PropType::StructRef(v) => PropType::StructRef(0),
+        PropType::StructRef(_) => PropType::StructRef(0),
         PropType::Array { size, ty } => match ty {
-            ArrayItemType::StructRef(v) => PropType::Array {
+            ArrayItemType::StructRef(_) => PropType::Array {
                 size,
                 ty: ArrayItemType::StructRef(0)
             },
@@ -86,33 +86,32 @@ fn erase_refs(obj: &PropObject) -> PropObject {
     res
 }
 
+impl StructObject {
+    fn refs_iter(&self) -> impl Iterator<Item = u16> + '_ {
+        self.props.iter().filter_map(|v| match v.ty {
+            PropType::StructRef(v) => Some(v),
+            PropType::Array { ty, .. } => match ty {
+                ArrayItemType::StructRef(v) => Some(v),
+                _ => None
+            },
+            _ => None
+        })
+    }
+}
+
 impl Refs for StructObject {
     // Code duplication required; cannot be fixed; impl Trait is now broken!
     // Now causes "captures lifetime that does not appear in bounds".
     // However it used to work in the past!
     fn list_refs(&self) -> Vec<usize> {
-        self.props.iter().filter_map(|v| match v.ty {
-            PropType::StructRef(v) => Some(v),
-            PropType::Array { size, ty } => match ty {
-                ArrayItemType::StructRef(v) => Some(v),
-                _ => None
-            },
-            _ => None
-        }).map(|v| v.into()).collect()
+        self.refs_iter().map(|v| v.into()).collect()
     }
 
     // Code duplication required; cannot be fixed; impl Trait is now broken!
     // Now causes "captures lifetime that does not appear in bounds".
     // However it used to work in the past!
     fn has_refs(&self) -> bool {
-        self.props.iter().filter_map(|v| match v.ty {
-            PropType::StructRef(v) => Some(v),
-            PropType::Array { size, ty } => match ty {
-                ArrayItemType::StructRef(v) => Some(v),
-                _ => None
-            },
-            _ => None
-        }).count() > 0
+        self.refs_iter().count() > 0
     }
 
     fn clone_erase_refs(&self) -> Self {
