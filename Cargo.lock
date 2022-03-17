@@ -1205,7 +1205,6 @@ dependencies = [
 name = "shaderc"
 version = "0.1.0"
 dependencies = [
- "bp3d-logger",
  "bp3d-sal",
  "bp3d-symbols",
  "bp3d-threads",
@@ -1240,6 +1239,7 @@ dependencies = [
  "bp3d-threads",
  "bpx",
  "clap",
+ "cli-common",
  "crossbeam",
  "log",
  "serde",
