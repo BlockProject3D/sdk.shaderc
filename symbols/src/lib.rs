@@ -62,5 +62,5 @@ pub trait Refs {
     fn has_refs(&self) -> bool {
         !self.list_refs().is_empty()
     }
-    fn clone_erase_refs(&self) -> Self;
+    fn rewrite_refs<F: Fn(u16) -> u16>(&self, f: F) -> Self;
 }

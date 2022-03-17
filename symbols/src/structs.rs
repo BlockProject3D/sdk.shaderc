@@ -70,14 +70,14 @@ pub struct StructObject
 impl ToBpx for StructObject {}
 impl FromBpx for StructObject {}
 
-fn erase_refs(obj: &PropObject) -> PropObject {
+fn rewrite_refs<F: Fn(u16) -> u16>(obj: &PropObject, f: F) -> PropObject {
     let mut res = obj.clone();
     res.ty = match res.ty {
-        PropType::StructRef(_) => PropType::StructRef(0),
+        PropType::StructRef(v) => PropType::StructRef(f(v)),
         PropType::Array { size, ty } => match ty {
-            ArrayItemType::StructRef(_) => PropType::Array {
+            ArrayItemType::StructRef(v) => PropType::Array {
                 size,
-                ty: ArrayItemType::StructRef(0)
+                ty: ArrayItemType::StructRef(f(v))
             },
             _ => PropType::Array { size, ty }
         },
@@ -114,10 +114,10 @@ impl Refs for StructObject {
         self.refs_iter().count() > 0
     }
 
-    fn clone_erase_refs(&self) -> Self {
+    fn rewrite_refs<F: Fn(u16) -> u16>(&self, f: F) -> Self {
         StructObject {
             size: self.size,
-            props: self.props.iter().map(|v| erase_refs(v)).collect()
+            props: self.props.iter().map(|v| rewrite_refs(v, &f)).collect()
         }
     }
 }
