@@ -195,7 +195,6 @@ fn new_prop_type<T: std::io::Seek + std::io::Write>(prop: PropertyType<usize>, s
         PropertyType::Matrix(v) => PropType::Matrix(v),
         PropertyType::StructRef(v) => {
             let st = &packed_structs[v];
-            st.external.set(true);
             PropType::StructRef(syms.lookup(&st.inner.name))
         },
         PropertyType::Array(v) => PropType::Array {
@@ -205,7 +204,6 @@ fn new_prop_type<T: std::io::Seek + std::io::Write>(prop: PropertyType<usize>, s
                 bp3d_sal::ast::tree::ArrayItemType::Matrix(v) => ArrayItemType::Matrix(v),
                 bp3d_sal::ast::tree::ArrayItemType::StructRef(v) => {
                     let st = &packed_structs[v];
-                    st.external.set(true);
                     ArrayItemType::StructRef(syms.lookup(&st.inner.name))
                 }
             }

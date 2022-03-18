@@ -35,7 +35,7 @@ use bp3d_symbols::{BlendfuncObject, ConstantObject, ConstPropType, OutputObject,
 use crate::targets::gl::core::{Object, ShaderBytes, Symbols};
 use bpx::shader;
 use bpx::shader::{ShaderPack, Stage, Type};
-use log::{error, warn};
+use log::{debug, error, info, warn};
 use crate::targets::basic::Slot;
 use crate::targets::gl::ext_data::{SymbolWriter, ToObject};
 use crate::targets::layout140::StructOffset;
@@ -239,10 +239,41 @@ impl BpxWriter {
         Ok(())
     }
 
+    fn propagate_external_flag(&self, cbuffers: &Vec<Object<StructOffset>>, packed_structs: &Vec<Slot<StructOffset>>) {
+        info!("Applying external flags on symbol references...");
+        for cbuffer in cbuffers {
+            for p in &cbuffer.inner.inner.props {
+                match p.ptype {
+                    PropertyType::StructRef(v) => {
+                        let st = &packed_structs[v];
+                        if cbuffer.inner.external.get() {
+                            st.external.set(true);
+                            debug!("Set external flag for '{}'", st.inner.name);
+                        }
+                    },
+                    PropertyType::Array(v) => {
+                        match v.item {
+                            bp3d_sal::ast::tree::ArrayItemType::StructRef(v) => {
+                                let st = &packed_structs[v];
+                                if cbuffer.inner.external.get() {
+                                    st.external.set(true);
+                                    debug!("Set external flag for '{}'", st.inner.name);
+                                }
+                            },
+                            _ => ()
+                        }
+                    },
+                    _ => ()
+                };
+            }
+        }
+    }
+
     pub fn write_symbols(&mut self, syms: Symbols) -> Result<(), Error> {
         //The unwrap should be fine because bpx is initialized in new.
         // This unwrap may panic if write_symbols panics before putting bpx back.
         let packed_structs = syms.packed_structs.into_iter().map(Slot::new).collect();
+        self.propagate_external_flag(&syms.cbuffers, &packed_structs);
         let mut writer = SymbolWriter::new(self.bpx.take().unwrap());
         self.write_objects(&mut writer, syms.objects)?;
         self.write_packed_structs(&mut writer, &packed_structs)?;
