@@ -1238,12 +1238,14 @@ dependencies = [
  "bp3d-symbols",
  "bp3d-threads",
  "bpx",
+ "byteorder",
  "clap",
  "cli-common",
  "crossbeam",
  "log",
  "serde",
  "sha2",
+ "thiserror",
 ]
 
 [[package]]

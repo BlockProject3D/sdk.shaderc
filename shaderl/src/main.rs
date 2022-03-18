@@ -1,4 +1,4 @@
-// Copyright (c) 2021, BlockProject 3D
+// Copyright (c) 2022, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -26,7 +26,90 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-fn main()
-{
-    println!("Hello, world!");
+mod symbols;
+mod tree;
+mod ext_data;
+mod assembler;
+
+use std::path::Path;
+use clap::{Arg, ArgMatches, Command};
+use log::{error, info};
+use cli_common::{alloc_verbosity_level, get_out_path, init_bp3d_logger};
+
+const PROG_NAME: &str = env!("CARGO_PKG_NAME");
+const PROG_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+fn assemble(n_threads: usize, args: &ArgMatches) -> i32 {
+    let debug = args.is_present("debug");
+    let output = get_out_path(args.value_of_os("output"));
+    let assembly = args.value_of_os("assembly").map(Path::new);
+    let name = args.value_of("name").unwrap();
+    let shaders = args.values_of_os("shader")
+        .unwrap_or_default()
+        .map(Path::new);
+    let cfg = assembler::Config {
+        n_threads,
+        debug,
+        output,
+        assembly,
+        name,
+        shaders
+    };
+    if let Err(e) = assembler::run(cfg) {
+        error!("{}", e);
+    }
+    0
+}
+
+fn run() -> i32 {
+    let matches = Command::new(PROG_NAME)
+        .author("BlockProject 3D")
+        .about("BlockProject 3D SDK - Shader Linker")
+        .version(PROG_VERSION)
+        .subcommand_required(true)
+        .subcommands([
+            Command::new("link").about("Link shader pack(s) to a shader assembly")
+                .args([
+                    Arg::new("assembly").required(true).short('a').long("assembly")
+                        .takes_value(true).allow_invalid_utf8(true)
+                        .help("Path of the shader assembly to link to"),
+                    Arg::new("shader").multiple_values(true).allow_invalid_utf8(true)
+                        .help("List of shader pack(s) to link")
+                ]),
+            Command::new("assemble").about("Assemble a shader assembly from shader pack(s)")
+                .args([
+                    Arg::new("name").short('n').long("name")
+                        .takes_value(true).required(true)
+                        .help("Name of assembly"),
+                    Arg::new("assembly").short('a').long("assembly")
+                        .takes_value(true).allow_invalid_utf8(true)
+                        .help("Path to a parent shader assembly"),
+                    Arg::new("output").short('o').long("output").takes_value(true)
+                        .allow_invalid_utf8(true).help("Output shader assembly file name"),
+                    Arg::new("debug").short('d').long("debug")
+                        .help("Build the shader assembly with debug info"),
+                    Arg::new("shader").multiple_values(true).allow_invalid_utf8(true)
+                        .help("List of shader pack(s) to assemble")
+                ])
+        ])
+        .args([
+            Arg::new("verbose").short('v').long("verbose").multiple_occurrences(true)
+                .help("Enable verbose output"),
+            Arg::new("threads").short('n').long("threads").takes_value(true)
+                .help("Specify the maximum number of threads to use when processing shaders")
+        ]).get_matches();
+    alloc_verbosity_level(matches.occurrences_of("verbose"));
+    info!("Initializing BlockProject 3D Shader Linker...");
+    let n_threads: usize = matches.value_of_t("threads").unwrap_or(1);
+    if let Some(args) = matches.subcommand_matches("assemble") {
+        return assemble(n_threads, args);
+    }
+    /*if let Some(args) = matches.subcommand_matches("link") {
+
+    }*/
+    0
+}
+
+fn main() {
+    init_bp3d_logger(run);
 }
