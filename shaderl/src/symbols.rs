@@ -104,6 +104,7 @@ fn load_symbols_single(shader: &Path) -> Result<Vec<Symbol>, LoadError>
             bpx::shader::Type::Assembly => false
         };
         if should_skip {
+            debug!("Skipping symbol index '{}' ({:?})", index, info);
             continue;
         }
         let name = symbols.load_name(info)?.into();
@@ -122,6 +123,7 @@ fn load_symbols_single(shader: &Path) -> Result<Vec<Symbol>, LoadError>
         } else {
             ext_data = None;
         }
+        debug!("Loaded symbol '{}' with index {}", name, index);
         syms.push(Symbol::new(name, index, *info, ext_data));
     }
     Ok(syms)
@@ -197,7 +199,7 @@ fn sign_symbols(n_threads: usize, symbols: Vec<Symbol>) -> Result<SymbolTree, Si
                         Some(v) => v
                     };
                     let sig = sym1.signature().unwrap();
-                    allocated[((index + 1) * 64)..64].copy_from_slice(&sig[0..64]);
+                    allocated[((index + 1) * 64)..].copy_from_slice(&sig[0..64]);
                 }
                 let mut new_sig = Sha512::new();
                 new_sig.update(&allocated);
@@ -232,16 +234,14 @@ pub fn load_and_sign_symbols<'a>(n_threads: usize, shaders: impl Iterator<Item =
 pub fn check_signature_with_assembly(tree: &mut SymbolTree, assembly: &SymbolTree) -> Result<(), SigningError> {
     tree.iter_mut().try_for_each(|new| {
         if let Some(existing) = assembly.get_by_name(new.name()) {
-            //The symbol is already part of the parent assembly. Check signature and keep it as
+            //The symbol is already part of the parent assembly. Check signature and mark it as
             // EXTERNAL.
             if existing.signature().unwrap() != new.signature().unwrap() {
                 error!("Duplicate definition of symbol '{}' (first signature: {:X?}, second signature: {:X?})", existing.name(), existing.signature().unwrap(), new.signature().unwrap());
                 return Err(SigningError::SignatureMismatch)
             }
-        } else {
-            //The symbol is not part of the parent assembly, mark it as INTERNAL.
-            new.info_mut().flags &= !FLAG_EXTERNAL;
-            new.info_mut().flags |= FLAG_INTERNAL;
+            new.info_mut().flags &= !FLAG_INTERNAL;
+            new.info_mut().flags |= FLAG_EXTERNAL;
         }
         Ok(())
     })

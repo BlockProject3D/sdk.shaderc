@@ -76,6 +76,7 @@ pub fn run<'a>(config: Config<'a, impl Iterator<Item = &'a Path>>) -> Result<(),
     info!("Loading and signing shader symbols...");
     let mut shader_tree = load_and_sign_symbols(config.n_threads, config.shaders)
         .map_err(Error::Symbol)?;
+    shader_tree.mass_set_internal();
     info!("Loading and signing parent assembly symbols...");
     let assembly_tree = config.assembly.map(|v| load_and_sign_symbols(config.n_threads, [v].into_iter()))
         .transpose().map_err(Error::Symbol)?;

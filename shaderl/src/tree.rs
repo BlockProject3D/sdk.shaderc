@@ -28,7 +28,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use bpx::shader::symbol::Type;
+use bpx::shader::symbol::{FLAG_EXTERNAL, FLAG_INTERNAL, Type};
+use log::debug;
 use crate::ext_data::ExtDataPtr;
 
 pub struct Symbol {
@@ -124,6 +125,15 @@ impl SymbolTree {
 
     pub fn get_by_name(&self, name: &str) -> Option<&Symbol> {
         self.by_name.get(name).map(|v| &self.symbols[*v])
+    }
+
+    //Mass set FLAG_INTERNAL on all symbols.
+    pub fn mass_set_internal(&mut self) {
+        self.iter_mut().for_each(|v| {
+            debug!("Set internal flag for '{}'", v.name());
+            v.info_mut().flags &= !FLAG_EXTERNAL;
+            v.info_mut().flags |= FLAG_INTERNAL;
+        })
     }
 
     //Offset the references back to 0 in this tree to prepare saving into BPX symbol table section.
