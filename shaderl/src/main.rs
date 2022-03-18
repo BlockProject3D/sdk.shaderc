@@ -57,8 +57,10 @@ fn assemble(n_threads: usize, args: &ArgMatches) -> i32 {
     };
     if let Err(e) = assembler::run(cfg) {
         error!("{}", e);
+        1
+    } else {
+        0
     }
-    0
 }
 
 fn run() -> i32 {

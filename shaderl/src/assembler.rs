@@ -35,6 +35,7 @@ use bpx::shader::ShaderPack;
 use bpx::shader::symbol::{FLAG_EXTERNAL, FLAG_INTERNAL, FLAG_REGISTER};
 use bpx::utils::hash;
 use byteorder::{ByteOrder, LittleEndian};
+use log::info;
 use crate::symbols::{check_signature_with_assembly, load_and_sign_symbols};
 use thiserror::Error;
 
@@ -70,17 +71,23 @@ fn get_assembly_hash(file: &Path) -> Result<u64, Error> {
 }
 
 pub fn run<'a>(config: Config<'a, impl Iterator<Item = &'a Path>>) -> Result<(), Error> {
-    let file = File::create(config.output).map_err(Error::Io)?;
+    info!("Assembling '{}'...", config.name);
+    let file = File::create(&config.output).map_err(Error::Io)?;
+    info!("Loading and signing shader symbols...");
     let mut shader_tree = load_and_sign_symbols(config.n_threads, config.shaders)
         .map_err(Error::Symbol)?;
+    info!("Loading and signing parent assembly symbols...");
     let assembly_tree = config.assembly.map(|v| load_and_sign_symbols(config.n_threads, [v].into_iter()))
         .transpose().map_err(Error::Symbol)?;
     if let Some(assembly) = &assembly_tree {
+        info!("Checking signatures against parent assembly...");
         check_signature_with_assembly(&mut shader_tree, assembly).map_err(crate::symbols::Error::Signing)
             .map_err(Error::Symbol)?;
     }
     //Prepare the symbol tree to be written into an assembly.
+    info!("Aligning symbol references...");
     shader_tree.align_references();
+    info!("Writing symbols...");
     let mut pack = ShaderPack::create(BufWriter::new(file),
                                       bpx::shader::Builder::new()
                                           .ty(bpx::shader::Type::Assembly)
@@ -106,6 +113,7 @@ pub fn run<'a>(config: Config<'a, impl Iterator<Item = &'a Path>>) -> Result<(),
     }
     pack.save().map_err(Error::Shader)?;
     if let Some(assembly) = config.assembly {
+        info!("Writing parent assembly hash...");
         let mut inner = pack.into_inner();
         { //Rust is garbage too stupid to see that inner is not used when save is called!
             let hash = get_assembly_hash(assembly)?;
@@ -117,5 +125,6 @@ pub fn run<'a>(config: Config<'a, impl Iterator<Item = &'a Path>>) -> Result<(),
         }
         inner.save().map_err(Error::Core)?;
     }
+    info!("Generated assembly '{}' and saved to {:?}", config.name, config.output);
     Ok(())
 }
