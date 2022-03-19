@@ -34,22 +34,22 @@ use bpx::package::utils::pack_file_vname;
 use log::warn;
 
 use crate::{
-    options::{Error, ShaderUnit},
+    options::Error,
     targets::basic::shaderlib::ShaderLib
 };
-use crate::options::Args;
+use crate::config::{Config, Unit};
 
-pub fn build(args: Args) -> Result<(), Error>
+pub fn build(config: Config) -> Result<(), Error>
 {
-    let mut libs: Vec<ShaderLib> = args.libs.iter().map(|v| ShaderLib::new(*v)).collect();
-    let mut bpxp = Package::create(BufWriter::new(File::create(args.output)?),
+    let mut libs: Vec<ShaderLib> = config.libs.iter().map(|v| ShaderLib::new(*v)).collect();
+    let mut bpxp = Package::create(BufWriter::new(File::create(config.output)?),
                                    package::Builder::new()
                                        .type_code(*b"SL") //SL for ShaderLib
                                        .architecture(package::Architecture::Any)
                                        .platform(package::Platform::Any))?;
-    for unit in args.units {
+    for unit in config.units {
         match unit {
-            ShaderUnit::Path(path) => {
+            Unit::Path(path) => {
                 if let Some(name) = path.file_name() {
                     if let Some(vname) = name.to_str() {
                         pack_file_vname(&mut bpxp, vname, path)?;
@@ -68,7 +68,7 @@ pub fn build(args: Args) -> Result<(), Error>
                     continue;
                 }
             },
-            ShaderUnit::Injected(vname) => {
+            Unit::Injected(vname) => {
                 let mut objects = bpxp.objects_mut()
                     .ok_or(bpx::package::error::Error::Open(bpx::core::error::OpenError::SectionNotLoaded))?;
                 for v in &mut libs {

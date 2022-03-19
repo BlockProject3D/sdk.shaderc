@@ -38,15 +38,16 @@ use bpx::shader::Stage;
 use log::{debug, info};
 pub use shader_to_sal::*;
 pub use sal_compiler::*;
-use crate::options::{Args, Error};
+use crate::config::Config;
+use crate::options::{Error};
 
 pub trait Target
 {
     type CompileOutput;
 
-    fn pre_process(&self, args: &Args) -> Result<BTreeMap<Stage, ShaderStage>, Error> {
+    fn pre_process(&self, config: &Config) -> Result<BTreeMap<Stage, ShaderStage>, Error> {
         info!("Running initial shader decomposition phase...");
-        let shaders = load_pass(&args)?;
+        let shaders = load_pass(&config)?;
         debug!("Found {} shaders", shaders.len());
         info!("Merging shader stages");
         let stages = merge_stages(shaders)?;
@@ -59,22 +60,22 @@ pub trait Target
 
     fn test_bindings(&self, stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error>;
 
-    fn compile_link(&self, args: &Args, stages: BTreeMap<Stage, ShaderStage>) -> Result<Self::CompileOutput, Error>;
+    fn compile_link(&self, config: &Config, stages: BTreeMap<Stage, ShaderStage>) -> Result<Self::CompileOutput, Error>;
 
-    fn write_finish(&self, args: &Args, out: Self::CompileOutput) -> Result<(), Error>;
+    fn write_finish(&self, config: &Config, out: Self::CompileOutput) -> Result<(), Error>;
 
-    fn run(&self, args: &Args) -> Result<(), Error> {
+    fn run(&self, config: &Config) -> Result<(), Error> {
         info!("Applying pre-processor...");
-        let mut stages = self.pre_process(args)?;
+        let mut stages = self.pre_process(config)?;
         info!("Applying binding relocations...");
         self.relocate_bindings(&mut stages)?;
         info!("Testing binding relocations...");
         self.test_bindings(&stages)?;
         info!("Compiling and linking...");
-        let out = self.compile_link(args, stages)?;
-        info!("Writing {}...", args.output.display());
-        self.write_finish(args, out)?;
-        info!("Shader pack built: {}", args.output.display());
+        let out = self.compile_link(config, stages)?;
+        info!("Writing {}...", config.output.display());
+        self.write_finish(config, out)?;
+        info!("Shader pack built: {}", config.output.display());
         Ok(())
     }
 }

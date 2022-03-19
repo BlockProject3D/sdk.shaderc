@@ -33,7 +33,8 @@ use log::{debug, error, info, trace, warn};
 use rglslang::environment::{Client, Environment};
 use rglslang::shader::{Messages, Profile, Shader};
 use bp3d_sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, Struct};
-use crate::options::{Args, Error};
+use crate::config::Config;
+use crate::options::{Error};
 use crate::targets::basic::{get_root_constants_layout, ShaderStage, Slot};
 use crate::targets::layout140::{compile_packed_structs, compile_struct, StructOffset};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
@@ -129,10 +130,10 @@ pub struct CompileOutput
     pub stages: Vec<CompiledShaderStage>
 }
 
-fn build_messages(args: &Args) -> Messages
+fn build_messages(config: &Config) -> Messages
 {
     let msgs;
-    if args.debug {
+    if config.debug {
         msgs = Messages::new().debug().ast();
     } else {
         msgs = Messages::new();
@@ -140,13 +141,13 @@ fn build_messages(args: &Args) -> Messages
     msgs
 }
 
-pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, ShaderStage>) -> Result<CompileOutput, Error>
+pub fn compile_stages(env: &EnvInfo, config: &Config, mut stages: BTreeMap<Stage, ShaderStage>) -> Result<CompileOutput, Error>
 {
     let root_constants_layout = get_root_constants_layout(&mut stages)?;
     let stages: Result<Vec<CompiledShaderStage>, Error> = crossbeam::scope(|scope| {
         let manager = ScopedThreadManager::new(scope);
-        let mut pool: ThreadPool<ScopedThreadManager, Result<CompiledShaderStage, Error>> = ThreadPool::new(args.n_threads);
-        info!("Initialized thread pool with {} max thread(s)", args.n_threads);
+        let mut pool: ThreadPool<ScopedThreadManager, Result<CompiledShaderStage, Error>> = ThreadPool::new(config.n_threads);
+        info!("Initialized thread pool with {} max thread(s)", config.n_threads);
         let root_constants_layout = &root_constants_layout;
         for (stage, mut shader) in stages {
             pool.send(&manager, move |_| {
@@ -164,7 +165,7 @@ pub fn compile_stages(env: &EnvInfo, args: &Args, mut stages: BTreeMap<Stage, Sh
                     Stage::Geometry => rglslang::environment::Stage::Geometry,
                     Stage::Pixel => rglslang::environment::Stage::Pixel
                 };
-                let msgs = build_messages(args);
+                let msgs = build_messages(config);
                 let mut builder = rglslang::shader::Builder::new(Environment::new_opengl(rst, Client::OpenGL, Some(env.gl_version_int)))
                     .messages(msgs)
                     .entry_point("main")
@@ -310,11 +311,11 @@ fn merge_symbols(output: CompileOutput) -> (Symbols, Vec<ShaderData>)
 
 /// This function links shaders only for pure OpenGL targets; vulkan and SpvCross based targets
 /// aren't supported by this function.
-pub fn gl_link_shaders(args: &Args, output: CompileOutput) -> Result<(Symbols, Vec<ShaderBytes>), Error>
+pub fn gl_link_shaders(config: &Config, output: CompileOutput) -> Result<(Symbols, Vec<ShaderBytes>), Error>
 {
     let (syms, shaders) = merge_symbols(output);
     let mut shaders1 = Vec::with_capacity(shaders.len());
-    let msgs = build_messages(args);
+    let msgs = build_messages(config);
     let mut builder = rglslang::program::Builder::new()
         .messages(msgs);
     for v in shaders {

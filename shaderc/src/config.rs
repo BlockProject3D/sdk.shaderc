@@ -1,4 +1,4 @@
-// Copyright (c) 2021, BlockProject 3D
+// Copyright (c) 2022, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -26,25 +26,23 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use bpx::shader::Target::GL40;
-use crate::config::Config;
-use crate::options::{Error};
-use crate::targets::basic::Target;
-use crate::targets::gl::EnvInfo;
-use crate::targets::gl::GlTarget;
+use std::path::Path;
 
-//TODO: At shader initialization, procedure for each binding:
-// - glUseProgram(prog)
-// - location = glGetUniformLocation(prog, binding_name)
-// for constant buffers - glUniformBlockBinding(prog, location, binding)
-// for objects - glUniform1i(location, binding)
-
-pub fn build(config: Config) -> Result<(), Error>
+#[derive(Debug)]
+pub enum Unit<'a>
 {
-    let target = GlTarget::new(EnvInfo {
-        gl_version_int: 400,
-        gl_version_str: "4.0",
-        explicit_bindings: false
-    }, GL40);
-    target.run(&config)
+    Path(&'a Path),
+    Injected(&'a str)
+}
+
+#[derive(Debug)]
+pub struct Config<'a>
+{
+    pub units: Vec<Unit<'a>>,
+    pub libs: Vec<&'a Path>,
+    pub output: &'a Path,
+    pub n_threads: usize,
+    pub minify: bool,
+    pub optimize: bool,
+    pub debug: bool
 }

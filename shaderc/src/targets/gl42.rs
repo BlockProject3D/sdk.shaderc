@@ -27,16 +27,17 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use bpx::shader::Target::GL42;
-use crate::options::{Args, Error};
+use crate::config::Config;
+use crate::options::{Error};
 use crate::targets::basic::Target;
 use crate::targets::gl::{EnvInfo, GlTarget};
 
-pub fn build(args: Args) -> Result<(), Error>
+pub fn build(config: Config) -> Result<(), Error>
 {
     let target = GlTarget::new(EnvInfo {
         gl_version_int: 420,
         gl_version_str: "4.2",
         explicit_bindings: true
     }, GL42);
-    target.run(&args)
+    target.run(&config)
 }

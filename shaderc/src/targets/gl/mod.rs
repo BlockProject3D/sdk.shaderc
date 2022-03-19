@@ -37,7 +37,8 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use ::bpx::shader::Stage;
 use log::info;
-use crate::options::{Args, Error};
+use crate::config::Config;
+use crate::options::{Error};
 use crate::targets::basic::{ShaderStage, Target};
 use crate::targets::gl::bindings::{gl_relocate_bindings, gl_test_bindings};
 use crate::targets::gl::bpx::BpxWriter;
@@ -74,17 +75,17 @@ impl Target for GlTarget {
         gl_test_bindings(stages)
     }
 
-    fn compile_link(&self, args: &Args, stages: BTreeMap<Stage, ShaderStage>) -> Result<Self::CompileOutput, Error> {
+    fn compile_link(&self, config: &Config, stages: BTreeMap<Stage, ShaderStage>) -> Result<Self::CompileOutput, Error> {
         rglslang::main(|| {
             info!("Compiling shaders...");
-            let output = compile_stages(&self.env, &args, stages)?;
+            let output = compile_stages(&self.env, &config, stages)?;
             info!("Linking shaders...");
-            gl_link_shaders(&args, output)
+            gl_link_shaders(&config, output)
         })
     }
 
-    fn write_finish(&self, args: &Args, (symbols, shaders): Self::CompileOutput) -> Result<(), Error> {
-        let mut bpx = BpxWriter::new(File::create(args.output)?, self.bpx_target, args.debug);
+    fn write_finish(&self, config: &Config, (symbols, shaders): Self::CompileOutput) -> Result<(), Error> {
+        let mut bpx = BpxWriter::new(File::create(config.output)?, self.bpx_target, config.debug);
         bpx.write_symbols(symbols)?;
         bpx.write_shaders(shaders)?;
         bpx.save()?;

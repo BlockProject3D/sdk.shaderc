@@ -31,7 +31,8 @@ use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
 use log::{debug, error, info, warn};
 use bp3d_sal::ast::tree::{Attribute, PropertyType, Struct};
-use crate::options::{Args, Error};
+use crate::config::Config;
+use crate::options::{Error};
 use crate::targets::basic::{BasicAst, load_shader_to_sal, ShaderToSal};
 
 pub struct ShaderStage
@@ -48,16 +49,16 @@ pub enum BindingType
     CBuf
 }
 
-pub fn load_pass(args: &Args) -> Result<Vec<ShaderToSal>, Error>
+pub fn load_pass(config: &Config) -> Result<Vec<ShaderToSal>, Error>
 {
     crossbeam::scope(|scope| {
         let manager = ScopedThreadManager::new(scope);
-        let mut pool: ThreadPool<ScopedThreadManager, Result<ShaderToSal, Error>> = ThreadPool::new(args.n_threads);
-        info!("Initialized thread pool with {} max thread(s)", args.n_threads);
-        for unit in &args.units {
+        let mut pool: ThreadPool<ScopedThreadManager, Result<ShaderToSal, Error>> = ThreadPool::new(config.n_threads);
+        info!("Initialized thread pool with {} max thread(s)", config.n_threads);
+        for unit in &config.units {
             pool.send(&manager, |_| {
                 debug!("Loading SAL AST for shader unit {:?}...", *unit);
-                load_shader_to_sal(unit, &args)
+                load_shader_to_sal(unit, &config)
             });
             debug!("Dispatch shader unit {:?}", unit);
         }

@@ -28,6 +28,7 @@
 
 mod options;
 mod targets;
+mod config;
 
 use std::path::Path;
 
@@ -89,10 +90,10 @@ fn run() -> i32
         println!();
         0
     } else {
-        let mut units: Vec<options::ShaderUnit> = matches
+        let mut units: Vec<config::Unit> = matches
             .values_of_os("shader")
             .unwrap_or_default()
-            .map(|v| options::ShaderUnit::Path(Path::new(v)))
+            .map(|v| config::Unit::Path(Path::new(v)))
             .collect();
         let libs: Vec<&Path> = matches
             .values_of_os("lib")
@@ -105,9 +106,9 @@ fn run() -> i32
         let debug = matches.is_present("debug");
         let output = get_out_path(matches.value_of_os("output"));
         for v in matches.values_of("injection").unwrap_or_default() {
-            units.push(options::ShaderUnit::Injected(v));
+            units.push(config::Unit::Injected(v));
         }
-        let args = options::Args {
+        let config = config::Config {
             units,
             libs,
             n_threads,
@@ -120,7 +121,7 @@ fn run() -> i32
         debug!("Target chosen: {}", target);
         if let Some(func) = TARGETS.get(target) {
             info!("Building for target: {}...", target);
-            if let Err(e) = func(args) {
+            if let Err(e) = func(config) {
                 error!("{}", e.into_inner());
                 1
             } else {

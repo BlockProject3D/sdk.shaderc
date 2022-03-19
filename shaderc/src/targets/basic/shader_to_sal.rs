@@ -35,11 +35,12 @@ use log::{trace, warn};
 use bp3d_sal::ast::tree::{ArrayItemType, Attribute, BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
 use bp3d_sal::ast::Visitor;
 use bp3d_sal::utils::auto_lexer_parser;
-use crate::options::{Args, Error, ShaderUnit};
+use crate::options::{Error};
 use crate::targets::basic::preprocessor::BasicPreprocessor;
 use crate::targets::basic::shaderlib::ShaderLib;
 use crate::targets::basic::useresolver::BasicUseResolver;
 use bp3d_sal::preprocessor;
+use crate::config::{Config, Unit};
 use crate::targets::basic::ast::Ast;
 
 pub type BasicAst = Ast<
@@ -225,7 +226,7 @@ pub struct ShaderToSal
     pub stage: Stage
 }
 
-fn shader_sal_stage<T: BufRead>(name: String, content: T, args: &Args) -> Result<ShaderToSal, Error>
+fn shader_sal_stage<T: BufRead>(name: String, content: T, config: &Config) -> Result<ShaderToSal, Error>
 {
     let mut result = ShaderToSal {
         strings: Vec::new(),
@@ -233,35 +234,35 @@ fn shader_sal_stage<T: BufRead>(name: String, content: T, args: &Args) -> Result
         name: name.clone(),
         stage: Stage::Vertex
     };
-    let mut preprocessor = BasicPreprocessor::new(&args.libs);
+    let mut preprocessor = BasicPreprocessor::new(&config.libs);
     preprocessor::run(content, &mut preprocessor)?;
     result.stage = preprocessor.stage.unwrap_or_else(|| {
         warn!("No shader stage specified in shader file, assuming this is a vertex shader by default");
         Stage::Vertex
     });
     for (name, header) in preprocessor.includes {
-        let data = shader_sal_stage(name,header.deref(), args)?;
+        let data = shader_sal_stage(name,header.deref(), config)?;
         result.strings.extend(data.strings);
         result.statements.extend(data.statements);
     }
-    let ast = auto_lexer_parser(&preprocessor.sal_code, BasicAst::new(), AstVisitor { resolver: BasicUseResolver::new(&args.libs) })?;
+    let ast = auto_lexer_parser(&preprocessor.sal_code, BasicAst::new(), AstVisitor { resolver: BasicUseResolver::new(&config.libs) })?;
     result.statements.extend(ast);
     result.strings.push(rglslang::shader::Part::new_with_name(preprocessor.src_code.join("\n"), name));
     Ok(result)
 }
 
-pub fn load_shader_to_sal(unit: &ShaderUnit, args: &Args) -> Result<ShaderToSal, Error>
+pub fn load_shader_to_sal(unit: &Unit, config: &Config) -> Result<ShaderToSal, Error>
 {
-    let mut libs: Vec<ShaderLib> = args.libs.iter().map(|v| ShaderLib::new(*v)).collect();
+    let mut libs: Vec<ShaderLib> = config.libs.iter().map(|v| ShaderLib::new(*v)).collect();
     match unit {
-        ShaderUnit::Path(path) => {
+        Unit::Path(path) => {
             let reader = BufReader::new(File::open(path)?);
-            shader_sal_stage(path.to_string_lossy().into_owned(),reader, args)
+            shader_sal_stage(path.to_string_lossy().into_owned(),reader, config)
         },
-        ShaderUnit::Injected(vname) => {
+        Unit::Injected(vname) => {
             for v in &mut libs {
                 if let Some(data) = v.try_load(vname)? {
-                    return shader_sal_stage(String::from(*vname), data.as_slice(), args);
+                    return shader_sal_stage(String::from(*vname), data.as_slice(), config);
                 }
             }
             Err(Error::from(format!("unable to locate injected shader '{}'", vname)))

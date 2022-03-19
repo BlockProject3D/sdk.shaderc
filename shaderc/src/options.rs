@@ -26,25 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::{borrow::Cow, fmt::Display, path::Path};
-
-#[derive(Debug)]
-pub enum ShaderUnit<'a>
-{
-    Path(&'a Path),
-    Injected(&'a str)
-}
-
-pub struct Args<'a>
-{
-    pub units: Vec<ShaderUnit<'a>>,
-    pub libs: Vec<&'a Path>,
-    pub output: &'a Path,
-    pub n_threads: usize,
-    pub minify: bool,
-    pub optimize: bool,
-    pub debug: bool
-}
+use std::{borrow::Cow, fmt::Display};
+use crate::config::Config;
 
 #[derive(Debug, Clone)]
 pub struct Error
@@ -75,4 +58,4 @@ impl<T: Display> From<T> for Error
     }
 }
 
-pub type TargetFunc = fn(Args) -> Result<(), Error>;
+pub type TargetFunc = fn(Config) -> Result<(), Error>;
