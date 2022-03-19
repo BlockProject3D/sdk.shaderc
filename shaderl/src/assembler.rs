@@ -26,7 +26,6 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
@@ -42,7 +41,7 @@ use thiserror::Error;
 pub struct Config<'a, I: Iterator<Item = &'a Path>> {
     pub n_threads: usize,
     pub debug: bool,
-    pub output: Cow<'a, Path>,
+    pub output: &'a Path,
     pub assembly: Option<&'a Path>,
     pub name: &'a str,
     pub shaders: I

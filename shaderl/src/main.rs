@@ -50,7 +50,7 @@ fn assemble(n_threads: usize, args: &ArgMatches) -> i32 {
     let cfg = assembler::Config {
         n_threads,
         debug,
-        output,
+        output: &output,
         assembly,
         name,
         shaders
