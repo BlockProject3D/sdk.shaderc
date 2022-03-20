@@ -27,13 +27,21 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
-use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
-use log::{debug, error, info, warn};
+use log::{debug, error, warn};
 use bp3d_sal::ast::tree::{Attribute, PropertyType, Struct};
-use crate::config::Config;
-use crate::options::{Error};
-use crate::targets::basic::{BasicAst, load_shader_to_sal, ShaderToSal};
+use crate::targets::basic::{BasicAst, ShaderToSal};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("multiple definitions of binding {0}")]
+    RedefinedBinding(u32),
+    #[error("multiple definitions of the same symbol")]
+    RedefinedSymbol,
+    #[error("unable to locate root constants layout")]
+    NoRootConstants
+}
 
 pub struct ShaderStage
 {
@@ -49,24 +57,7 @@ pub enum BindingType
     CBuf
 }
 
-pub fn load_pass(config: &Config) -> Result<Vec<ShaderToSal>, Error>
-{
-    crossbeam::scope(|scope| {
-        let manager = ScopedThreadManager::new(scope);
-        let mut pool: ThreadPool<ScopedThreadManager, Result<ShaderToSal, Error>> = ThreadPool::new(config.n_threads);
-        info!("Initialized thread pool with {} max thread(s)", config.n_threads);
-        for unit in &config.units {
-            pool.send(&manager, |_| {
-                debug!("Loading SAL AST for shader unit {:?}...", *unit);
-                load_shader_to_sal(unit, &config)
-            });
-            debug!("Dispatch shader unit {:?}", unit);
-        }
-        pool.reduce().map(|v| v.unwrap()).collect()
-    }).unwrap()
-}
-
-pub fn merge_stages(shaders: Vec<ShaderToSal>) -> Result<BTreeMap<Stage, ShaderStage>, Error>
+pub fn merge_stages(shaders: Vec<ShaderToSal>) -> BTreeMap<Stage, ShaderStage>
 {
     let mut map = BTreeMap::new();
     for v in shaders {
@@ -81,7 +72,7 @@ pub fn merge_stages(shaders: Vec<ShaderToSal>) -> Result<BTreeMap<Stage, ShaderS
             stage.statements.extend(v.statements);
         }
     }
-    Ok(map)
+    map
 }
 
 pub fn relocate_bindings<'a, F: FnMut(&'a str, BindingType, Option<u32>, u32) -> u32>(stages: &'a BTreeMap<Stage, ShaderStage>, mut func: F)
@@ -137,17 +128,18 @@ pub fn relocate_bindings<'a, F: FnMut(&'a str, BindingType, Option<u32>, u32) ->
 pub fn test_bindings<F: FnMut(BindingType, u32) -> bool>(stages: &BTreeMap<Stage, ShaderStage>, mut func: F) -> Result<(), Error>
 {
     let mut map = HashMap::new();
-    for (stage, v) in stages {
+    for v in stages.values() {
         if v.statements.root_constants_layout.is_some() && !func(BindingType::CBuf, 0) {
-            return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
+            error!("Redefinition of root constants layout");
+            return Err(Error::RedefinedBinding(0))
         }
         for slot in &v.statements.cbuffers {
             if map.contains_key(&slot.inner.name) {
                 continue;
             }
             if !func(BindingType::CBuf, slot.slot.get()) {
-                warn!("Constant buffer '{}' is attempting to relocate to {} which is already in use!", slot.inner.name, slot.slot.get());
-                return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
+                error!("Constant buffer '{}' is attempting to relocate to {} which is already in use!", slot.inner.name, slot.slot.get());
+                return Err(Error::RedefinedBinding(slot.slot.get()));
             }
             map.insert(&slot.inner.name, slot.slot.get());
         }
@@ -157,13 +149,13 @@ pub fn test_bindings<F: FnMut(BindingType, u32) -> bool>(stages: &BTreeMap<Stage
             }
             if slot.inner.ptype != PropertyType::Sampler {
                 if !func(BindingType::Sampler, slot.slot.get()) {
-                    warn!("Sampler '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot.get());
-                    return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
+                    error!("Sampler '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot.get());
+                    return Err(Error::RedefinedBinding(slot.slot.get()));
                 }
             } else {
                 if !func(BindingType::Texture, slot.slot.get()) {
                     warn!("Texture '{}' is attempting to relocate to {} which is already in use!", slot.inner.pname, slot.slot.get());
-                    return Err(Error::from(format!("multiple definitions of binding {} in stage {:?}", 0, stage)));
+                    return Err(Error::RedefinedBinding(slot.slot.get()));
                 }
             }
             map.insert(&slot.inner.pname, slot.slot.get());
@@ -179,13 +171,13 @@ pub fn test_symbols(stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
         for v in &v.statements.cbuffers {
             if !set.insert(&v.inner.name) {
                 error!("Multiple definitions of symbol '{}'", v.inner.name);
-                return Err(Error::new("multiple definitions of the same symbol"))
+                return Err(Error::RedefinedSymbol);
             }
         }
         for v in &v.statements.objects {
             if !set.insert(&v.inner.pname) {
                 error!("Multiple definitions of symbol '{}'", v.inner.pname);
-                return Err(Error::new("multiple definitions of the same symbol"))
+                return Err(Error::RedefinedSymbol);
             }
         }
     }
@@ -200,6 +192,6 @@ pub fn get_root_constants_layout(stages: &mut BTreeMap<Stage, ShaderStage>) -> R
         } else {
             false
         }
-    }).ok_or_else(|| Error::new("unable to locate root constant buffer"))?.1;
+    }).ok_or_else(|| Error::NoRootConstants)?.1;
     Ok(root_constants_layout.statements.root_constants_layout.take().unwrap())
 }

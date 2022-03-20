@@ -34,13 +34,29 @@ use rglslang::environment::{Client, Environment};
 use rglslang::shader::{Messages, Profile, Shader};
 use bp3d_sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, Struct};
 use crate::config::Config;
-use crate::options::{Error};
 use crate::targets::basic::{get_root_constants_layout, ShaderStage, Slot};
 use crate::targets::layout140::{compile_packed_structs, compile_struct, StructOffset};
 use crate::targets::sal_to_glsl::translate_sal_to_glsl;
+use thiserror::Error;
 
 const MAX_CBUFFER_SIZE: usize = 65536;
 const MAX_ROOT_CONSTANTS_SIZE: usize = 128;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("GLSL compile error")]
+    Compiler,
+    #[error("GLSL link error")]
+    Linker,
+    #[error("sal error: {0}")]
+    Sal(crate::targets::basic::sal_compiler::Error),
+    #[error("sal-glsl transpiler error: {0}")]
+    Transpiler(crate::targets::sal_to_glsl::Error),
+    #[error("constant buffer size overload")]
+    BufferSizeOverload,
+    #[error("layout140 compiler error: {0}")]
+    Layout140(crate::targets::layout140::Error)
+}
 
 pub struct EnvInfo
 {
@@ -143,7 +159,7 @@ fn build_messages(config: &Config) -> Messages
 
 pub fn compile_stages(env: &EnvInfo, config: &Config, mut stages: BTreeMap<Stage, ShaderStage>) -> Result<CompileOutput, Error>
 {
-    let root_constants_layout = get_root_constants_layout(&mut stages)?;
+    let root_constants_layout = get_root_constants_layout(&mut stages).map_err(Error::Sal)?;
     let stages: Result<Vec<CompiledShaderStage>, Error> = crossbeam::scope(|scope| {
         let manager = ScopedThreadManager::new(scope);
         let mut pool: ThreadPool<ScopedThreadManager, Result<CompiledShaderStage, Error>> = ThreadPool::new(config.n_threads);
@@ -152,7 +168,8 @@ pub fn compile_stages(env: &EnvInfo, config: &Config, mut stages: BTreeMap<Stage
         for (stage, mut shader) in stages {
             pool.send(&manager, move |_| {
                 debug!("Translating SAL AST for stage {:?} to GLSL for OpenGL {}...", stage, env.gl_version_str);
-                let glsl = translate_sal_to_glsl(env.explicit_bindings, &root_constants_layout, &shader.statements)?;
+                let glsl = translate_sal_to_glsl(env.explicit_bindings, &root_constants_layout, &shader.statements)
+                    .map_err(Error::Transpiler)?;
                 info!("Translated GLSL: \n{}", glsl);
                 shader.strings.insert(0, rglslang::shader::Part::new_with_name(glsl, "__internal_sal__"));
                 shader.strings.insert(0, rglslang::shader::Part::new_with_name(format!("#version {} core\n", env.gl_version_int), "__internal_glsl_version__"));
@@ -178,19 +195,19 @@ pub fn compile_stages(env: &EnvInfo, config: &Config, mut stages: BTreeMap<Stage
                 let rshader = builder.parse();
                 if !rshader.check() {
                     error!("GLSL has reported the following error: \n{}", rshader.get_info_log());
-                    return Err(Error::new("error parsing GLSL"));
+                    return Err(Error::Compiler);
                 }
                 info!("Successfully parsed GLSL code");
                 info!("Shader log: \n{}", rshader.get_info_log());
                 info!("Shader debug log: \n{}", rshader.get_info_debug_log());
-                let packed_structs = compile_packed_structs(shader.statements.packed_structs)?;
+                let packed_structs = compile_packed_structs(shader.statements.packed_structs).map_err(Error::Layout140)?;
                 let mut cbuffers = Vec::new();
                 for v in shader.statements.cbuffers {
-                    let inner = compile_struct(v.inner, &packed_structs)?;
+                    let inner = compile_struct(v.inner, &packed_structs).map_err(Error::Layout140)?;
                     debug!("Size of constant buffer '{}' is {} bytes", inner.name, inner.size);
                     if inner.size > MAX_CBUFFER_SIZE { // Check if UBO exceeds maximum size
                     error!("The size of a constant buffer cannot exceed 65536 bytes after alignment, however constant buffer '{}' takes {} bytes after alignment", inner.name, inner.size);
-                        return Err(Error::new("constant buffer size overload"));
+                        return Err(Error::BufferSizeOverload);
                     }
                     cbuffers.push(Slot {
                         inner,
@@ -217,7 +234,7 @@ pub fn compile_stages(env: &EnvInfo, config: &Config, mut stages: BTreeMap<Stage
         pool.reduce().map(|v| v.unwrap()).collect()
     }).unwrap();
     let dummy = Vec::new();
-    let compiled_root_constants = compile_struct(root_constants_layout, &dummy)?;
+    let compiled_root_constants = compile_struct(root_constants_layout, &dummy).map_err(Error::Layout140)?;
     debug!("Size of root constants layout is {} bytes", compiled_root_constants.size);
     if compiled_root_constants.size > MAX_ROOT_CONSTANTS_SIZE {
         warn!("Root constants layout size ({} bytes) exceeds the recommended limit of 128 bytes after alignment", compiled_root_constants.size);
@@ -329,7 +346,7 @@ pub fn gl_link_shaders(config: &Config, output: CompileOutput) -> Result<(Symbol
     let prog = builder.link();
     if !prog.check() {
         error!("GLSL has reported the following error: \n{}", prog.get_info_log());
-        return Err(Error::new("error linking GLSL"));
+        return Err(Error::Linker);
     }
     info!("Successfully linked GLSL shaders");
     info!("Shader log: \n{}", prog.get_info_log());

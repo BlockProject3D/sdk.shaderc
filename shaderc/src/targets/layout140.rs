@@ -29,11 +29,17 @@
 use std::ops::{Deref, DerefMut};
 use log::{error, warn};
 use bp3d_sal::ast::tree::{ArrayItemType, Attribute, BaseType, Property, PropertyType, Struct};
-use crate::options::Error;
+use thiserror::Error;
 
 // STD140 layout rules for paddings
 // https://www.khronos.org/registry/OpenGL/specs/gl/glspec46.core.pdf
 // Section 7.6.2.2
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("attempt to reference undeclared packed struct")]
+    Undeclared
+}
 
 pub fn size_of_base_type(t: BaseType) -> usize
 {
@@ -157,7 +163,7 @@ pub fn compile_struct(st: Struct<usize>, packed_structs: &Vec<StructOffset>) -> 
             PropertyType::StructRef(s) => {
                 let st = packed_structs.get(*s).ok_or_else(|| {
                     error!("Couldn't find referenced struct '{}', is it declared in the right order?", s);
-                    Error::new("attempt to reference undeclared packed struct")
+                    Error::Undeclared
                 })?;
                 (round_to_vec4(st.base_alignment), st.size)
             },
@@ -166,7 +172,7 @@ pub fn compile_struct(st: Struct<usize>, packed_structs: &Vec<StructOffset>) -> 
                     ArrayItemType::StructRef(s) => {
                         let st = packed_structs.get(*s).ok_or_else(|| {
                             error!("Couldn't find referenced struct '{}', is it declared in the right order?", s);
-                            Error::new("attempt to reference undeclared packed struct")
+                            Error::Undeclared
                         })?;
                         (round_to_vec4(st.base_alignment), a.size as usize * st.size)
                     },

@@ -28,7 +28,7 @@
 
 use bpx::shader::Target::GL40;
 use crate::config::Config;
-use crate::options::{Error};
+use std::error::Error;
 use crate::targets::basic::Target;
 use crate::targets::gl::EnvInfo;
 use crate::targets::gl::GlTarget;
@@ -39,7 +39,7 @@ use crate::targets::gl::GlTarget;
 // for constant buffers - glUniformBlockBinding(prog, location, binding)
 // for objects - glUniform1i(location, binding)
 
-pub fn build(config: Config) -> Result<(), Error>
+pub fn build(config: Config) -> Result<(), Box<dyn Error>>
 {
     let target = GlTarget::new(EnvInfo {
         gl_version_int: 400,

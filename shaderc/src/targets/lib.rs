@@ -32,14 +32,14 @@ use bpx::package;
 use bpx::package::Package;
 use bpx::package::utils::pack_file_vname;
 use log::warn;
+use std::error::Error;
 
 use crate::{
-    options::Error,
     targets::basic::shaderlib::ShaderLib
 };
 use crate::config::{Config, Unit};
 
-pub fn build(config: Config) -> Result<(), Error>
+pub fn build(config: Config) -> Result<(), Box<dyn Error>>
 {
     let mut libs: Vec<ShaderLib> = config.libs.iter().map(|v| ShaderLib::new(*v)).collect();
     let mut bpxp = Package::create(BufWriter::new(File::create(config.output)?),

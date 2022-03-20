@@ -30,8 +30,17 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use log::{debug, error};
 use bp3d_sal::ast::tree::{ArrayItemType, Property, PropertyType, Struct, VectorType};
-use crate::options::Error;
 use crate::targets::basic::{BasicAst, Slot};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error
+{
+    #[error("multiple definition of output slot {0}")]
+    RedefinedOutput(u32),
+    #[error("duplicate slot bindings in one or more constant buffer declaration")]
+    DuplicateSlot
+}
 
 fn get_char(v: VectorType) -> char
 {
@@ -126,7 +135,7 @@ fn translate_outputs(ast: &BasicAst) -> Result<String, Error>
     let mut set = HashSet::new();
     for v in ast.outputs.iter() {
         if !set.insert(v.slot.get()) {
-            return Err(Error::from(format!("multiple definition of output slot {}", v.slot.get())))
+            return Err(Error::RedefinedOutput(v.slot.get()));
         }
         str.push_str(&format!("layout (location = {}) out {}", v.slot.get(), translate_property(&v.inner, ast)));
     }
@@ -177,7 +186,7 @@ fn test_cbuffers_unique_slots(ast: &BasicAst) -> Result<(), Error>
         false
     });
     if flag { //Oh now we've got duplicate binding slots => terminate compilation immediately
-        return Err(Error::new("duplicate slot bindings in one or more constant buffer declaration"));
+        return Err(Error::DuplicateSlot);
     }
     Ok(())
 }

@@ -29,7 +29,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use bpx::shader::Stage;
 use log::warn;
-use crate::options::Error;
 use crate::targets::basic::{BindingType, relocate_bindings, ShaderStage, test_bindings};
 
 //TODO: In VK target ensure that all bindings are unique across all types of bindings
@@ -150,7 +149,7 @@ pub fn gl_relocate_bindings(stages: &mut BTreeMap<Stage, ShaderStage>)
     });
 }
 
-pub fn gl_test_bindings(stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error>
+pub fn gl_test_bindings(stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), crate::targets::basic::sal_compiler::Error>
 {
     let mut cbufs = HashSet::new();
     let mut textures = HashSet::new();

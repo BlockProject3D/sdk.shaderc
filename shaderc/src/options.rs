@@ -26,36 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::{borrow::Cow, fmt::Display};
 use crate::config::Config;
+use std::error::Error;
 
-#[derive(Debug, Clone)]
-pub struct Error
-{
-    msg: Cow<'static, str>
-}
-
-impl Error
-{
-    pub fn new(msg: &'static str) -> Self
-    {
-        Self { msg: msg.into() }
-    }
-
-    pub fn into_inner(self) -> Cow<'static, str>
-    {
-        self.msg
-    }
-}
-
-impl<T: Display> From<T> for Error
-{
-    fn from(v: T) -> Self
-    {
-        Self {
-            msg: format!("{}", v).into()
-        }
-    }
-}
-
-pub type TargetFunc = fn(Config) -> Result<(), Error>;
+pub type TargetFunc = fn(Config) -> Result<(), Box<dyn Error>>;

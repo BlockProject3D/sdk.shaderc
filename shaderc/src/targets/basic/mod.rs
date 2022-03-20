@@ -30,7 +30,7 @@ pub mod preprocessor;
 pub mod shaderlib;
 pub mod useresolver;
 mod shader_to_sal;
-mod sal_compiler;
+pub mod sal_compiler;
 pub mod ast;
 
 use std::collections::BTreeMap;
@@ -39,32 +39,32 @@ use log::{debug, info};
 pub use shader_to_sal::*;
 pub use sal_compiler::*;
 use crate::config::Config;
-use crate::options::{Error};
+use std::error::Error;
 
 pub trait Target
 {
     type CompileOutput;
 
-    fn pre_process(&self, config: &Config) -> Result<BTreeMap<Stage, ShaderStage>, Error> {
+    fn pre_process(&self, config: &Config) -> Result<BTreeMap<Stage, ShaderStage>, Box<dyn Error>> {
         info!("Running initial shader decomposition phase...");
         let shaders = load_pass(&config)?;
         debug!("Found {} shaders", shaders.len());
         info!("Merging shader stages");
-        let stages = merge_stages(shaders)?;
+        let stages = merge_stages(shaders);
         info!("Testing SAL symbols...");
         test_symbols(&stages)?;
         Ok(stages)
     }
 
-    fn relocate_bindings(&self, stages: &mut BTreeMap<Stage, ShaderStage>) -> Result<(), Error>;
+    fn relocate_bindings(&self, stages: &mut BTreeMap<Stage, ShaderStage>) -> Result<(), Box<dyn Error>>;
 
-    fn test_bindings(&self, stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error>;
+    fn test_bindings(&self, stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Box<dyn Error>>;
 
-    fn compile_link(&self, config: &Config, stages: BTreeMap<Stage, ShaderStage>) -> Result<Self::CompileOutput, Error>;
+    fn compile_link(&self, config: &Config, stages: BTreeMap<Stage, ShaderStage>) -> Result<Self::CompileOutput, Box<dyn Error>>;
 
-    fn write_finish(&self, config: &Config, out: Self::CompileOutput) -> Result<(), Error>;
+    fn write_finish(&self, config: &Config, out: Self::CompileOutput) -> Result<(), Box<dyn Error>>;
 
-    fn run(&self, config: &Config) -> Result<(), Error> {
+    fn run(&self, config: &Config) -> Result<(), Box<dyn Error>> {
         info!("Applying pre-processor...");
         let mut stages = self.pre_process(config)?;
         info!("Applying binding relocations...");

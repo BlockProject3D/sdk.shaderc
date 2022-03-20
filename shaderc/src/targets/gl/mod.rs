@@ -38,11 +38,12 @@ use std::fs::File;
 use ::bpx::shader::Stage;
 use log::info;
 use crate::config::Config;
-use crate::options::{Error};
 use crate::targets::basic::{ShaderStage, Target};
 use crate::targets::gl::bindings::{gl_relocate_bindings, gl_test_bindings};
 use crate::targets::gl::bpx::BpxWriter;
 use crate::targets::gl::core::ShaderBytes;
+
+use std::error::Error;
 
 use self::core::Symbols;
 use self::core::compile_stages;
@@ -66,25 +67,26 @@ impl GlTarget {
 impl Target for GlTarget {
     type CompileOutput = (Symbols, Vec<ShaderBytes>);
 
-    fn relocate_bindings(&self, stages: &mut BTreeMap<Stage, ShaderStage>) -> Result<(), Error> {
+    fn relocate_bindings(&self, stages: &mut BTreeMap<Stage, ShaderStage>) -> Result<(), Box<dyn Error>> {
         gl_relocate_bindings(stages);
         Ok(())
     }
 
-    fn test_bindings(&self, stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Error> {
-        gl_test_bindings(stages)
+    fn test_bindings(&self, stages: &BTreeMap<Stage, ShaderStage>) -> Result<(), Box<dyn Error>> {
+        gl_test_bindings(stages)?;
+        Ok(())
     }
 
-    fn compile_link(&self, config: &Config, stages: BTreeMap<Stage, ShaderStage>) -> Result<Self::CompileOutput, Error> {
+    fn compile_link(&self, config: &Config, stages: BTreeMap<Stage, ShaderStage>) -> Result<Self::CompileOutput, Box<dyn Error>> {
         rglslang::main(|| {
             info!("Compiling shaders...");
             let output = compile_stages(&self.env, &config, stages)?;
             info!("Linking shaders...");
             gl_link_shaders(&config, output)
-        })
+        }).map_err(Box::from)
     }
 
-    fn write_finish(&self, config: &Config, (symbols, shaders): Self::CompileOutput) -> Result<(), Error> {
+    fn write_finish(&self, config: &Config, (symbols, shaders): Self::CompileOutput) -> Result<(), Box<dyn Error>> {
         let mut bpx = BpxWriter::new(File::create(config.output)?, self.bpx_target, config.debug);
         bpx.write_symbols(symbols)?;
         bpx.write_shaders(shaders)?;

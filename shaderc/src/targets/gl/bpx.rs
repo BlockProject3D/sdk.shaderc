@@ -30,7 +30,6 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufWriter;
 use bp3d_sal::ast::tree::{BlendfuncStatement, PipelineStatement, Property, PropertyType, Struct};
-use crate::options::Error;
 use bp3d_symbols::{BlendfuncObject, ConstantObject, ConstPropType, OutputObject, OutputPropType};
 use crate::targets::gl::core::{Object, ShaderBytes, Symbols};
 use bpx::shader;
@@ -39,6 +38,23 @@ use log::{debug, error, info, warn};
 use crate::targets::basic::Slot;
 use crate::targets::gl::ext_data::{SymbolWriter, ToObject};
 use crate::targets::layout140::StructOffset;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("unsupported binding register number")]
+    UnsupportedBinding,
+    #[error("illegal object type")]
+    IllegalObject,
+    #[error("illegal render target output type")]
+    IllegalOutput,
+    #[error("illegal constant type")]
+    IllegalConstant,
+    #[error("bpx error: {0}")]
+    Bpx(bpx::shader::error::Error),
+    #[error("bpx serde error: {0}")]
+    Serde(bpx::sd::serde::Error)
+}
 
 fn build_blendfunc_lookup_map(blendfuncs: Vec<BlendfuncStatement>) -> HashMap<String, BlendfuncObject>
 {
@@ -80,7 +96,7 @@ impl BpxWriter {
             let slot = sym.inner.slot.get();
             if slot > 32 {
                 error!("OpenGL limits texture/sampler bindings to 32, got a binding at register {}", slot);
-                return Err(Error::new("unsupported binding register number"));
+                return Err(Error::UnsupportedBinding);
             } else if slot > 16 {
                 warn!("This shader needs more than 16 bindings, this may not work on all hardware");
             }
@@ -91,17 +107,17 @@ impl BpxWriter {
                 | PropertyType::TextureCube(_) => builder.ty(shader::symbol::Type::Texture),
                 p => {
                     error!("Unsupported object type: {}", p);
-                    return Err(Error::new("unsupported object type"));
+                    return Err(Error::IllegalObject);
                 }
             };
-            builder.extended_data(sym.inner.inner.ptype.to_bpx_object(self.debug, &())?);
+            builder.extended_data(sym.inner.inner.ptype.to_bpx_object(self.debug, &()).map_err(Error::Serde)?);
             if sym.inner.external.get() {
                 builder.external(); //Global binding (goes in the global descriptor set)
             } else {
                 builder.internal(); //Local binding (goes in the local descriptor set)
             }
             crate::targets::gl::ext_data::append_stages!(sym > builder);
-            bpx.write(builder)?;
+            bpx.write(builder).map_err(Error::Bpx)?;
         }
         Ok(())
     }
@@ -112,13 +128,13 @@ impl BpxWriter {
             let mut builder = shader::symbol::Builder::new(sym.inner.name.clone());
             builder
                 .ty(shader::symbol::Type::ConstantBuffer)
-                .extended_data(sym.inner.to_bpx_object(self.debug, &(bpx, structs))?);
+                .extended_data(sym.inner.to_bpx_object(self.debug, &(bpx, structs)).map_err(Error::Serde)?);
             if sym.external.get() {
                 builder.external();
             } else {
                 builder.internal();
             }
-            bpx.write(builder)?;
+            bpx.write(builder).map_err(Error::Bpx)?;
         }
         Ok(())
     }
@@ -132,21 +148,21 @@ impl BpxWriter {
             let slot = sym.inner.slot.get();
             if slot > 32 {
                 error!("OpenGL limits texture/sampler bindings to 32, got a binding at register {}", slot);
-                return Err(Error::new("unsupported binding register number"));
+                return Err(Error::UnsupportedBinding);
             } else if slot > 16 {
                 warn!("This shader needs more than 16 bindings, this may not work on all hardware");
             }
             builder
                 .register(slot as _)
                 .ty(shader::symbol::Type::ConstantBuffer)
-                .extended_data(sym.inner.inner.to_bpx_object(self.debug, &(bpx, packed_structs))?);
+                .extended_data(sym.inner.inner.to_bpx_object(self.debug, &(bpx, packed_structs)).map_err(Error::Serde)?);
             if sym.inner.external.get() {
                 builder.external();
             } else {
                 builder.internal();
             }
             crate::targets::gl::ext_data::append_stages!(sym > builder);
-            bpx.write(builder)?;
+            bpx.write(builder).map_err(Error::Bpx)?;
         }
         Ok(())
     }
@@ -160,8 +176,8 @@ impl BpxWriter {
             builder
                 .external()
                 .ty(shader::symbol::Type::VertexFormat)
-                .extended_data(sym.to_bpx_object(self.debug, &())?);
-            bpx.write(builder)?;
+                .extended_data(sym.to_bpx_object(self.debug, &()).map_err(Error::Serde)?);
+            bpx.write(builder).map_err(Error::Bpx)?;
         } else {
             warn!("No vertex format was found in shader pack build");
         }
@@ -177,8 +193,8 @@ impl BpxWriter {
             builder
                 .internal()
                 .ty(shader::symbol::Type::Pipeline)
-                .extended_data(sym.to_bpx_object(self.debug, &())?);
-            bpx.write(builder)?;
+                .extended_data(sym.to_bpx_object(self.debug, &()).map_err(Error::Serde)?);
+            bpx.write(builder).map_err(Error::Bpx)?;
         } else {
             warn!("No pipeline was found in shader pack build");
         }
@@ -200,7 +216,7 @@ impl BpxWriter {
                     PropertyType::Vector(v) => OutputPropType::Vector(v),
                     s => {
                         error!("Requested type '{}' for a render target which isn't supported in OpenGL", s);
-                        return Err(Error::new("illegal render target output type"));
+                        return Err(Error::IllegalOutput);
                     }
                 }
             };
@@ -209,8 +225,8 @@ impl BpxWriter {
                 .internal()
                 .ty(shader::symbol::Type::Output)
                 .register(sym.slot.get() as _)
-                .extended_data(output.to_bpx_object(self.debug, &())?);
-            bpx.write(builder)?;
+                .extended_data(output.to_bpx_object(self.debug, &()).map_err(Error::Serde)?);
+            bpx.write(builder).map_err(Error::Bpx)?;
         }
         Ok(())
     }
@@ -229,12 +245,12 @@ impl BpxWriter {
                     PropertyType::Matrix(v) => ConstPropType::Matrix(v),
                     s => {
                         error!("Requested type '{}' for a constant which isn't supported in OpenGL", s);
-                        return Err(Error::new("illegal constant type"));
+                        return Err(Error::IllegalConstant);
                     }
                 }
             };
-            builder.extended_data(obj.to_bpx_object(self.debug, &())?);
-            bpx.write(builder)?;
+            builder.extended_data(obj.to_bpx_object(self.debug, &()).map_err(Error::Serde)?);
+            bpx.write(builder).map_err(Error::Bpx)?;
         }
         Ok(())
     }
@@ -294,7 +310,7 @@ impl BpxWriter {
             tbl.create(shader::Shader {
                 stage: stage.stage,
                 data: stage.data
-            })?;
+            }).map_err(Error::Bpx)?;
         }
         Ok(())
     }
@@ -302,7 +318,7 @@ impl BpxWriter {
     pub fn save(&mut self) -> Result<(), Error> {
         //The unwrap should be fine because bpx is initialized in new.
         // This unwrap may panic if write_symbols panics before putting bpx back.
-        self.bpx.as_mut().unwrap().save()?;
+        self.bpx.as_mut().unwrap().save().map_err(Error::Bpx)?;
         Ok(())
     }
 }

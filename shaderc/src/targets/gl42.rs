@@ -28,11 +28,11 @@
 
 use bpx::shader::Target::GL42;
 use crate::config::Config;
-use crate::options::{Error};
+use std::error::Error;
 use crate::targets::basic::Target;
 use crate::targets::gl::{EnvInfo, GlTarget};
 
-pub fn build(config: Config) -> Result<(), Error>
+pub fn build(config: Config) -> Result<(), Box<dyn Error>>
 {
     let target = GlTarget::new(EnvInfo {
         gl_version_int: 420,

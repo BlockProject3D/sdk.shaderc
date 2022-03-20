@@ -167,9 +167,9 @@ dependencies = [
 
 [[package]]
 name = "bp3d-fs"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b676ba7b2332b27f81acc0aed5808a587dfe0198d28307c100d750aac6d5b106"
+checksum = "4e02060fa724a87f9e3a10f39dcb2cbd2f652a4bce5ccb152d8f74c1dd78a15e"
 dependencies = [
  "cfg-if",
  "dunce",
@@ -226,9 +226,9 @@ dependencies = [
 
 [[package]]
 name = "bpx"
-version = "4.0.0-beta-7.0.1"
+version = "4.0.0-beta-7.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2116db277eb7a4742d74e6578b0ce9d999e2ad3688d90b358eccbaa74e40e13d"
+checksum = "3dbee0b22170cfd1413cf641a674c61ec1b2ccf9a6ed2620317fd7f4617dbb43"
 dependencies = [
  "byteorder",
  "elsa",
@@ -301,9 +301,9 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95059428f66df56b63431fdb4e1947ed2190586af5c5a8a8b71122bdf5a7f469"
+checksum = "59a6001667ab124aebae2a495118e11d30984c3a653e99d86d58971708cf5e4b"
 dependencies = [
  "libc",
 ]
@@ -627,9 +627,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.120"
+version = "0.2.121"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad5c14e80759d0939d013e6ca49930e59fc53dd8e5009132f76240c179380c09"
+checksum = "efaa7b300f3b5fe8eb6bf21ce3895e1751d9665086af2d64b42f19701015ff4f"
 
 [[package]]
 name = "libz-sys"

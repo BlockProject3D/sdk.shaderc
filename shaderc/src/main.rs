@@ -122,7 +122,7 @@ fn run() -> i32
         if let Some(func) = TARGETS.get(target) {
             info!("Building for target: {}...", target);
             if let Err(e) = func(config) {
-                error!("{}", e.into_inner());
+                error!("{}", e);
                 1
             } else {
                 0

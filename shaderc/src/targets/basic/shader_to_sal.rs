@@ -30,18 +30,44 @@ use std::cell::Cell;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::ops::Deref;
+use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::Stage;
-use log::{trace, warn};
+use log::{debug, info, trace, warn};
 use bp3d_sal::ast::tree::{ArrayItemType, Attribute, BlendfuncStatement, PipelineStatement, Property, PropertyType, Statement, Struct};
 use bp3d_sal::ast::Visitor;
 use bp3d_sal::utils::auto_lexer_parser;
-use crate::options::{Error};
 use crate::targets::basic::preprocessor::BasicPreprocessor;
 use crate::targets::basic::shaderlib::ShaderLib;
 use crate::targets::basic::useresolver::BasicUseResolver;
 use bp3d_sal::preprocessor;
 use crate::config::{Config, Unit};
 use crate::targets::basic::ast::Ast;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum VisitorError
+{
+    #[error("only 1 vertex format is allowed per shader")]
+    DuplicateVertexFormat,
+    #[error("only 1 pipeline definition is allowed per shader")]
+    DuplicatePipeline,
+    #[error("error while resolving use statement: {0}")]
+    Use(crate::targets::basic::useresolver::Error)
+}
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("sal error: {0}")]
+    Sal(bp3d_sal::utils::AutoError<usize, VisitorError>),
+    #[error("shader lib error: {0}")]
+    ShaderLib(crate::targets::basic::shaderlib::Error),
+    #[error("unable to locate injected shader")]
+    InjectionNotFound,
+    #[error("io error: {0}")]
+    Io(std::io::Error),
+    #[error("preprocessor error: {0}")]
+    Preprocessor(crate::targets::basic::preprocessor::Error)
+}
 
 pub type BasicAst = Ast<
     Slot<Property<usize>>, Slot<Property<usize>>, Slot<Property<usize>>,
@@ -118,7 +144,7 @@ pub struct AstVisitor<'a> {
 }
 
 impl<'a> Visitor<BasicAst> for AstVisitor<'a> {
-    type Error = Error;
+    type Error = VisitorError;
 
     fn visit_constant(&mut self, ast: &mut BasicAst, val: Property<usize>) -> Result<(), Self::Error> {
         trace!("Visit constant: {}", val.pname);
@@ -173,7 +199,7 @@ impl<'a> Visitor<BasicAst> for AstVisitor<'a> {
     fn visit_vertex_format(&mut self, ast: &mut BasicAst, val: Struct<usize>) -> Result<(), Self::Error> {
         trace!("Visit vertex format: {}", val.name);
         if ast.vformat.is_some() {
-            return Err(Error::new("only 1 vertex format is allowed per shader"));
+            return Err(VisitorError::DuplicateVertexFormat);
         }
         ast.vformat = Some(val);
         Ok(())
@@ -182,7 +208,7 @@ impl<'a> Visitor<BasicAst> for AstVisitor<'a> {
     fn visit_pipeline(&mut self, ast: &mut BasicAst, val: PipelineStatement) -> Result<(), Self::Error> {
         trace!("Visit pipeline description: {}", val.name);
         if ast.pipeline.is_some() {
-            return Err(Error::new("only 1 pipeline description is allowed per shader"));
+            return Err(VisitorError::DuplicatePipeline);
         }
         ast.pipeline = Some(val);
         Ok(())
@@ -202,7 +228,8 @@ impl<'a> Visitor<BasicAst> for AstVisitor<'a> {
 
     fn visit_use(&mut self, ast: &mut BasicAst, module: String, member: String) -> Result<(), Self::Error> {
         trace!("Visit use: {}::{}", module, member);
-        let (stmt, mut ast1) = self.resolver.resolve(module, member)?;
+        let (stmt, mut ast1) = self.resolver.resolve(module, member)
+            .map_err(VisitorError::Use)?;
         match stmt {
             Statement::Constant(v) => self.visit_constant(ast, v),
             Statement::ConstantBuffer(v) => {
@@ -235,7 +262,7 @@ fn shader_sal_stage<T: BufRead>(name: String, content: T, config: &Config) -> Re
         stage: Stage::Vertex
     };
     let mut preprocessor = BasicPreprocessor::new(&config.libs);
-    preprocessor::run(content, &mut preprocessor)?;
+    preprocessor::run(content, &mut preprocessor).map_err(Error::Preprocessor)?;
     result.stage = preprocessor.stage.unwrap_or_else(|| {
         warn!("No shader stage specified in shader file, assuming this is a vertex shader by default");
         Stage::Vertex
@@ -245,7 +272,8 @@ fn shader_sal_stage<T: BufRead>(name: String, content: T, config: &Config) -> Re
         result.strings.extend(data.strings);
         result.statements.extend(data.statements);
     }
-    let ast = auto_lexer_parser(&preprocessor.sal_code, BasicAst::new(), AstVisitor { resolver: BasicUseResolver::new(&config.libs) })?;
+    let ast = auto_lexer_parser(&preprocessor.sal_code, BasicAst::new(), AstVisitor { resolver: BasicUseResolver::new(&config.libs) })
+        .map_err(Error::Sal)?;
     result.statements.extend(ast);
     result.strings.push(rglslang::shader::Part::new_with_name(preprocessor.src_code.join("\n"), name));
     Ok(result)
@@ -256,18 +284,37 @@ pub fn load_shader_to_sal(unit: &Unit, config: &Config) -> Result<ShaderToSal, E
     let mut libs: Vec<ShaderLib> = config.libs.iter().map(|v| ShaderLib::new(*v)).collect();
     match unit {
         Unit::Path(path) => {
-            let reader = BufReader::new(File::open(path)?);
+            info!("Loading shader {:?}...", path);
+            let reader = BufReader::new(File::open(path).map_err(Error::Io)?);
             shader_sal_stage(path.to_string_lossy().into_owned(),reader, config)
         },
         Unit::Injected(vname) => {
+            info!("Loading injected shader {}...", vname);
             for v in &mut libs {
-                if let Some(data) = v.try_load(vname)? {
+                if let Some(data) = v.try_load(vname).map_err(Error::ShaderLib)? {
                     return shader_sal_stage(String::from(*vname), data.as_slice(), config);
                 }
             }
-            Err(Error::from(format!("unable to locate injected shader '{}'", vname)))
+            Err(Error::InjectionNotFound)
         }
     }
+}
+
+pub fn load_pass(config: &Config) -> Result<Vec<ShaderToSal>, Error>
+{
+    crossbeam::scope(|scope| {
+        let manager = ScopedThreadManager::new(scope);
+        let mut pool: ThreadPool<ScopedThreadManager, Result<ShaderToSal, Error>> = ThreadPool::new(config.n_threads);
+        info!("Initialized thread pool with {} max thread(s)", config.n_threads);
+        for unit in &config.units {
+            pool.send(&manager, |_| {
+                debug!("Loading SAL AST for shader unit {:?}...", *unit);
+                load_shader_to_sal(unit, &config)
+            });
+            debug!("Dispatch shader unit {:?}", unit);
+        }
+        pool.reduce().map(|v| v.unwrap()).collect()
+    }).unwrap()
 }
 
 pub struct Slot<T>
