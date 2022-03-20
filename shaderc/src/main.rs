@@ -26,25 +26,16 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod options;
-mod targets;
-mod config;
-
 use std::path::Path;
-
 use clap::{Arg, Command};
 use log::{debug, error, info};
-use phf::phf_map;
 use cli_common::{alloc_verbosity_level, get_out_path, init_bp3d_logger};
+use bp3d_shaderc::Config;
+use bp3d_shaderc::Unit;
+use bp3d_shaderc::Compiler;
 
 const PROG_NAME: &str = env!("CARGO_PKG_NAME");
 const PROG_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-static TARGETS: phf::Map<&'static str, options::TargetFunc> = phf_map! {
-    "LIB" => targets::lib::build,
-    "GL40" => targets::gl40::build,
-    "GL42" => targets::gl42::build
-};
 
 fn run() -> i32
 {
@@ -80,8 +71,9 @@ fn run() -> i32
     info!("Initializing BlockProject 3D Shader Compiler...");
     if matches.is_present("print_targets") {
         print!("Available targets: ");
-        for (i, name) in TARGETS.keys().enumerate() {
-            if i == TARGETS.len() - 1 {
+        let count = Compiler::list_targets().count();
+        for (i, name) in Compiler::list_targets().enumerate() {
+            if i == count - 1 {
                 print!("{}", name)
             } else {
                 print!("{}, ", name)
@@ -90,10 +82,10 @@ fn run() -> i32
         println!();
         0
     } else {
-        let mut units: Vec<config::Unit> = matches
+        let mut units: Vec<Unit> = matches
             .values_of_os("shader")
             .unwrap_or_default()
-            .map(|v| config::Unit::Path(Path::new(v)))
+            .map(|v| Unit::Path(Path::new(v)))
             .collect();
         let libs: Vec<&Path> = matches
             .values_of_os("lib")
@@ -106,9 +98,9 @@ fn run() -> i32
         let debug = matches.is_present("debug");
         let output = get_out_path(matches.value_of_os("output"));
         for v in matches.values_of("injection").unwrap_or_default() {
-            units.push(config::Unit::Injected(v));
+            units.push(Unit::Injected(v));
         }
-        let config = config::Config {
+        let config = Config {
             units,
             libs,
             n_threads,
@@ -119,9 +111,9 @@ fn run() -> i32
         };
         let target = matches.value_of("target").unwrap();
         debug!("Target chosen: {}", target);
-        if let Some(func) = TARGETS.get(target) {
+        if let Some(compiler) = Compiler::get(target) {
             info!("Building for target: {}...", target);
-            if let Err(e) = func(config) {
+            if let Err(e) = compiler.run(config) {
                 error!("{}", e);
                 1
             } else {

@@ -207,6 +207,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "bp3d-shaderc"
+version = "0.1.0"
+dependencies = [
+ "bp3d-sal",
+ "bp3d-symbols",
+ "bp3d-threads",
+ "bpx",
+ "crossbeam",
+ "log",
+ "phf 0.8.0",
+ "regex",
+ "rglslang",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "bp3d-symbols"
 version = "0.1.0"
 dependencies = [
@@ -1205,19 +1222,10 @@ dependencies = [
 name = "shaderc"
 version = "0.1.0"
 dependencies = [
- "bp3d-sal",
- "bp3d-symbols",
- "bp3d-threads",
- "bpx",
+ "bp3d-shaderc",
  "clap",
  "cli-common",
- "crossbeam",
  "log",
- "phf 0.8.0",
- "regex",
- "rglslang",
- "serde",
- "thiserror",
 ]
 
 [[package]]

@@ -28,6 +28,10 @@
 
 use std::collections::HashMap;
 use bpx::shader::ShaderPack;
+use bp3d_sal::ast::tree::{PipelineStatement, PropertyType, Struct};
+use bp3d_symbols::{ArrayItemType, ConstantObject, OutputObject, PipelineObject, PropObject, PropType, StructObject, TextureObject, TextureObjectType};
+use crate::targets::basic::Slot;
+use crate::targets::layout140::{size_of_base_type, StructOffset};
 
 pub struct SymbolWriter<T: std::io::Write + std::io::Seek>
 {
@@ -83,12 +87,7 @@ macro_rules! append_stages {
         }
     };
 }
-
 pub(crate) use append_stages;
-use bp3d_sal::ast::tree::{PipelineStatement, PropertyType, Struct};
-use bp3d_symbols::{ArrayItemType, ConstantObject, OutputObject, PipelineObject, PropObject, PropType, StructObject, TextureObject, TextureObjectType};
-use crate::targets::basic::Slot;
-use crate::targets::layout140::{size_of_base_type, StructOffset};
 
 pub trait ToObject<T = ()> where Self: Sized
 {

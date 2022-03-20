@@ -1,0 +1,26 @@
+[package]
+name = "bp3d-shaderc"
+version = "0.1.0"
+authors = ["Yuri Edward <yuri6037@outlook.com>"]
+edition = "2021"
+description = "Shader compiler."
+license = "BSD-3-Clause"
+repository = "https://gitlab.com/bp3d/sdk/shader-compiler"
+readme = "./README.MD"
+keywords = ["bp3d", "shaderc"]
+categories = ["game-engines", "game-development"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+regex = "1.4.5"
+rglslang = { path = "../../rglslang" }
+bp3d-sal = { path = "../../sal" }
+bp3d-symbols = { path = "../../symbols" }
+phf = { version = "0.8", features = ["macros"] }
+bpx = { version = "4.0.0-beta-6.0.1", features = ["package", "shader", "serde"] }
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4.14"
+crossbeam = "0.8.1"
+bp3d-threads = "1.1.0"
+thiserror = "1.0.30"

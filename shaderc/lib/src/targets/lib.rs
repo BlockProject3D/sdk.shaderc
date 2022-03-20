@@ -34,10 +34,8 @@ use bpx::package::utils::pack_file_vname;
 use log::warn;
 use std::error::Error;
 
-use crate::{
-    targets::basic::shaderlib::ShaderLib
-};
 use crate::config::{Config, Unit};
+use crate::targets::basic::shaderlib::ShaderLib;
 
 pub fn build(config: Config) -> Result<(), Box<dyn Error>>
 {
