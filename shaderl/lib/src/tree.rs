@@ -127,6 +127,11 @@ impl SymbolTree {
         self.by_name.get(name).map(|v| &self.symbols[*v])
     }
 
+    /// Checks if all symbols in this symbol tree are flagged EXTERNAL.
+    pub fn is_external(&self) -> bool {
+        self.symbols.iter().find(|v| v.info.flags & FLAG_INTERNAL != 0).is_none()
+    }
+
     //Mass set FLAG_INTERNAL on all symbols.
     pub fn mass_set_internal(&mut self) {
         self.iter_mut().for_each(|v| {

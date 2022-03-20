@@ -28,7 +28,7 @@
 
 use std::path::Path;
 use clap::{Arg, ArgMatches, Command};
-use bp3d_shaderl::assembler;
+use bp3d_shaderl::{assembler, linker};
 use log::{error, info};
 use cli_common::{alloc_verbosity_level, get_out_path, init_bp3d_logger};
 
@@ -52,6 +52,24 @@ fn assemble(n_threads: usize, args: &ArgMatches) -> i32 {
         shaders
     };
     if let Err(e) = assembler::run(cfg) {
+        error!("{}", e);
+        1
+    } else {
+        0
+    }
+}
+
+fn link(n_threads: usize, args: &ArgMatches) -> i32 {
+    let assembly = args.value_of_os("assembly").map(Path::new).unwrap();
+    let shaders = args.values_of_os("shader")
+        .unwrap_or_default()
+        .map(Path::new);
+    let cfg = linker::Config {
+        n_threads,
+        assembly,
+        shaders: shaders.collect()
+    };
+    if let Err(e) = linker::run(cfg) {
         error!("{}", e);
         1
     } else {
@@ -102,9 +120,9 @@ fn run() -> i32 {
     if let Some(args) = matches.subcommand_matches("assemble") {
         return assemble(n_threads, args);
     }
-    /*if let Some(args) = matches.subcommand_matches("link") {
-
-    }*/
+    if let Some(args) = matches.subcommand_matches("link") {
+        return link(n_threads, args);
+    }
     0
 }
 
