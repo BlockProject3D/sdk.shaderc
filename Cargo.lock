@@ -260,9 +260,9 @@ dependencies = [
 
 [[package]]
 name = "bpx"
-version = "4.0.0-beta-7.2.1"
+version = "4.0.0-beta-7.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a203f0336e30ba4072060a7e3d60aac3f2d0b25f65596aa5838b4bd852814f6"
+checksum = "189cd650d7d4da2ff4ef6c231de8f90dd3110c56bd8dbb805f8aa967c01afd58"
 dependencies = [
  "byteorder",
  "elsa",

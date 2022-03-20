@@ -32,7 +32,7 @@ use std::path::Path;
 use bp3d_threads::{ScopedThreadManager, ThreadPool};
 use bpx::shader::ShaderPack;
 use bpx::shader::symbol::{FLAG_ASSEMBLY, FLAG_EXTERNAL};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 
 use thiserror::Error;
 use crate::symbols::{check_signature_with_assembly, load_and_sign_symbols};
@@ -63,6 +63,10 @@ fn get_assembly_hash(file: &Path) -> Result<u64, Error> {
 
 fn link_single(path: &Path, new_assembly: u64) -> Result<(), Error> {
     let mut shader = ShaderPack::open(File::options().read(true).write(true).open(path).map_err(Error::Io)?).map_err(Error::Bpx)?;
+    if shader.get_settings().assembly_hash != 0 {
+        warn!("Shader pack {:?} is already linked, skipping...", path);
+        return Ok(());
+    }
     shader.set_assembly(new_assembly);
     let indices: Vec<usize> = shader.symbols().map_err(Error::Bpx)?.iter()
         .filter(|v| v.flags & FLAG_EXTERNAL != 0)
@@ -106,6 +110,7 @@ pub fn run(config: Config) -> Result<(), Error> {
         error!("One or more external symbols were not found in shader assembly; linking cannot continue!");
         return Err(Error::Unresolved);
     }
+    info!("Linking shaders...");
     link(config.n_threads, config.assembly, config.shaders)?;
     Ok(())
 }
