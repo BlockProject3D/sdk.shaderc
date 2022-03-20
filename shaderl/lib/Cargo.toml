@@ -1,0 +1,28 @@
+[package]
+name = "bp3d-shaderl"
+version = "0.1.0"
+authors = ["Yuri Edward <yuri6037@outlook.com>"]
+edition = "2021"
+description = "Shader linker."
+license = "BSD-3-Clause"
+repository = "https://gitlab.com/bp3d/sdk/shader-compiler"
+readme = "./README.MD"
+keywords = ["bp3d", "shaderl"]
+categories = ["game-engines", "game-development"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bp3d-symbols = { path = "../../symbols" }
+bpx = { version = "4.0.0-beta-7", features = ["shader", "serde"] }
+log = "0.4.14"
+serde = "1.0"
+crossbeam = "0.8.1"
+bp3d-threads = "1.1.0"
+bincode = "1.3.3"
+sha2 = "0.10.2"
+byteorder = "1"
+thiserror = "1.0.30"
+
+[dev-dependencies]
+bp3d-sal = { path = "../../sal" }

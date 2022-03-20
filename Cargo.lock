@@ -224,6 +224,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "bp3d-shaderl"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "bp3d-sal",
+ "bp3d-symbols",
+ "bp3d-threads",
+ "bpx",
+ "byteorder",
+ "crossbeam",
+ "log",
+ "serde",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "bp3d-symbols"
 version = "0.1.0"
 dependencies = [
@@ -1240,20 +1257,10 @@ dependencies = [
 name = "shaderl"
 version = "0.1.0"
 dependencies = [
- "bincode",
- "bp3d-logger",
- "bp3d-sal",
- "bp3d-symbols",
- "bp3d-threads",
- "bpx",
- "byteorder",
+ "bp3d-shaderl",
  "clap",
  "cli-common",
- "crossbeam",
  "log",
- "serde",
- "sha2",
- "thiserror",
 ]
 
 [[package]]

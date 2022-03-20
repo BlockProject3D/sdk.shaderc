@@ -26,13 +26,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod symbols;
-mod tree;
-mod ext_data;
-mod assembler;
-
 use std::path::Path;
 use clap::{Arg, ArgMatches, Command};
+use bp3d_shaderl::assembler;
 use log::{error, info};
 use cli_common::{alloc_verbosity_level, get_out_path, init_bp3d_logger};
 
