@@ -167,9 +167,9 @@ dependencies = [
 
 [[package]]
 name = "bp3d-fs"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e02060fa724a87f9e3a10f39dcb2cbd2f652a4bce5ccb152d8f74c1dd78a15e"
+checksum = "156ce5160f0dadb781b826c8b1c9ca78fcbae08b265a85796c19a30bee182836"
 dependencies = [
  "cfg-if",
  "dunce",
@@ -320,6 +320,7 @@ dependencies = [
 name = "cli-common"
 version = "0.1.0"
 dependencies = [
+ "bp3d-fs",
  "bp3d-logger",
  "log",
 ]

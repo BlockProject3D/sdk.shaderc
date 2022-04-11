@@ -29,6 +29,7 @@
 use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::path::Path;
+use bp3d_fs::utils::PathExt;
 use log::LevelFilter;
 
 pub fn alloc_verbosity_level(verbosity: u64) {
@@ -47,23 +48,6 @@ pub fn init_bp3d_logger<F: FnOnce() -> i32>(f: F) {
     std::process::exit(res);
 }
 
-fn transform_output(path: &Path) -> Cow<Path>
-{
-    if path.is_dir() {
-        return path.join("a.out.bpx").into();
-    }
-    if path.extension().unwrap_or_default() != "bpx" {
-        let mut path = path.to_owned();
-        path.set_extension("bpx");
-        path.into()
-    } else {
-        path.into()
-    }
-}
-
 pub fn get_out_path(arg: Option<&OsStr>) -> Cow<Path> {
-    transform_output(arg
-        .map(|v| Path::new(v))
-        .unwrap_or(Path::new("a.out.bpx"))
-    )
+    arg.map(Path::new).unwrap_or(Path::new("a.out.bpx")).ensure_extension("bpx")
 }
